@@ -1,0 +1,367 @@
+@import "tailwindcss";
+
+
+@custom-variant dark (&:is(.dark *));
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-exo: var(--font-exo);
+  --font-museomoderno: var(--font-museomoderno);
+  --font-quicksand: var(--font-quicksand);
+  --radius-none: 0px;
+
+  --radius-xxs: 2px;
+
+  --radius-xs: 4px;
+
+  --radius-sm: 6px;
+
+  --radius-md: 8px;
+
+  --radius-lg: 10px;
+
+  --radius-xl: 12px;
+
+  --radius-2xl: 16px;
+
+  --radius-3xl: 20px;
+
+  --radius-4xl: 24px;
+
+  --radius-full: 999px;
+
+  --spacing-none: 0px;
+  /* Radius: 0px */
+  --radius-none: 0px;
+
+  /* Radius: 2px */
+  --radius-xxs: 2px;
+
+  /* Radius: 4px */
+  --radius-xs: 4px;
+
+  /* Radius: 6px */
+  --radius-sm: 6px;
+
+  /* Radius: 8px */
+  --radius-md: 8px;
+
+  /* Radius: 10px */
+  --radius-lg: 10px;
+
+  /* Radius: 12px */
+  --radius-xl: 12px;
+
+  /* Radius: 16px */
+  --radius-2xl: 16px;
+
+  /* Radius: 20px */
+  --radius-3xl: 20px;
+
+  /* Radius: 24px (Mở rộng mới) */
+  --radius-4xl: 24px;
+
+  /* Radius: 999px (Tương đương rounded-full) */
+  --radius-full: 999px;
+
+  --spacing-none: 0px; 
+  --spacing-xxs: 2px;
+  --spacing-xs: 4px;
+  --spacing-sm: 6px;
+  --spacing-md: 8px;
+  --spacing-lg: 12px;
+  --spacing-xl: 16px;
+  --spacing-2xl: 20px;
+  --spacing-3xl: 24px;
+  --spacing-4xl: 32px;
+  --spacing-5xl: 40px;
+  --spacing-6xl: 48px;
+  --spacing-7xl: 64px;
+  --spacing-8xl: 80px;
+  --spacing-9xl: 96px;
+  --spacing-10xl: 128px;
+
+  --width-xxs: 320px;
+  --width-xs: 384px;
+  --width-sm: 480px;
+  --width-md: 560px;
+  --width-lg: 640px;
+  --width-xl: 720px;
+  --width-2xl: 768px;
+  --width-3xl: 1024px;
+  --width-4xl: 1280px;
+  --width-5xl: 1440px;
+
+  /* Cơ bản (Black & White) */
+  --color-white: #FFFFFF;
+  --color-black: #121212;
+
+  /* Primary */
+  --color-primary-50: #f4f0ff;
+  --color-primary-100: #EBE4FF;
+  --color-primary-200: #DACDFF;
+  --color-primary-300: #C0A6FF;
+  --color-primary-400: #A373FF;
+  --color-primary-500: #893BFF;
+  --color-primary-600: #7F14FF;
+  --color-primary-700: #7201FF;
+  --color-primary-800: #6001D6;
+  --color-primary-900: #4F03AF;
+  --color-primary-950: #300077;
+
+  /* Gray - Light Mode */
+  --color-light-gray-50: #FAFAFA;
+  --color-light-gray-100: #F7F7F7;
+  --color-light-gray-200: #E9E9E9;
+  --color-light-gray-300: #DFDFDF;
+  --color-light-gray-400: #CFCFCF;
+  --color-light-gray-500: #D9D9D9;
+  --color-light-gray-600: #C1C1C1;
+  --color-light-gray-700: #AEAEAE;
+  --color-light-gray-800: #929292;
+  --color-light-gray-900: #777777;
+  --color-light-gray-950: #4D4D4D;
+
+  /* Gray - Dark Mode */
+  --color-dark-gray-50: #EEEEF0;
+  --color-dark-gray-100: #B2B3BD;
+  --color-dark-gray-200: #797B86;
+  --color-dark-gray-300: #6C6E79;
+  --color-dark-gray-400: #5F606A;
+  --color-dark-gray-500: #46484F;
+  --color-dark-gray-600: #393A40;
+  --color-dark-gray-700: #303136;
+  --color-dark-gray-800: #292A2E;
+  --color-dark-gray-900: #222325;
+  --color-dark-gray-950: #19191B;
+
+  /* Red */
+  --color-red-50: #FDEDF0;
+  --color-red-100: #FBDAE1;
+  --color-red-200: #F7B5C2;
+  --color-red-300: #F390A4;
+  --color-red-400: #F17E95;
+  --color-red-500: #EC4B6B;
+  --color-red-600: #EA3458;
+  --color-red-700: #E82149;
+  --color-red-800: #CB153A;
+  --color-red-900: #A6112F;
+  --color-red-950: #810E25;
+
+  /* Blue */
+  --color-blue-50: #EEF6FF;
+  --color-blue-100: #D9EAFF;
+  --color-blue-200: #BCDBFF;
+  --color-blue-300: #8EC5FF;
+  --color-blue-400: #59A4FF;
+  --color-blue-500: #2679FF;
+  --color-blue-600: #1B60F5;
+  --color-blue-700: #144BE1;
+  --color-blue-800: #173CB6;
+  --color-blue-900: #19378F;
+  --color-blue-950: #142357;
+
+  /* Orange */
+  --color-orange-50: #FFF9EF;
+  --color-orange-100: #FFF1D8;
+  --color-orange-200: #FFE1B1;
+  --color-orange-300: #FFCB80;
+  --color-orange-400: #FFA33E;
+  --color-orange-500: #FE912B;
+  --color-orange-600: #F87415;
+  --color-orange-700: #D95509;
+  --color-orange-800: #AC4411;
+  --color-orange-900: #8B3911;
+  --color-orange-950: #4C1A06;
+
+  /* Green */
+  --color-green-50: #EFFBF3;
+  --color-green-100: #CFF2DC;
+  --color-green-200: #9EE5B8;
+  --color-green-300: #7EDDA1;
+  --color-green-400: #4ED07D;
+  --color-green-500: #32BD65;
+  --color-green-600: #2FB15F;
+  --color-green-700: #2BA156;
+  --color-green-800: #228145;
+  --color-green-900: #1E713C;
+  --color-green-950: #15512B;
+
+  /* Indigo */
+  --color-indigo-50: #EAF0FF;
+  --color-indigo-100: #D9E2FF;
+  --color-indigo-200: #BBCAFF;
+  --color-indigo-300: #93A5FE;
+  --color-indigo-400: #6874FE;
+  --color-indigo-500: #3D3DFE;
+  --color-indigo-600: #3E2EFD;
+  --color-indigo-700: #301ED7;
+  --color-indigo-800: #281DAB;
+  --color-indigo-900: #262086;
+  --color-indigo-950: #18134E;
+
+  /* Teal */
+  --color-teal-50: #F9FFFD;
+  --color-teal-100: #E9FFF8;
+  --color-teal-200: #D4FEF1;
+  --color-teal-300: #BAFAE8;
+  --color-teal-400: #8EEDD5;
+  --color-teal-500: #50F6CF;
+  --color-teal-600: #09F8C6;
+  --color-teal-700: #0EC7A3;
+  --color-teal-800: #139E84;
+  --color-teal-900: #19826E;
+  --color-teal-950: #025045;
+
+  /* Purple */
+  --color-purple-50: #F6F3FF;
+  --color-purple-100: #EFE9FE;
+  --color-purple-200: #E1D6FE;
+  --color-purple-300: #CBB4FE;
+  --color-purple-400: #B28AFB;
+  --color-purple-500: #9655F7;
+  --color-purple-600: #8D39EE;
+  --color-purple-700: #7E27DA;
+  --color-purple-800: #6A20B7;
+  --color-purple-900: #581C96;
+  --color-purple-950: #360F66;
+
+  /* Pink */
+  --color-pink-50: #FFF5F9;
+  /* Giá trị Pink-50 bị thiếu, dùng giá trị giả định */
+  --color-pink-50: #FFF5F9; /* Giá trị Pink-50 bị thiếu, dùng giá trị giả định */
+  --color-pink-100: #FEE5F6;
+  --color-pink-200: #FFCAF0;
+  --color-pink-300: #FF9FE1;
+  --color-pink-400: #FF63CB;
+  --color-pink-500: #FF2AAE;
+  --color-pink-600: #F01291;
+  --color-pink-700: #D10574;
+  --color-pink-800: #AD075F;
+  --color-pink-900: #8F0C51;
+  --color-pink-950: #58002D;
+
+  /* Yellow */
+  --color-yellow-50: #FFFEEF;
+  --color-yellow-100: #FEFDD2;
+  --color-yellow-200: #FEFAA2;
+  --color-yellow-300: #FEF260;
+  --color-yellow-400: #FDE850;
+  --color-yellow-500: #F9D03C;
+  --color-yellow-600: #F2AD12;
+  --color-yellow-700: #DC8508;
+  --color-yellow-800: #B2650F;
+  --color-yellow-900: #935410;
+  --color-yellow-950: #542B03;
+
+  /* Lime */
+  --color-lime-50: #F9FFE6;
+  --color-lime-100: #F0FDCA;
+  --color-lime-200: #E1FB9B;
+  --color-lime-300: #CAF561;
+  --color-lime-400: #B2EA31;
+  --color-lime-500: #93D012;
+  --color-lime-600: #72A60A;
+  --color-lime-700: #557E0D;
+  --color-lime-800: #456410;
+  --color-lime-900: #3B5413;
+  --color-lime-950: #1D2F04;
+
+  /* Sky */
+  --color-sky-50: #F5FCFF;
+  --color-sky-100: #E9F7FF;
+  --color-sky-200: #CFF1FF;
+  --color-sky-300: #A4E6FF;
+  --color-sky-400: #83DEFE;
+  --color-sky-500: #4CCCFA;
+  --color-sky-600: #07B6FF;
+  --color-sky-700: #0097DB;
+  --color-sky-800: #047EB5;
+  --color-sky-900: #0B6997;
+  --color-sky-950: #084363;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+}
+
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --black: #121212;
+    --white: #FFFFFF;
+    --primary-50: #
+  }
+}
+
+.background-container {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: screen;
+}
+
+.background-container::before {
+  content: "";
+  background-image: url("/images/background_main.png");
+  background-size: cover;
+  background-position: center;
+  background-color: lightgray;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  filter: blur(140px);
+
+  transform: scale(1.05);
+  z-index: 1;
+}
+
+.content {
+
+  position: relative;
+  z-index: 2;
+
+}
+
+
+.background-box:hover {
+  -webkit-backdrop-filter: blur(21.15px);
+  backdrop-filter: blur(21.15px);
+  box-shadow: 0 0 4px #ffffff20, 13px 30px 65px #0009, inset -4px 13px 32px #ffffff02;
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
