@@ -360,8 +360,4 @@
   -webkit-backdrop-filter: blur(21.15px);
   backdrop-filter: blur(21.15px);
   box-shadow: 0 0 4px #ffffff20, 13px 30px 65px #0009, inset -4px 13px 32px #ffffff02;
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }
