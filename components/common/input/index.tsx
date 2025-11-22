@@ -9,7 +9,7 @@ interface CommonInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 const Input = ({
 	startIcon,
 	endIcon,
-	textColorClass = "text-gray-100",
+	textColorClass = "text-dark-gray-100",
 	highlightColorClass = "focus-within:ring-white focus-within:ring-2",
 	placeholder = "Nhập vào...",
 	className = "",
@@ -17,13 +17,12 @@ const Input = ({
 }: CommonInputProps) => {
 	const containerClasses = `
     flex items-center 
-    w-full border border-gray-300 rounded-lg p-2 
+    w-full border border-dark-gray-700 text-dark-gray-100 rounded-lg px-3 py-2 
     transition-all duration-200 
     ${highlightColorClass} 
     ${className}
   `;
 
-	// Class cho icon và text
 	const iconAndTextClasses = `
     ${textColorClass} 
   `;
@@ -31,13 +30,13 @@ const Input = ({
 	return (
 		<div className={containerClasses}>
 			{startIcon && (
-				<div className={`mr-2 ${iconAndTextClasses}`}>{startIcon}</div>
+				<div className={`mr-2 py-0.5 ${iconAndTextClasses}`}>{startIcon}</div>
 			)}
 
 			<input
 				className={`
-          w-full outline-none bg-transparent 
-          placeholder-gray-400 
+          w-full outline-none bg-transparent label-3
+          placeholder--dark-gray-100 
           ${iconAndTextClasses} 
         `}
 				placeholder={placeholder}

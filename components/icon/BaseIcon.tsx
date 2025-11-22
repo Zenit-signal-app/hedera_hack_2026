@@ -5,7 +5,7 @@ export interface IconProps extends SVGProps<SVGSVGElement> {
 
 	size?: number | string;
 
-	children: React.ReactNode;
+	children?: React.ReactNode;
 }
 
 

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-import { exo, museoModerno } from "../lib/fonts";
+import { exo, museoModerno, quickSan } from "../lib/fonts";
 import Navigator from "@/page/layout/navigator";
+import Header from "@/page/layout/header";
 
 export const metadata: Metadata = {
 	title: "Create Next App",
@@ -17,10 +18,17 @@ export default function RootLayout({
 	return (
 		<html lang="en">
 			<body
-				className={`${exo.variable} ${museoModerno.variable} antialiased bg-black`}>
-				<div className="flex items-center">
-					<Navigator />
-					{children}
+				className={`${exo.variable} ${museoModerno.variable} ${quickSan.variable} antialiased bg-black text-white`}>
+				<div className="flex bg-gray-950 font-museomoderno">
+					<div className="w-[18%] border-r-2 border-black flex flex-col">
+						<Navigator />
+					</div>
+					<div className="w-[82%] h-screen relative background-container">
+						<Header />
+						<div className="overflow-y-auto overflow-x-hidden h-[calc(100%-42px)] content">
+							{children}
+						</div>
+					</div>
 				</div>
 			</body>
 		</html>

@@ -7,6 +7,7 @@ export default {
 			fontFamily: {
 				exo: "var(--font-exo)",
 				museomoderno: "var(--font-museomoderno)",
+				quickSan: "var(--font-quicksand)",
 			},
 			fontSize: {
 				// Heading
