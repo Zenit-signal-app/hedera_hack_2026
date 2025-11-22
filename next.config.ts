@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+<<<<<<< HEAD
 	/* config options here */
 	async redirects() {
 		return [
@@ -18,6 +19,9 @@ const nextConfig: NextConfig = {
 			// Bạn có thể thêm nhiều redirects khác ở đây
 		];
 	},
+=======
+  /* config options here */
+>>>>>>> main
 };
 
 export default nextConfig;

@@ -30,6 +30,10 @@ export default function RootLayout({
 						</div>
 					</div>
 				</div>
+				<div className="flex items-center">
+					<Navigator />
+					{children}
+				</div>
 			</body>
 		</html>
 	);

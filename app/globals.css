@@ -2,6 +2,10 @@
 
 
 @custom-variant dark (&:is(.dark *));
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
 
 @theme inline {
   --color-background: var(--background);
@@ -32,6 +36,40 @@
   --radius-full: 999px;
 
   --spacing-none: 0px;
+  /* Radius: 0px */
+  --radius-none: 0px;
+
+  /* Radius: 2px */
+  --radius-xxs: 2px;
+
+  /* Radius: 4px */
+  --radius-xs: 4px;
+
+  /* Radius: 6px */
+  --radius-sm: 6px;
+
+  /* Radius: 8px */
+  --radius-md: 8px;
+
+  /* Radius: 10px */
+  --radius-lg: 10px;
+
+  /* Radius: 12px */
+  --radius-xl: 12px;
+
+  /* Radius: 16px */
+  --radius-2xl: 16px;
+
+  /* Radius: 20px */
+  --radius-3xl: 20px;
+
+  /* Radius: 24px (Mở rộng mới) */
+  --radius-4xl: 24px;
+
+  /* Radius: 999px (Tương đương rounded-full) */
+  --radius-full: 999px;
+
+  --spacing-none: 0px; 
   --spacing-xxs: 2px;
   --spacing-xs: 4px;
   --spacing-sm: 6px;
@@ -196,6 +234,7 @@
   /* Pink */
   --color-pink-50: #FFF5F9;
   /* Giá trị Pink-50 bị thiếu, dùng giá trị giả định */
+  --color-pink-50: #FFF5F9; /* Giá trị Pink-50 bị thiếu, dùng giá trị giả định */
   --color-pink-100: #FEE5F6;
   --color-pink-200: #FFCAF0;
   --color-pink-300: #FF9FE1;
@@ -276,6 +315,7 @@
   --color-card: var(--card);
 }
 
+
 @media (prefers-color-scheme: dark) {
   :root {
     --black: #121212;
@@ -320,4 +360,8 @@
   -webkit-backdrop-filter: blur(21.15px);
   backdrop-filter: blur(21.15px);
   box-shadow: 0 0 4px #ffffff20, 13px 30px 65px #0009, inset -4px 13px 32px #ffffff02;
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
 }
