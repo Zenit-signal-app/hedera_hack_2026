@@ -26,7 +26,7 @@ const Overview = () => {
 		{ key: "1W", label: "1W" },
 		{ key: "1M", label: "1M" },
 		{ key: "3M", label: "3M" },
-		{ key: "MAX", label: "Max" },
+		{ key: "MAX", label: "Max" }, 
 	];
 	return (
 		<div className="rounded-b-xl">
@@ -41,7 +41,7 @@ const Overview = () => {
 						<div className="text-red-500 py-0.5 px-3 bg-red-500/10 rounded-md">
 							<GrowDownIcon size={16} /> 9.6%
 						</div>
-						past 90 days
+						past 90 days 
 					</div>
 				}
 				height={300}

@@ -2,6 +2,7 @@
 
 
 @custom-variant dark (&:is(.dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -69,7 +70,7 @@
   /* Radius: 999px (Tương đương rounded-full) */
   --radius-full: 999px;
 
-  --spacing-none: 0px; 
+  --spacing-none: 0px;
   --spacing-xxs: 2px;
   --spacing-xs: 4px;
   --spacing-sm: 6px;
@@ -234,7 +235,8 @@
   /* Pink */
   --color-pink-50: #FFF5F9;
   /* Giá trị Pink-50 bị thiếu, dùng giá trị giả định */
-  --color-pink-50: #FFF5F9; /* Giá trị Pink-50 bị thiếu, dùng giá trị giả định */
+  --color-pink-50: #FFF5F9;
+  /* Giá trị Pink-50 bị thiếu, dùng giá trị giả định */
   --color-pink-100: #FEE5F6;
   --color-pink-200: #FFCAF0;
   --color-pink-300: #FF9FE1;
@@ -360,4 +362,64 @@
   -webkit-backdrop-filter: blur(21.15px);
   backdrop-filter: blur(21.15px);
   box-shadow: 0 0 4px #ffffff20, 13px 30px 65px #0009, inset -4px 13px 32px #ffffff02;
+}
+
+
+
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  width: max-content;
+  height: max-content;
+  border: var(--color-dark-gray-300);
+  border-radius: 9999px;
+
+}
+
+.loading-spinner-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+}
+
+.loading-spinner-circle {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: white;
+  margin: 0 5px;
+  animation: loading-spinner 1s ease-in-out infinite;
+}
+
+.loading-spinner-circle:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-spinner-circle:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.loading-spinner-circle:nth-child(4) {
+  animation-delay: 0.6s;
+}
+
+.loading-spinner-circle:nth-child(5) {
+  animation-delay: 0.8s;
+}
+
+@keyframes loading-spinner {
+  0% {
+    opacity: 1;
+  }
+
+  20% {
+    opacity: 0.5;
+  }
+
+  100% {
+    opacity: 1;
+  }
 }
