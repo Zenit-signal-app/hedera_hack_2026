@@ -1,11 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-// components/Chart/CommonLineChart.tsx
-
 import React, { useState } from "react";
 import {
-	AreaChart,
-	Area,
+	BarChart,
+	Bar,
 	XAxis,
 	YAxis,
 	CartesianGrid,
@@ -25,29 +23,31 @@ export interface TimeFilterOption {
 	label: string;
 }
 
-interface CommonLineChartProps {
+interface CommonBarChartProps {
 	data: ChartDataPoint[];
-	lineColor: string;
+	barColor: string;
 	dataKeyX: string;
 	dataKeyY: string;
 	timeFilters?: TimeFilterOption[];
 	headerTitle?: React.ReactNode | string;
 	height?: number;
 }
+
 const CustomTooltip = ({ active, payload, label }: any) => {
 	if (active && payload && payload.length) {
 		return (
 			<div className="bg-gray-700 bg-opacity-80 backdrop-blur-sm p-2 rounded-md border border-gray-600 text-white text-sm">
 				<p className="text-gray-400">{label}</p>
-				<p className="font-bold">{`${payload[0].value}`}</p>
+				<p className="font-bold">{`$${payload[0].value.toLocaleString()}`}</p>
 			</div>
 		);
 	}
 	return null;
 };
-const CommonLineChart: React.FC<CommonLineChartProps> = ({
+
+const CommonBarChart: React.FC<CommonBarChartProps> = ({
 	data,
-	lineColor,
+	barColor,
 	dataKeyX,
 	dataKeyY,
 	timeFilters,
@@ -57,7 +57,7 @@ const CommonLineChart: React.FC<CommonLineChartProps> = ({
 	const [activeFilter, setActiveFilter] = useState(
 		timeFilters ? timeFilters[0].key : ""
 	);
-	const gradientId = `colorArea-${lineColor.replace("#", "")}`;
+
 	return (
 		<div className="font-quicksand" style={{ height: height + 60 }}>
 			<div className="flex justify-between items-center mb-4">
@@ -88,31 +88,10 @@ const CommonLineChart: React.FC<CommonLineChartProps> = ({
 			</div>
 
 			<ResponsiveContainer width="100%" height={height}>
-				<AreaChart
+				<BarChart
 					data={data}
 					margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
 				>
-					<defs>
-						<linearGradient
-							id={gradientId}
-							x1="362.5"
-							y1="0"
-							x2="362.5"
-							y2="164.346"
-							gradientUnits="userSpaceOnUse"
-						>
-							<stop
-								stopColor="#EC4B6B"
-								stopOpacity={0.4}
-								offset={0}
-							/>
-							<stop
-								offset="1"
-								stopColor="#862B3D"
-								stopOpacity={0}
-							/>
-						</linearGradient>
-					</defs>
 					<CartesianGrid
 						vertical={false}
 						stroke="none"
@@ -138,24 +117,16 @@ const CommonLineChart: React.FC<CommonLineChartProps> = ({
 
 					<Tooltip content={<CustomTooltip />} />
 
-					<Area
-						type="linear"
+					<Bar
 						dataKey={dataKeyY}
-						stroke={lineColor}
-						strokeWidth={2}
-						fill={`url(#${gradientId})`}
-						dot={false}
-						activeDot={{
-							r: 5,
-							stroke: lineColor,
-							strokeWidth: 1,
-							fill: "white",
-						}}
+						fill={barColor}
+						// radius={[4, 4, 0, 0]}
+						maxBarSize={20}
 					/>
-				</AreaChart>
+				</BarChart>
 			</ResponsiveContainer>
 		</div>
 	);
 };
 
-export default CommonLineChart;
+export default CommonBarChart;

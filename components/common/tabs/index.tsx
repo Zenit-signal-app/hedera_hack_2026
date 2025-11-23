@@ -28,7 +28,7 @@ const TabsWrapper: React.FC<TabsWrapperProps> = ({
 	const tabsListBaseClasses = "flex items-center space-x-1 p-1 ";
 	let tabsListVariantClasses = "";
 	let triggerBaseClasses =
-		"px-4 py-2 text-sm font-semibold transition-all duration-200";
+		"px-4 py-2 text-sm font-semibold transition-all duration-200 cursor-pointer";
 	let triggerActiveClasses = "";
 	let triggerInactiveClasses = "";
 
@@ -51,8 +51,11 @@ const TabsWrapper: React.FC<TabsWrapperProps> = ({
 		<Tabs
 			defaultValue={defaultValue}
 			onValueChange={onValueChange}
-			className={cn("w-full", className)}>
-			<TabsList className={cn(tabsListBaseClasses, tabsListVariantClasses)}>
+			className={cn("w-full", className)}
+		>
+			<TabsList
+				className={cn(tabsListBaseClasses, tabsListVariantClasses)}
+			>
 				{tabs.map((tab) => (
 					<TabsTrigger
 						key={tab.value}
@@ -61,7 +64,8 @@ const TabsWrapper: React.FC<TabsWrapperProps> = ({
 							triggerBaseClasses,
 							triggerInactiveClasses,
 							triggerActiveClasses
-						)}>
+						)}
+					>
 						{tab.label}
 					</TabsTrigger>
 				))}
