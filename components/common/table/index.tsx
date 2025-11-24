@@ -33,7 +33,8 @@ type TProps<TData> = {
 	};
 	setPageIndex: (page: number) => void;
 	setPageSize: (page: number) => void;
-	variant?: TableVariant; // Thêm prop variant
+	variant?: TableVariant;
+	className?: string; // Thêm prop variant
 };
 
 export function TableWrapper<TData>({
@@ -43,6 +44,7 @@ export function TableWrapper<TData>({
 	pagination,
 	setPageIndex,
 	setPageSize,
+	className,
 	variant = "default", // Giá trị mặc định là "default"
 }: TProps<TData>) {
 	const { pageIndex, pageSize, totalPages, totalRecords } = pagination;
@@ -70,7 +72,7 @@ export function TableWrapper<TData>({
 	// Xử lý các class CSS dựa trên variant
 	const isDefaultVariant = variant === "default";
 	const tableClass = isDefaultVariant
-		? "rounded-lg border-dark-gray-700 border shadow-lg w-full"
+		? "rounded-lg  shadow-lg w-full"
 		: "w-full";
 	const tableHeaderClass = isDefaultVariant
 		? "bg-dark-gray-950 border-b text-white border-r border-dark-gray-700"
@@ -88,7 +90,7 @@ export function TableWrapper<TData>({
 	const colSpan = columns.length;
 
 	return (
-		<div className={cn(tableClass, "font-quicksand")}>
+		<div className={cn(tableClass, "font-quicksand", className)}>
 			<div className="relative w-full overflow-auto">
 				<Table>
 					<TableHeader className={tableHeaderClass}>
@@ -98,11 +100,16 @@ export function TableWrapper<TData>({
 								<TableRow>
 									{headerGroup.headers.map((header) => {
 										return (
-											<TableHead key={header.id} className={tableHeadClass}>
+											<TableHead
+												key={header.id}
+												className={tableHeadClass}
+											>
 												{header.isPlaceholder
 													? null
 													: flexRender(
-															header.column.columnDef.header,
+															header.column
+																.columnDef
+																.header,
 															header.getContext()
 													  )}
 											</TableHead>
@@ -116,30 +123,48 @@ export function TableWrapper<TData>({
 					{/* Body Bảng */}
 					<TableBody>
 						{isLoading ? (
-							Array.from({ length: emptyRows }).map((_, rowIndex) => (
-								<TableRow
-									key={rowIndex}
-									className={isDefaultVariant ? "border-b" : "border-none"}>
-									{Array.from({ length: colSpan }).map((_, colIndex) => (
-										<TableCell key={colIndex} className={tableCellClass}>
-											<div className="h-6 w-full" />
-										</TableCell>
-									))}
-								</TableRow>
-							))
+							Array.from({ length: emptyRows }).map(
+								(_, rowIndex) => (
+									<TableRow
+										key={rowIndex}
+										className={
+											isDefaultVariant
+												? "border-b"
+												: "border-none"
+										}
+									>
+										{Array.from({ length: colSpan }).map(
+											(_, colIndex) => (
+												<TableCell
+													key={colIndex}
+													className={tableCellClass}
+												>
+													<div className="h-6 w-full" />
+												</TableCell>
+											)
+										)}
+									</TableRow>
+								)
+							)
 						) : table.getRowModel().rows?.length ? (
 							table.getRowModel().rows.map((row, index) => (
 								<TableRow
 									key={row.id}
-									data-state={row.getIsSelected() && "selected"}
+									data-state={
+										row.getIsSelected() && "selected"
+									}
 									className={cn(
 										tableRowClass,
 										index % 2 === 0 && variant === "minimal"
 											? "bg-dark-gray-900"
 											: "bg-transparent"
-									)}>
+									)}
+								>
 									{row.getVisibleCells().map((cell) => (
-										<TableCell key={cell.id} className={tableCellClass}>
+										<TableCell
+											key={cell.id}
+											className={tableCellClass}
+										>
 											{flexRender(
 												cell.column.columnDef.cell,
 												cell.getContext()
@@ -149,11 +174,11 @@ export function TableWrapper<TData>({
 								</TableRow>
 							))
 						) : (
-							// Trạng thái Không có dữ liệu
 							<TableRow>
 								<TableCell
-									colSpan={colSpan} // Sử dụng colSpan
-									className="h-24 text-center text-muted-foreground border-none">
+									colSpan={colSpan}
+									className="h-24 text-center text-muted-foreground border-none"
+								>
 									Không có dữ liệu nào.
 								</TableCell>
 							</TableRow>

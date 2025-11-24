@@ -5,7 +5,7 @@ import { TabsList } from "@radix-ui/react-tabs";
 
 export type TabItem = {
 	value: string;
-	label: string;
+	label: string | React.ReactNode;
 };
 
 type TabVariant = "pill" | "underline";
