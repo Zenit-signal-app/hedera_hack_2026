@@ -59,9 +59,7 @@ const CommonLineChart: React.FC<CommonLineChartProps> = ({
 	);
 	const gradientId = `colorArea-${lineColor.replace("#", "")}`;
 	return (
-		<div
-			className="p-4 rounded-lg bg-[#111113] border border-gray-800 font-quicksand"
-			style={{ height: height + 60 }}>
+		<div className="font-quicksand" style={{ height: height + 60 }}>
 			<div className="flex justify-between items-center mb-4">
 				{headerTitle && (
 					<div className="flex items-center space-x-2 text-sm font-semibold">
@@ -80,7 +78,8 @@ const CommonLineChart: React.FC<CommonLineChartProps> = ({
 									activeFilter === filter.key
 										? "bg-dark-gray-800 "
 										: " hover:bg-gray-700"
-								)}>
+								)}
+							>
 								{filter.label}
 							</button>
 						))}
@@ -91,7 +90,8 @@ const CommonLineChart: React.FC<CommonLineChartProps> = ({
 			<ResponsiveContainer width="100%" height={height}>
 				<AreaChart
 					data={data}
-					margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+					margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+				>
 					<defs>
 						<linearGradient
 							id={gradientId}
@@ -99,12 +99,25 @@ const CommonLineChart: React.FC<CommonLineChartProps> = ({
 							y1="0"
 							x2="362.5"
 							y2="164.346"
-							gradientUnits="userSpaceOnUse">
-							<stop stopColor="#EC4B6B" stopOpacity={0.4} offset={0} />
-							<stop offset="1" stopColor="#862B3D" stopOpacity={0} />
+							gradientUnits="userSpaceOnUse"
+						>
+							<stop
+								stopColor="#EC4B6B"
+								stopOpacity={0.4}
+								offset={0}
+							/>
+							<stop
+								offset="1"
+								stopColor="#862B3D"
+								stopOpacity={0}
+							/>
 						</linearGradient>
 					</defs>
-					<CartesianGrid vertical={false} stroke="none" strokeDasharray="3 3" />
+					<CartesianGrid
+						vertical={false}
+						stroke="none"
+						strokeDasharray="3 3"
+					/>
 
 					<XAxis
 						dataKey={dataKeyX}

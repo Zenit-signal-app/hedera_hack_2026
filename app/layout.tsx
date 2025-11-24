@@ -19,7 +19,8 @@ export default function RootLayout({
 	return (
 		<html lang="en">
 			<body
-				className={`${exo.variable} ${museoModerno.variable} ${quickSan.variable} antialiased bg-black text-white`}>
+				className={`${exo.variable} ${museoModerno.variable} ${quickSan.variable} antialiased bg-black text-white`}
+			>
 				<div className="flex bg-gray-950 font-quicksand">
 					<div className="w-[18%] border-r-2 border-black flex flex-col">
 						<Navigator />
@@ -27,7 +28,9 @@ export default function RootLayout({
 					<div className="w-[82%] h-screen relative background-container">
 						<Header />
 						<div className="overflow-y-auto overflow-x-hidden h-[calc(100%-42px)] content">
-							<NextIntlClientProvider>{children}</NextIntlClientProvider>
+							<NextIntlClientProvider>
+								{children}
+							</NextIntlClientProvider>
 						</div>
 					</div>
 				</div>
