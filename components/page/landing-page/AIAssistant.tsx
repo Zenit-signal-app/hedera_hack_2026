@@ -6,20 +6,20 @@ import AIAssistantIcon from "../../../src/components/icon/AIAssistantIcon";
 import AccordionChevronIcon from "../../../src/components/icon/AccordionChevronIcon";
 
 const ACCORDION_ITEMS = {
-	"ai-ask": {
+	aiAsk: {
 		id: "ai-ask",
 		title: "AI Ask",
 		contentTitle: "This is title",
 		contentText:
 			"Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.",
 	},
-	"ai-plan": {
+	aiPlan: {
 		id: "ai-plan",
 		title: "AI Plan",
 		contentTitle: "AI Plan Content",
 		contentText: "Content for AI Plan section.",
 	},
-	"ai-agent": {
+	aiAgent: {
 		id: "ai-agent",
 		title: "AI Agent",
 		contentTitle: "AI Agent Content",
@@ -29,7 +29,7 @@ const ACCORDION_ITEMS = {
 
 export default function AIAssistant() {
 	const [openAccordion, setOpenAccordion] = useState<string>(
-		ACCORDION_ITEMS["ai-ask"].id
+		ACCORDION_ITEMS.aiAsk.id
 	);
 
 	const toggleAccordion = (id: string) => {
@@ -65,128 +65,47 @@ export default function AIAssistant() {
 				<div className="ai-assistant-content">
 					{/* Left: Accordion */}
 					<div className="ai-assistant-accordion">
-						{/* AI Ask */}
-						<div className="accordion-item">
-							<button
-								className={`accordion-header ${
-									openAccordion === "ai-ask" ? "active" : ""
-								}`}
-								onClick={() => toggleAccordion("ai-ask")}
-							>
-								<div className="accordion-header-content">
-									<div className="accordion-icon">
-										<AIAssistantIcon
-											width={24}
-											height={24}
-										/>
-									</div>
-									<span className="accordion-title">
-										AI Ask
-									</span>
-								</div>
-								<AccordionChevronIcon
-									className={`accordion-chevron ${
-										openAccordion === "ai-ask"
-											? "rotate"
+						{Object.values(ACCORDION_ITEMS).map((item) => (
+							<div key={item.id} className="accordion-item">
+								<button
+									className={`accordion-header ${
+										openAccordion === item.id
+											? "active"
 											: ""
 									}`}
-								/>
-							</button>
-							{openAccordion === "ai-ask" && (
-								<div className="accordion-content">
-									<h3 className="accordion-content-title">
-										This is title
-									</h3>
-									<p className="accordion-content-text">
-										Lorem Ipsum is simply dummy text of the
-										printing and typesetting industry. Lorem
-										Ipsum has been the industry's standard
-										dummy text ever since the 1500s, when an
-										unknown printer took a galley of type
-										and scrambled it to make a type specimen
-										book.
-									</p>
-								</div>
-							)}
-						</div>
-
-						{/* AI Plan */}
-						<div className="accordion-item">
-							<button
-								className={`accordion-header ${
-									openAccordion === "ai-plan" ? "active" : ""
-								}`}
-								onClick={() => toggleAccordion("ai-plan")}
-							>
-								<div className="accordion-header-content">
-									<div className="accordion-icon">
-										<AIAssistantIcon
-											width={24}
-											height={24}
-										/>
+									onClick={() => toggleAccordion(item.id)}
+								>
+									<div className="accordion-header-content">
+										<div className="accordion-icon">
+											<AIAssistantIcon
+												width={24}
+												height={24}
+											/>
+										</div>
+										<span className="accordion-title">
+											{item.title}
+										</span>
 									</div>
-									<span className="accordion-title">
-										AI Plan
-									</span>
-								</div>
-								<AccordionChevronIcon
-									className={`accordion-chevron ${
-										openAccordion === "ai-plan"
-											? "rotate"
-											: ""
-									}`}
-								/>
-							</button>
-							{openAccordion === "ai-plan" && (
-								<div className="accordion-content">
-									<h3 className="accordion-content-title">
-										AI Plan Content
-									</h3>
-									<p className="accordion-content-text">
-										Content for AI Plan section.
-									</p>
-								</div>
-							)}
-						</div>
-
-						{/* AI Agent */}
-						<div className="accordion-item">
-							<button
-								className={`accordion-header ${
-									openAccordion === "ai-agent" ? "active" : ""
-								}`}
-								onClick={() => toggleAccordion("ai-agent")}
-							>
-								<div className="accordion-header-content">
-									<div className="accordion-icon">
-										<AIAssistantIcon
-											width={24}
-											height={24}
-										/>
+									<AccordionChevronIcon
+										className={`accordion-chevron ${
+											openAccordion === item.id
+												? "rotate"
+												: ""
+										}`}
+									/>
+								</button>
+								{openAccordion === item.id && (
+									<div className="accordion-content">
+										<h3 className="accordion-content-title">
+											{item.contentTitle}
+										</h3>
+										<p className="accordion-content-text">
+											{item.contentText}
+										</p>
 									</div>
-									<span className="accordion-title">
-										AI Agent
-									</span>
-								</div>
-								<AccordionChevronIcon
-									className={`accordion-chevron ${
-										openAccordion === "ai-agent"
-											? "rotate"
-											: ""
-									}`}
-								/>
-							</button>
-							{openAccordion === "ai-agent" && (
-								<div className="accordion-content">
-									<h3 className="accordion-content-title">
-										AI Agent Content
-									</h3>
-									<p className="accordion-content-text">
-										Content for AI Agent section.
-									</p>
-								</div>
-							)}
-						</div>
+								)}
+							</div>
+						))}
 					</div>
 
 					{/* Right: Image */}

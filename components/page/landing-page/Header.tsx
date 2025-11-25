@@ -1,7 +1,82 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function Header() {
+	const [activeSection, setActiveSection] = useState("home");
+
+	useEffect(() => {
+		const handleScroll = () => {
+			const sections = [
+				"home",
+				"how-it-works",
+				"ai-assistant",
+				// "why-seerbot",
+				// "faq",
+				// "trade-smarter",
+			];
+
+			const scrollPosition = window.scrollY + 150; // Offset for header height + buffer
+			let currentSection = "";
+
+			// Find which section is currently in view
+			for (const sectionId of sections) {
+				const section = document.getElementById(sectionId);
+				if (section) {
+					const sectionTop = section.offsetTop;
+					const sectionBottom = sectionTop + section.offsetHeight;
+
+					// Check if scroll position is within this section
+					if (
+						scrollPosition >= sectionTop &&
+						scrollPosition < sectionBottom
+					) {
+						currentSection = sectionId;
+						break;
+					}
+
+					// If we've scrolled past all nav sections, clear active
+					if (
+						scrollPosition >= sectionBottom &&
+						sectionId === sections[sections.length - 1]
+					) {
+						currentSection = "";
+					}
+				}
+			}
+
+			// Only update if there's a change
+			if (currentSection !== activeSection) {
+				setActiveSection(currentSection);
+			}
+		};
+
+		window.addEventListener("scroll", handleScroll);
+		handleScroll(); // Initial check
+
+		return () => window.removeEventListener("scroll", handleScroll);
+	}, [activeSection]);
+
+	const handleNavClick = (
+		e: React.MouseEvent<HTMLAnchorElement>,
+		sectionId: string
+	) => {
+		e.preventDefault();
+		const section = document.getElementById(sectionId);
+		if (section) {
+			const headerOffset = 72; // Header height
+			const elementPosition = section.offsetTop;
+			const offsetPosition = elementPosition - headerOffset;
+
+			window.scrollTo({
+				top: offsetPosition,
+				behavior: "smooth",
+			});
+		}
+	};
+
 	return (
 		<header className="landing-header">
 			<div className="landing-header-container">
@@ -21,16 +96,34 @@ export default function Header() {
 				{/* Navigation */}
 				<nav className="landing-nav">
 					<div className="landing-nav-bg"></div>
-					<a href="#home" className="landing-nav-link">
+					<a
+						href="#home"
+						className={`landing-nav-link ${
+							activeSection === "home" ? "active" : ""
+						}`}
+						onClick={(e) => handleNavClick(e, "home")}
+					>
 						Home
 					</a>
-					<a href="#how-it-works" className="landing-nav-link">
+					<a
+						href="#how-it-works"
+						className={`landing-nav-link ${
+							activeSection === "how-it-works" ? "active" : ""
+						}`}
+						onClick={(e) => handleNavClick(e, "how-it-works")}
+					>
 						How it works
 					</a>
-					<a href="#ai-assistant" className="landing-nav-link">
+					<a
+						href="#ai-assistant"
+						className={`landing-nav-link ${
+							activeSection === "ai-assistant" ? "active" : ""
+						}`}
+						onClick={(e) => handleNavClick(e, "ai-assistant")}
+					>
 						AI Assistant
 					</a>
-					<a href="#why-seerbot" className="landing-nav-link">
+					{/* <a href="#why-seerbot" className="landing-nav-link">
 						Why SeerBOT
 					</a>
 					<a href="#faq" className="landing-nav-link">
@@ -38,7 +131,7 @@ export default function Header() {
 					</a>
 					<a href="#trade-smarter" className="landing-nav-link">
 						Trade smarter
-					</a>
+					</a> */}
 				</nav>
 
 				{/* Actions */}
@@ -61,9 +154,9 @@ export default function Header() {
 							/>
 						</svg>
 					</button>
-					<Link href="/analysis" className="landing-btn-launch">
+					<a href="/analysis" className="landing-btn-launch">
 						<span>Launch App</span>
-					</Link>
+					</a>
 				</div>
 			</div>
 		</header>

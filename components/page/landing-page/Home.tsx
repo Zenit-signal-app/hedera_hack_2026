@@ -1,13 +1,40 @@
+"use client";
+
 import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 
 export default function Home() {
+	const wrapperRef = useRef<HTMLDivElement>(null);
+	const backgroundRef = useRef<HTMLDivElement>(null);
+	const [height, setHeight] = useState<number>(0);
+
+	useEffect(() => {
+		const updateHeight = () => {
+			if (wrapperRef.current && backgroundRef.current) {
+				const wrapperHeight = wrapperRef.current.offsetHeight;
+				setHeight(wrapperHeight);
+			}
+		};
+
+		updateHeight();
+		window.addEventListener("resize", updateHeight);
+
+		return () => {
+			window.removeEventListener("resize", updateHeight);
+		};
+	}, []);
+
 	return (
 		<section id="home" className="landing-section">
 			{/* Home Background */}
-			<div className="home-background"></div>
+			<div
+				ref={backgroundRef}
+				className="home-background"
+				style={{ height: height > 0 ? `${height}px` : "auto" }}
+			></div>
 
 			{/* Content Wrapper */}
-			<div className="landing-section-wrapper">
+			<div ref={wrapperRef} className="landing-section-wrapper">
 				{/* Hero Section */}
 				<div className="landing-hero">
 					<h1 className="landing-hero-title">

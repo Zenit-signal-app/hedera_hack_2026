@@ -13,7 +13,11 @@ export default async function ConditionalLayout({
 	const headersList = await headers();
 	const pathname = headersList.get("x-pathname") || "";
 
-	if (pathname === "/landing-page" || pathname.startsWith("/landing-page")) {
+	if (
+		pathname === "/landing-page" ||
+		pathname.startsWith("/landing-page") ||
+		pathname === "/"
+	) {
 		return <>{children}</>;
 	}
 

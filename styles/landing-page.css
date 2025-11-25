@@ -2,7 +2,7 @@
 /* All styles are scoped within .landing-page-container */
 
 .landing-page-container {
-	@apply relative min-h-screen w-full overflow-x-hidden bg-black;
+	@apply relative min-h-screen w-full bg-black;
 	scroll-behavior: smooth;
 }
 
@@ -15,7 +15,6 @@
 
 .landing-page-container .home-background {
 	@apply absolute top-0 left-0 w-full bg-cover bg-center z-0;
-	height: 1345px;
 	background-image: url("/images/Main.png");
 }
 
@@ -44,9 +43,83 @@
 	background: #000000;
 }
 
+.landing-page-container .why-seerbot-background {
+	@apply absolute top-0 left-0 w-full h-full z-0;
+	height: 756px;
+	background: #000000;
+}
+
+.landing-page-container .faq-background {
+	@apply absolute top-0 left-0 w-full h-full z-0;
+	background: #000000;
+}
+
+.landing-page-container .trade-smarter-background {
+	@apply absolute top-0 left-0 w-full h-full z-0 bg-cover bg-center;
+	background-image: url("/images/Trade_smarter_bg.png");
+}
+
+.landing-page-container .trade-smarter-section {
+	min-height: 524px;
+}
+
+.landing-page-container .trade-smarter-content {
+	@apply flex flex-col items-center justify-center gap-8 text-center;
+	flex: 1;
+}
+
+.landing-page-container .trade-smarter-footer {
+	@apply w-full border-t py-6;
+	border-color: rgba(31, 41, 55, 1); /* gray-800 */
+}
+
+.landing-page-container .trade-smarter-footer-content {
+	@apply w-full px-16 flex items-center justify-between;
+}
+
+.landing-page-container .trade-smarter-footer-copyright {
+	@apply flex items-center gap-2 text-sm;
+	color: rgba(156, 163, 175, 1); /* gray-400 */
+}
+
+.landing-page-container .trade-smarter-footer-socials {
+	@apply flex items-center gap-4;
+}
+
+.landing-page-container .trade-smarter-footer-socials a {
+	@apply transition-colors duration-200;
+	color: rgba(156, 163, 175, 1); /* gray-400 */
+}
+
+.landing-page-container .trade-smarter-footer-socials a:hover {
+	color: #ffffff;
+}
+
+.landing-page-container .trade-smarter-btn {
+	@apply flex flex-row justify-center items-center gap-2 border-none cursor-pointer transition-all duration-200 ease-in-out;
+	padding: 10px 16px;
+	width: 140px;
+	height: 44px;
+	background: #7201ff;
+	border-radius: 8px;
+	font-family: var(--font-museomoderno), sans-serif;
+	font-style: normal;
+	font-weight: 600;
+	font-size: 14px;
+	line-height: 24px;
+	letter-spacing: 0.1px;
+	color: #ffffff;
+}
+
+.landing-page-container .trade-smarter-btn:hover {
+	background: #8a1aff;
+	box-shadow: 0 4px 12px rgba(114, 1, 255, 0.4);
+}
+
 .landing-page-container .landing-content {
 	@apply relative z-2 flex flex-col items-center;
 	padding-top: 0;
+	overflow-x: hidden;
 }
 
 /* ==================== Section Styles ==================== */
@@ -56,12 +129,75 @@
 	scroll-snap-align: start;
 }
 
+.landing-page-container .why-seerbot-section {
+	height: 756px;
+}
+
+/* ==================== Why SeerBOT Stats Cards ==================== */
+
+.landing-page-container .why-seerbot-stats-container {
+	@apply flex justify-around items-center w-full px-16 mt-12 gap-5 overflow-x-auto;
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+	cursor: grab;
+	-webkit-overflow-scrolling: touch;
+}
+
+.landing-page-container .why-seerbot-stats-container::-webkit-scrollbar {
+	display: none;
+}
+
+.landing-page-container .why-seerbot-stats-container:active {
+	cursor: grabbing;
+}
+
+.landing-page-container .why-seerbot-stats-card {
+	@apply relative flex-shrink-0 overflow-hidden;
+	width: 410px;
+	height: 220px;
+	border-radius: 24px;
+}
+
+.landing-page-container .why-seerbot-stats-card-bg {
+	@apply absolute inset-0;
+	background: linear-gradient(
+		135deg,
+		rgba(255, 255, 255, 0.1) 0%,
+		rgba(255, 255, 255, 0.05) 100%
+	);
+	backdrop-filter: blur(20px);
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	border-radius: 24px;
+	box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.landing-page-container .why-seerbot-stats-card-content {
+	@apply relative h-full flex flex-col items-center justify-center px-6;
+	gap: 16px;
+}
+
+.landing-page-container .why-seerbot-stats-value {
+	@apply text-center font-bold text-[40px] leading-[44px] m-0;
+	font-family: var(--font-museomoderno), sans-serif;
+	font-style: normal;
+	letter-spacing: 0.1px;
+	color: #a373ff;
+	text-shadow: 0px 3px 2px rgba(0, 0, 0, 0.12);
+}
+
+.landing-page-container .why-seerbot-stats-label {
+	@apply text-center font-semibold text-[22px] leading-[32px] text-white m-0;
+	font-family: var(--font-quicksand), sans-serif;
+	font-style: normal;
+	letter-spacing: 0.1px;
+}
+
 .landing-page-container .landing-section-wrapper {
 	@apply relative z-10 w-full flex flex-col items-center;
 }
 
 .landing-page-container .landing-section-content {
-	@apply flex flex-col items-center justify-center text-center px-16 py-20 w-full max-w-[1440px];
+	@apply flex flex-col items-center justify-center text-center px-16 py-20 w-full;
 	gap: 32px;
 }
 
@@ -82,14 +218,15 @@
 /* ==================== Header Styles ==================== */
 
 .landing-page-container .landing-header {
-	@apply sticky top-0 flex flex-col items-center justify-center p-0 w-full h-[72px] z-50;
+	@apply sticky top-0 flex flex-col items-center justify-center p-0 w-full h-[72px];
 	backdrop-filter: blur(10px);
 	background: rgba(0, 0, 0, 0.3);
 	margin: 0 auto;
+	z-index: 9999;
 }
 
 .landing-page-container .landing-header-container {
-	@apply flex flex-row justify-between items-center px-16 w-full max-w-[1440px] h-[72px] mx-auto;
+	@apply flex flex-row justify-between items-center px-16 w-full h-[72px] mx-auto;
 }
 
 .landing-page-container .landing-logo-wrapper {
@@ -122,7 +259,7 @@
 }
 
 .landing-page-container .landing-nav-link {
-	@apply flex flex-row items-start p-0 gap-2.5 h-6 font-semibold text-sm leading-6 text-white no-underline z-1 relative transition-opacity duration-200 ease-in-out;
+	@apply flex flex-row items-start p-0 gap-2.5 h-6 font-semibold text-sm leading-6 text-white no-underline z-1 relative transition-all duration-200 ease-in-out;
 	font-family: var(--font-quicksand), sans-serif;
 	font-style: normal;
 	letter-spacing: 0.1px;
@@ -130,6 +267,34 @@
 
 .landing-page-container .landing-nav-link:hover {
 	@apply opacity-80;
+}
+
+.landing-page-container .landing-nav-link.active {
+	color: #a373ff;
+	position: relative;
+}
+
+.landing-page-container .landing-nav-link.active::after {
+	content: "";
+	position: absolute;
+	bottom: -4px;
+	left: 0;
+	right: 0;
+	height: 2px;
+	background: linear-gradient(90deg, #7201ff 0%, #a373ff 100%);
+	border-radius: 2px;
+	animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+	from {
+		transform: scaleX(0);
+		opacity: 0;
+	}
+	to {
+		transform: scaleX(1);
+		opacity: 1;
+	}
 }
 
 .landing-page-container .landing-actions {
@@ -333,7 +498,7 @@
 }
 
 .landing-page-container .how-it-works-cards-container {
-	@apply flex justify-between items-center w-full gap-6;
+	@apply flex justify-around items-center w-full gap-6;
 }
 
 .landing-page-container .how-it-works-card {
@@ -365,7 +530,7 @@
 }
 
 .landing-page-container .ai-assistant-content {
-	@apply flex justify-between items-start w-full max-w-[1440px] px-16 pb-20 gap-16;
+	@apply flex justify-around items-start w-full px-16 pb-20 gap-16;
 }
 
 .landing-page-container .ai-assistant-accordion {
