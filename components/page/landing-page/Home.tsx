@@ -46,7 +46,7 @@ export default function Home() {
 						Analyze, manage, and grow your crypto portfolio — all in
 						one secure platform
 					</p>
-					<div className="landing-hero-actions">
+					<div className="landing-hero-actions justify-center">
 						<button className="landing-btn-primary">
 							Get started
 						</button>
@@ -74,7 +74,7 @@ export default function Home() {
 				<div className="landing-brands">
 					{/* Backed by */}
 					<div className="landing-brands-group">
-						<p className="landing-brands-label w-[166px]">
+						<p className="landing-brands-label w-[166px] mobile:w-[120px]">
 							Backed by
 						</p>
 						<div className="landing-brands-scroll">
@@ -97,6 +97,7 @@ export default function Home() {
 											}
 											width={134}
 											height={35}
+											className="mobile:!w-[100px] mobile:!h-[40px]"
 										/>
 									</div>
 								))}
@@ -106,7 +107,7 @@ export default function Home() {
 
 					{/* Angel investors */}
 					<div className="landing-brands-group">
-						<p className="landing-brands-label w-[292px]">
+						<p className="landing-brands-label w-[292px] mobile:w-[200px]">
 							Angel investors form angel
 						</p>
 						<div className="landing-brands-scroll">
@@ -129,6 +130,7 @@ export default function Home() {
 											}
 											width={134}
 											height={35}
+											className="mobile:!w-[100px] mobile:!h-[40px]"
 										/>
 									</div>
 								))}

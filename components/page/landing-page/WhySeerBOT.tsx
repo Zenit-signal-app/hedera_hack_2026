@@ -160,8 +160,8 @@ export default function WhySeerBOT() {
 					</p>
 				</div>
 
-				{/* Features */}
-				<div className="flex justify-center items-center gap-8 -mt-3xl pb-10">
+			{/* Features */}
+			<div className="flex flex-col md:flex-row justify-center items-center gap-8 -mt-3xl pb-10">
 					<div className="flex items-center gap-2">
 						<div className="w-5 h-5 rounded-full border-2 border-green-500 flex items-center justify-center">
 							<Check

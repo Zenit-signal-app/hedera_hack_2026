@@ -65,16 +65,19 @@ export default function AIAssistant() {
 				<div className="ai-assistant-content">
 					{/* Left: Accordion */}
 					<div className="ai-assistant-accordion">
-						{Object.values(ACCORDION_ITEMS).map((item) => (
-							<div key={item.id} className="accordion-item">
-								<button
-									className={`accordion-header ${
-										openAccordion === item.id
-											? "active"
-											: ""
-									}`}
-									onClick={() => toggleAccordion(item.id)}
-								>
+					{Object.values(ACCORDION_ITEMS).map((item) => (
+						<div
+							key={item.id}
+							className="accordion-item"
+						>
+							<button
+								className={`accordion-header ${
+									openAccordion === item.id
+										? "active"
+										: ""
+								}`}
+								onClick={() => toggleAccordion(item.id)}
+							>
 									<div className="accordion-header-content">
 										<div className="accordion-icon">
 											<AIAssistantIcon
@@ -108,17 +111,29 @@ export default function AIAssistant() {
 						))}
 					</div>
 
-					{/* Right: Image */}
-					<div className="ai-assistant-image">
-						<Image
-							src="/images/ai-assistant.png"
-							alt="AI Assistant"
-							width={600}
-							height={600}
-							quality={100}
-							priority
-						/>
-					</div>
+				{/* Right: Image */}
+				<div className="ai-assistant-image">
+					{/* Desktop Image */}
+					<Image
+						src="/images/ai-assistant.png"
+						alt="AI Assistant"
+						width={600}
+						height={600}
+						quality={100}
+						priority
+						className="ai-assistant-image-desktop"
+					/>
+					{/* Mobile Image */}
+					<Image
+						src="/images/ai-assistant-mobile.png"
+						alt="AI Assistant"
+						width={343}
+						height={343}
+						quality={100}
+						priority
+						className="ai-assistant-image-mobile"
+					/>
+				</div>
 				</div>
 			</div>
 		</section>

@@ -3,9 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import HamburgerIcon from "../../../src/components/icon/HamburgerIcon";
 
 export default function Header() {
 	const [activeSection, setActiveSection] = useState("home");
+	const [isMenuOpen, setIsMenuOpen] = useState(false);
 
 	useEffect(() => {
 		const handleScroll = () => {
@@ -80,6 +82,17 @@ export default function Header() {
 	return (
 		<header className="landing-header">
 			<div className="landing-header-container">
+				{/* Mobile Menu Button - Only visible on mobile */}
+				<button
+					className="landing-hamburger-btn"
+					onClick={() => setIsMenuOpen(!isMenuOpen)}
+				>
+					<HamburgerIcon />
+				</button>
+
+				{/* Divider - Only visible on mobile */}
+				<div className="landing-header-divider"></div>
+
 				{/* Logo */}
 				<div className="landing-logo-wrapper">
 					<div className="landing-logo-icon">
@@ -159,6 +172,48 @@ export default function Header() {
 					</a>
 				</div>
 			</div>
+
+			{/* Mobile Menu Dropdown */}
+			{isMenuOpen && (
+				<div className="landing-mobile-menu">
+					<a
+						href="#home"
+						className={`landing-mobile-menu-link ${
+							activeSection === "home" ? "active" : ""
+						}`}
+						onClick={(e) => {
+							handleNavClick(e, "home");
+							setIsMenuOpen(false);
+						}}
+					>
+						Home
+					</a>
+					<a
+						href="#how-it-works"
+						className={`landing-mobile-menu-link ${
+							activeSection === "how-it-works" ? "active" : ""
+						}`}
+						onClick={(e) => {
+							handleNavClick(e, "how-it-works");
+							setIsMenuOpen(false);
+						}}
+					>
+						How it works
+					</a>
+					<a
+						href="#ai-assistant"
+						className={`landing-mobile-menu-link ${
+							activeSection === "ai-assistant" ? "active" : ""
+						}`}
+						onClick={(e) => {
+							handleNavClick(e, "ai-assistant");
+							setIsMenuOpen(false);
+						}}
+					>
+						AI Assistant
+					</a>
+				</div>
+			)}
 		</header>
 	);
 }

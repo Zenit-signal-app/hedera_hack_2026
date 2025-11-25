@@ -70,7 +70,7 @@ function FAQAccordion() {
 			{FAQ_DATA.map((faq) => (
 				<div
 					key={faq.id}
-					className="bg-zinc-900 w-2xl rounded-lg border border-zinc-800 overflow-hidden transition-all duration-300"
+					className="bg-zinc-900 w-[calc(100vw-32px)] md:w-2xl rounded-lg border border-zinc-800 overflow-hidden transition-all duration-300"
 				>
 					<button
 						onClick={() => toggleQuestion(faq.id)}

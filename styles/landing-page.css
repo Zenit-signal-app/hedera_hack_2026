@@ -45,7 +45,6 @@
 
 .landing-page-container .why-seerbot-background {
 	@apply absolute top-0 left-0 w-full h-full z-0;
-	height: 756px;
 	background: #000000;
 }
 
@@ -130,7 +129,8 @@
 }
 
 .landing-page-container .why-seerbot-section {
-	height: 756px;
+	min-height: 756px;
+	height: auto;
 }
 
 /* ==================== Why SeerBOT Stats Cards ==================== */
@@ -227,6 +227,21 @@
 
 .landing-page-container .landing-header-container {
 	@apply flex flex-row justify-between items-center px-16 w-full h-[72px] mx-auto;
+}
+
+.landing-page-container .landing-hamburger-btn {
+	@apply hidden flex-row justify-center items-center p-0 w-6 h-6 bg-transparent border-none cursor-pointer;
+	flex: none;
+	order: 0;
+	flex-grow: 0;
+}
+
+.landing-page-container .landing-header-divider {
+	@apply hidden w-px h-6 bg-[#303136];
+	flex: none;
+	order: 1;
+	align-self: stretch;
+	flex-grow: 0;
 }
 
 .landing-page-container .landing-logo-wrapper {
@@ -337,6 +352,40 @@
 	font-family: var(--font-museomoderno), sans-serif;
 	font-style: normal;
 	letter-spacing: 0.1px;
+}
+
+/* Mobile Menu Dropdown */
+.landing-page-container .landing-mobile-menu {
+	@apply hidden flex-col justify-center items-start gap-3 w-[343px] h-auto;
+	background: #111113;
+	border: 1px solid #303136;
+	border-radius: 16px;
+	padding: 12px;
+	position: absolute;
+	top: 42px;
+	left: 16px;
+	z-index: 9998;
+	isolation: isolate;
+}
+
+.landing-page-container .landing-mobile-menu-link {
+	@apply flex flex-row items-center px-3 py-2 gap-3 w-full h-[42px] rounded-lg no-underline transition-colors duration-200;
+	font-family: var(--font-quicksand), sans-serif;
+	font-style: normal;
+	font-weight: 600;
+	font-size: 16px;
+	line-height: 26px;
+	letter-spacing: 0.1px;
+	color: #797B86;
+}
+
+.landing-page-container .landing-mobile-menu-link:hover {
+	background: #1a1a1c;
+}
+
+.landing-page-container .landing-mobile-menu-link.active {
+	background: #111113;
+	color: #FFFFFF;
 }
 
 /* ==================== Hero Section ==================== */
@@ -597,6 +646,14 @@
 	@apply shrink-0;
 }
 
+.landing-page-container .ai-assistant-image-desktop {
+	display: block;
+}
+
+.landing-page-container .ai-assistant-image-mobile {
+	display: none;
+}
+
 .landing-page-container .landing-demo-image {
 	@apply w-full h-auto block;
 	image-rendering: -webkit-optimize-contrast;
@@ -755,7 +812,245 @@
 		max-width: 100%;
 	}
 
+	.landing-page-container .ai-assistant-image-desktop {
+		display: none;
+	}
+
+	.landing-page-container .ai-assistant-image-mobile {
+		display: block;
+	}
+
 	.landing-page-container .accordion-title {
 		@apply text-lg;
+	}
+}
+
+/* ==================== Mobile Responsive (375px) ==================== */
+@media (max-width: 911px) {
+	/* Header - Mobile Layout */
+	.landing-page-container .landing-header {
+		height: 44px;
+	}
+
+	.landing-page-container .landing-header-container {
+		@apply px-4 gap-2.5;
+		height: 44px;
+		padding: 10px 16px;
+	}
+
+	/* Show hamburger button and divider on mobile */
+	.landing-page-container .landing-hamburger-btn {
+		@apply flex;
+	}
+
+	.landing-page-container .landing-header-divider {
+		@apply flex;
+	}
+
+	/* Hide desktop navigation on mobile */
+	.landing-page-container .landing-nav {
+		@apply hidden;
+	}
+
+	/* Adjust logo size on mobile */
+	.landing-page-container .landing-logo-wrapper {
+		flex: 1;
+		order: 2;
+	}
+
+	.landing-page-container .landing-logo-icon img {
+		width: 87.17px !important;
+		height: 22px !important;
+	}
+
+	/* Adjust actions on mobile */
+	.landing-page-container .landing-actions {
+		@apply gap-2;
+		order: 3;
+	}
+
+	.landing-page-container .landing-btn-language {
+		width: 49px;
+		height: 32px;
+		padding: 6px 4px;
+		gap: 8px;
+	}
+
+	.landing-page-container .landing-btn-language span {
+		font-size: 12px;
+		line-height: 20px;
+		width: 17px;
+		height: 20px;
+	}
+
+	.landing-page-container .landing-btn-launch {
+		width: 104px;
+		height: 32px;
+		padding: 4px 12px;
+	}
+
+	.landing-page-container .landing-btn-launch span {
+		font-size: 14px;
+		line-height: 24px;
+		width: 80px;
+		height: 24px;
+	}
+
+	/* Show mobile menu */
+	.landing-page-container .landing-mobile-menu {
+		@apply flex;
+	}
+
+	/* Hero Section */
+	.landing-page-container .landing-hero {
+		@apply px-4;
+	}
+
+	.landing-page-container .landing-hero-title {
+		font-size: 28px;
+		line-height: 1.3;
+	}
+
+	.landing-page-container .landing-hero-subtitle {
+		font-size: 16px;
+		line-height: 1.5;
+	}
+
+	/* Hero Buttons - Smaller width to fit in one line */
+	.landing-page-container .landing-hero-actions {
+		@apply flex-row gap-2;
+	}
+
+	.landing-page-container .landing-btn-primary,
+	.landing-page-container .landing-btn-secondary {
+		width: 111px;
+		min-width: 111px;
+		max-width: 111px;
+		padding: 8px 12px;
+		font-size: 12px;
+		height: 36px;
+	}
+
+	/* Demo Image - Reduce padding or set width to 343px */
+	.landing-page-container .landing-demo {
+		@apply px-4;
+	}
+
+	.landing-page-container .landing-demo-image {
+		width: 100%;
+		height: auto;
+	}
+
+	/* Brands Section */
+	.landing-page-container .landing-brands {
+		@apply px-4 py-8 gap-6;
+	}
+
+	.landing-page-container .landing-brands-label {
+		font-size: 12px;
+		line-height: 1.4;
+	}
+
+	/* Backed by label - adjust width proportionally */
+	.landing-page-container
+		.landing-brands-group
+		.landing-brands-label.w-\[166px\] {
+		width: 120px;
+	}
+
+	/* Angel investors label - adjust width proportionally */
+	.landing-page-container
+		.landing-brands-group
+		.landing-brands-label.w-\[292px\] {
+		width: 200px;
+	}
+
+	/* Brand Logo - Reduce size */
+	.landing-page-container .landing-brand-logo {
+		width: 100px;
+		height: 40px;
+	}
+
+	/* Section Content */
+	.landing-page-container .landing-section-content {
+		@apply px-4 py-10;
+	}
+
+	.landing-page-container .landing-section-title {
+		font-size: 24px;
+	}
+
+	.landing-page-container .landing-section-subtitle {
+		font-size: 14px;
+	}
+
+	/* How It Works */
+	.landing-page-container .how-it-works-header {
+		@apply flex-col-reverse px-4 py-10;
+	}
+
+	.landing-page-container .how-it-works-cards {
+		@apply px-4 pb-10;
+	}
+
+	.landing-page-container .how-it-works-card {
+		width: 300px;
+		min-width: 300px;
+	}
+
+	.landing-page-container .how-it-works-card img {
+		width: 100% !important;
+		height: auto !important;
+		object-fit: contain;
+	}
+
+	/* AI Assistant */
+	.landing-page-container .ai-assistant-header {
+		@apply px-4 py-10;
+	}
+
+	.landing-page-container .ai-assistant-content {
+		@apply px-4 pb-10;
+	}
+
+	.landing-page-container .accordion-item {
+		width: calc(100vw - 32px);
+	}
+
+	.landing-page-container .accordion-header {
+		width: calc(100vw - 32px);
+		padding-left: 0px;
+		padding-right: 0px;
+	}
+
+	/* Why SeerBOT */
+	.landing-page-container .why-seerbot-section .landing-section-content {
+		@apply pb-6;
+	}
+
+	/* Stats Cards - Vertical layout */
+	.landing-page-container .why-seerbot-stats-container {
+		@apply flex-col px-4 gap-6;
+		margin-top: 40px;
+		margin-bottom: 40px;
+	}
+
+	.landing-page-container .why-seerbot-stats-card {
+		width: 343px;
+		min-width: 343px;
+		max-width: 343px;
+		height: 220px;
+	}
+
+	.landing-page-container .why-seerbot-stats-value {
+		font-size: 36px;
+		line-height: 1.2;
+	}
+
+	.landing-page-container .why-seerbot-stats-label {
+		font-size: 20px;
+	}
+	.landing-page-container .trade-smarter-footer-content {
+		@apply flex-col items-center justify-center gap-4;
 	}
 }
