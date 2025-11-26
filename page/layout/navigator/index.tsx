@@ -33,48 +33,95 @@ const listNavigators = [
 		url: "/portfolio",
 	},
 ];
-const Navigator = () => {
+
+interface NavigatorProps {
+	isOpen?: boolean;
+	onClose?: () => void;
+}
+
+const Navigator = ({ isOpen = false, onClose }: NavigatorProps) => {
 	const pathname = usePathname();
+	
 	return (
-		<div className="flex h-screen flex-col gap-y-4 items-start py-4 px-3 bg-dark-gray-950">
-			<a href="/">
-				<Image
-					className=""
-					width={174}
-					height={44}
-					alt="Logo"
-					src="/images/logo.png"
+		<>
+			{/* Desktop Navigator - Hidden on mobile */}
+			<div className="hidden md:flex h-screen flex-col gap-y-4 items-start py-4 px-3 bg-dark-gray-950">
+				<a href="/">
+					<Image
+						className=""
+						width={174}
+						height={44}
+						alt="Logo"
+						src="/images/logo.png"
+					/>
+				</a>
+
+				<Input
+					startIcon={<SearchIcon size={20} />}
+					className="w-full h-10"
 				/>
-			</a>
 
-			<Input
-				startIcon={<SearchIcon size={20} />}
-				className="w-full h-10"
-			/>
-
-			<div className="space-y-3 w-full">
-				{listNavigators.map((item) => {
-					const isActive = pathname.includes(item.url);
-					return (
-						<Link
-							key={item.url}
-							className={cn(
-								isActive
-									? "bg-black text-white rounded-md"
-									: "text-dark-gray-200",
-								"flex items-center gap-x-3 w-full py-2"
-							)}
-							href={item.url}
-						>
-							{item.logo}{" "}
-							<p className="font-semibold text-sm leading-6">
-								{item.text}
-							</p>
-						</Link>
-					);
-				})}
+				<div className="space-y-3 w-full">
+					{listNavigators.map((item) => {
+						const isActive = pathname.includes(item.url);
+						return (
+							<Link
+								key={item.url}
+								className={cn(
+									isActive
+										? "bg-black text-white rounded-md"
+										: "text-dark-gray-200",
+									"flex items-center gap-x-3 w-full py-2"
+								)}
+								href={item.url}
+							>
+								{item.logo}{" "}
+								<p className="font-semibold text-sm leading-6">
+									{item.text}
+								</p>
+							</Link>
+						);
+					})}
+				</div>
 			</div>
-		</div>
+
+			{/* Mobile Navigator - Dropdown Menu */}
+			{isOpen && (
+				<div 
+					className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-[9998]"
+					onClick={onClose}
+				>
+					<div 
+						className="absolute top-[60px] left-0 right-0 bg-dark-gray-950 border-t border-dark-gray-700 shadow-lg"
+						onClick={(e) => e.stopPropagation()}
+					>
+						<div className="flex flex-col gap-y-3 p-4">
+							{listNavigators.map((item) => {
+								const isActive = pathname.includes(item.url);
+								return (
+									<Link
+										key={item.url}
+										className={cn(
+											isActive
+												? "bg-black text-white rounded-md"
+												: "text-dark-gray-200",
+											"flex items-center gap-x-3 w-full py-3 px-2 hover:bg-dark-gray-800 transition-colors"
+										)}
+										href={item.url}
+										onClick={onClose}
+									>
+										{item.logo}{" "}
+										<p className="font-semibold text-sm leading-6">
+											{item.text}
+										</p>
+									</Link>
+								);
+							})}
+						</div>
+					</div>
+				</div>
+			)}
+		</>
 	);
 };
 

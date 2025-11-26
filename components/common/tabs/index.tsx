@@ -25,7 +25,7 @@ const TabsWrapper: React.FC<TabsWrapperProps> = ({
 	onValueChange,
 	className,
 }) => {
-	const tabsListBaseClasses = "flex items-center space-x-1 p-1 ";
+	const tabsListBaseClasses = "flex items-center space-x-1 p-1";
 	let tabsListVariantClasses = "";
 	let triggerBaseClasses =
 		"px-4 py-2 text-sm font-semibold transition-all duration-200 cursor-pointer";

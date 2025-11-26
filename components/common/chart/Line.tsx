@@ -59,33 +59,33 @@ const CommonLineChart: React.FC<CommonLineChartProps> = ({
 	);
 	const gradientId = `colorArea-${lineColor.replace("#", "")}`;
 	return (
-		<div className="font-quicksand" style={{ height: height + 60 }}>
-			<div className="flex justify-between items-center mb-4">
-				{headerTitle && (
-					<div className="flex items-center space-x-2 text-sm font-semibold">
-						{headerTitle}
-					</div>
-				)}
+		<div className="font-quicksand" style={{ minHeight: height + 60 }}>
+		<div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-4">
+			{headerTitle && (
+				<div className="flex items-center space-x-2 text-sm font-semibold">
+					{headerTitle}
+				</div>
+			)}
 
-				{timeFilters && timeFilters.length > 0 && (
-					<div className="flex rounded-lg p-1 space-x-0.5">
-						{timeFilters.map((filter) => (
-							<button
-								key={filter.key}
-								onClick={() => setActiveFilter(filter.key)}
-								className={cn(
-									"px-3 py-1 text-xs font-medium rounded-md text-white transition-all duration-150",
-									activeFilter === filter.key
-										? "bg-dark-gray-800 "
-										: " hover:bg-gray-700"
-								)}
-							>
-								{filter.label}
-							</button>
-						))}
-					</div>
-				)}
-			</div>
+			{timeFilters && timeFilters.length > 0 && (
+				<div className="flex rounded-lg p-1 space-x-0.5">
+					{timeFilters.map((filter) => (
+						<button
+							key={filter.key}
+							onClick={() => setActiveFilter(filter.key)}
+							className={cn(
+								"px-2 tablet:px-3 py-1 text-xs font-medium rounded-md text-white transition-all duration-150",
+								activeFilter === filter.key
+									? "bg-dark-gray-800 "
+									: " hover:bg-gray-700"
+							)}
+						>
+							{filter.label}
+						</button>
+					))}
+				</div>
+			)}
+		</div>
 
 			<ResponsiveContainer width="100%" height={height}>
 				<AreaChart
