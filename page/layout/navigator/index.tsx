@@ -37,14 +37,20 @@ const Navigator = () => {
 	const pathname = usePathname();
 	return (
 		<div className="flex h-screen flex-col gap-y-4 items-start py-4 px-3 bg-dark-gray-950">
-			<Image
-				className=""
-				width={174}
-				height={44}
-				alt="Logo"
-				src="/images/logo.png"
+			<a href="/">
+				<Image
+					className=""
+					width={174}
+					height={44}
+					alt="Logo"
+					src="/images/logo.png"
+				/>
+			</a>
+
+			<Input
+				startIcon={<SearchIcon size={20} />}
+				className="w-full h-10"
 			/>
-			<Input startIcon={<SearchIcon size={20} />} className="w-full h-10" />
 
 			<div className="space-y-3 w-full">
 				{listNavigators.map((item) => {
@@ -58,9 +64,12 @@ const Navigator = () => {
 									: "text-dark-gray-200",
 								"flex items-center gap-x-3 w-full py-2"
 							)}
-							href={item.url}>
+							href={item.url}
+						>
 							{item.logo}{" "}
-							<p className="font-semibold text-sm leading-6">{item.text}</p>
+							<p className="font-semibold text-sm leading-6">
+								{item.text}
+							</p>
 						</Link>
 					);
 				})}

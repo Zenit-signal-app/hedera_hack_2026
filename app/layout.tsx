@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 import { exo, museoModerno, quickSan } from "../lib/fonts";
-import Navigator from "@/page/layout/navigator";
-import Header from "@/page/layout/header";
 import { NextIntlClientProvider } from "next-intl";
+import ConditionalLayout from "@/components/layout/ConditionalLayout";
 
 export const metadata: Metadata = {
 	title: "Create Next App",
@@ -21,19 +20,9 @@ export default function RootLayout({
 			<body
 				className={`${exo.variable} ${museoModerno.variable} ${quickSan.variable} antialiased bg-black text-white`}
 			>
-				<div className="flex bg-gray-950 font-quicksand">
-					<div className="w-[18%] border-r-2 border-black flex flex-col">
-						<Navigator />
-					</div>
-					<div className="w-[82%] h-screen relative background-container">
-						<Header />
-						<div className="overflow-y-auto overflow-x-hidden h-[calc(100%-42px)] content">
-							<NextIntlClientProvider>
-								{children}
-							</NextIntlClientProvider>
-						</div>
-					</div>
-				</div>
+				<ConditionalLayout>
+					<NextIntlClientProvider>{children}</NextIntlClientProvider>
+				</ConditionalLayout>
 			</body>
 		</html>
 	);
