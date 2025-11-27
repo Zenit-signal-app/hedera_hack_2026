@@ -46,7 +46,7 @@ const Navigator = ({ isOpen = false, onClose }: NavigatorProps) => {
 		<>
 			{/* Desktop Navigator - Hidden on mobile */}
 			<div className="hidden md:flex h-screen flex-col gap-y-4 items-start py-4 px-3 bg-dark-gray-950">
-				<a href="/">
+				<Link href="/">
 					<Image
 						className=""
 						width={174}
@@ -54,7 +54,7 @@ const Navigator = ({ isOpen = false, onClose }: NavigatorProps) => {
 						alt="Logo"
 						src="/images/logo.png"
 					/>
-				</a>
+				</Link>
 
 				<Input
 					startIcon={<SearchIcon size={20} />}

@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useCallback, useState } from 'react';
 import { WalletApi, SUPPORTED_WALLETS } from '../types/wallet';
-import { useWalletStore } from '../store/walletStore'; // ✨ IMPORT ZUSTAND STORE
+import { useWalletStore } from '../store/walletStore';
 
 interface WalletHook {
   connect: (walletId: string) => Promise<void>;
@@ -11,7 +11,6 @@ interface WalletHook {
   isLoading: boolean;
 }
 
-// 1. Hàm tải thông tin ví (Được tách ra khỏi hook để dễ dàng gọi lại)
 const loadWalletInfo = async (walletApi: WalletApi) => {
   const { setWalletInfo, setWalletInfoLoading, setError } = useWalletStore.getState();
 
@@ -42,7 +41,6 @@ const loadWalletInfo = async (walletApi: WalletApi) => {
     });
 
   } catch (e) {
-    console.error('Lỗi khi tải thông tin ví:', e);
     setError('Lỗi khi tải thông tin ví.');
   } finally {
     setWalletInfoLoading(false);
@@ -105,7 +103,6 @@ export const useWalletConnect = (): WalletHook => {
 
     if (typeof activeWallet.on === 'function' && typeof activeWallet.off === 'function') {
       const handleAccountChange = () => {
-        console.log('CIP-30 Event: Account change detected. Refetching wallet info.');
         loadWalletInfo(activeWallet);
       };
 
