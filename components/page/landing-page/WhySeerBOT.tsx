@@ -112,33 +112,6 @@ function AnimatedCounter({
 }
 
 export default function WhySeerBOT() {
-	const cardsRef = useRef<HTMLDivElement>(null);
-	const [isDragging, setIsDragging] = useState(false);
-	const [startX, setStartX] = useState(0);
-	const [scrollLeft, setScrollLeft] = useState(0);
-
-	const handleMouseDown = (e: React.MouseEvent) => {
-		if (!cardsRef.current) return;
-		setIsDragging(true);
-		setStartX(e.pageX - cardsRef.current.offsetLeft);
-		setScrollLeft(cardsRef.current.scrollLeft);
-	};
-
-	const handleMouseMove = (e: React.MouseEvent) => {
-		if (!isDragging || !cardsRef.current) return;
-		e.preventDefault();
-		const x = e.pageX - cardsRef.current.offsetLeft;
-		const walk = (x - startX) * 2; // Scroll speed
-		cardsRef.current.scrollLeft = scrollLeft - walk;
-	};
-
-	const handleMouseUp = () => {
-		setIsDragging(false);
-	};
-
-	const handleMouseLeave = () => {
-		setIsDragging(false);
-	};
 
 	return (
 		<section
@@ -198,14 +171,7 @@ export default function WhySeerBOT() {
 				</div>
 
 				{/* Stats Cards */}
-				<div
-					ref={cardsRef}
-					className="why-seerbot-stats-container"
-					onMouseDown={handleMouseDown}
-					onMouseMove={handleMouseMove}
-					onMouseUp={handleMouseUp}
-					onMouseLeave={handleMouseLeave}
-				>
+				<div className="why-seerbot-stats-container">
 					{STATS_CARDS.map((card, index) => (
 						<div key={index} className="why-seerbot-stats-card">
 							<div className="why-seerbot-stats-card-bg"></div>
