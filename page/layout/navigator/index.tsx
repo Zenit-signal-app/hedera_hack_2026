@@ -37,7 +37,7 @@ const Navigator = () => {
 	const pathname = usePathname();
 	return (
 		<div className="flex h-screen flex-col gap-y-4 items-start py-4 px-3 bg-dark-gray-950">
-			<a href="/">
+			<Link href="/">
 				<Image
 					className=""
 					width={174}
@@ -45,7 +45,7 @@ const Navigator = () => {
 					alt="Logo"
 					src="/images/logo.png"
 				/>
-			</a>
+			</Link>
 
 			<Input
 				startIcon={<SearchIcon size={20} />}

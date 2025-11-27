@@ -11,10 +11,7 @@ import {
 export default function LandingPage() {
 	return (
 		<div className="landing-page-container">
-			{/* Header */}
 			<Header />
-
-			{/* Content - All Sections */}
 			<div className="landing-content">
 				<Home />
 				<HowItWorks />

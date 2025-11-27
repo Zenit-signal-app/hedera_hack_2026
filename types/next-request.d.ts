@@ -9,10 +9,6 @@ declare module "next/server" {
 			latitude?: string;
 			longitude?: string;
 		};
-
-		/**
-		 * Next.js IP data (nếu có)
-		 */
 		ip?: string;
 		nextUrl: NextURL;
 	}
