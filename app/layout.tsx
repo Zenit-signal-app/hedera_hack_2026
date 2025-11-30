@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-import { exo, museoModerno, quickSan } from "../lib/fonts";
+import { exo, museoModerno, quickSand } from "../lib/fonts";
 import { NextIntlClientProvider } from "next-intl";
 import ConditionalLayout from "@/components/layout/ConditionalLayout";
 
@@ -18,7 +18,7 @@ export default function RootLayout({
 	return (
 		<html lang="en">
 			<body
-				className={`${exo.variable} ${museoModerno.variable} ${quickSan.variable} antialiased bg-black text-white`}
+				className={`${exo.variable} ${museoModerno.variable} ${quickSand.variable} antialiased bg-black text-white`}
 			>
 				<ConditionalLayout>
 					<NextIntlClientProvider>{children}</NextIntlClientProvider>

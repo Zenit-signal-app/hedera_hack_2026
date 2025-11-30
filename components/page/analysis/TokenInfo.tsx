@@ -1,11 +1,25 @@
 "use client";
-
-import ChevronDownMini from "@/components/icon/Icon_ChevronDownMini";
 import GuildeIcon from "@/components/icon/Icon_GuildeBook";
 import PlayIcon from "@/components/icon/Icon_Play";
-import { ChevronDownIcon } from "lucide-react";
+import { getListToken } from "@/services/analysisServices";
+import { useTokenStore } from "@/store/tokenStore";
 import Image from "next/image";
-
+import { useEffect, useMemo } from "react";
+import { TokenSelector } from "./TokenSelector";
+import { parseTokenPair } from "@/lib/ultils";
+import { useMarketStore } from "@/store/marketStore";
+import { useMarketSocket } from "@/hooks/useMarketSocket";
+import { formatNumber } from "@/lib/format";
+import dynamic from "next/dynamic";
+const AdvancedRealTimeChart = dynamic(
+	() =>
+		import("react-ts-tradingview-widgets").then(
+			(w) => w.AdvancedRealTimeChart
+		),
+	{
+		ssr: false,
+	}
+);
 interface TradingPairInfo {
 	pair: string;
 	baseAsset: string;
@@ -66,82 +80,100 @@ const StatColumn: React.FC<StatColumnProps> = ({
 
 export const TradingPairInfoComponent: React.FC = () => {
 	const data = mockPairData;
-
 	const priceColorClass = data.isPriceUp ? "text-green-500" : "text-red-500";
-	const priceChangeDisplay = `${
-		data.priceChangeAmount > 0 ? "+" : ""
-	}${data.priceChangeAmount.toFixed(5)} (${data.priceChangePercent.toFixed(
-		2
-	)}%)`;
 
-	const formattedPrice = data.currentPrice.toFixed(6);
+	const { token, listToken } = useTokenStore();
+	useMarketSocket(token, "token_info");
+	useMarketSocket(token, "ohlc");
+	const { baseToken, quoteToken } = parseTokenPair(token);
+	const tokenInfo = useMemo(() => {
+		const foundToken = listToken.find((item) => item?.symbol === baseToken);
+		return foundToken ?? listToken?.[0];
+	}, [baseToken, listToken]);
+	const ohlcToken = useMarketStore((state) => state.prices?.ohlc?.[token]);
+	const tokenInfoSocket = useMarketStore(
+		(state) => state.prices.token_info?.[baseToken]
+	);
+	const priceChangeDisplay = `${
+		tokenInfoSocket?.change_24h > 0 ? "+" : ""
+	}${tokenInfoSocket?.change_24h?.toFixed(
+		5
+	)} (${tokenInfoSocket?.change_24h?.toFixed(2)}%)`;
+	console.log(tokenInfoSocket);
 
 	return (
-		<div className="w-full p-3 flex gap-x-4 items-start text-white font-sans">
-			<div className="flex items-center gap-x-4 flex-1">
-				<Image
-					src={data.avatarUrl}
-					alt={data.baseAsset}
-					className="w-10 h-10 rounded-full"
-					width={40}
-					height={40}
-				/>
-
-				<div className="flex items-start space-x-2 cursor-pointer">
-					<div className="flex flex-col">
-						<span className="text-white text-sm font-bold">
-							{data.pair}
-						</span>
-						<span className="text-dark-gray-200 text-xs">
-							{data.baseAsset}
-						</span>
-					</div>
-					<ChevronDownMini
-						className="w-6 h-6 text-white bg-dark-gray-900 rounded-sm"
-						size={24}
+		<div>
+			<div className="w-full p-3 flex gap-x-4 items-start text-white font-sans">
+				<div className="flex items-center gap-x-4 flex-1">
+					<Image
+						src={tokenInfo?.logo_url || "/images/snek.png"}
+						alt={tokenInfo?.name || "Snek"}
+						className="w-10 h-10 rounded-full"
+						width={40}
+						height={40}
 					/>
-				</div>
-				<div className="flex items-center space-x-8">
-					<div className="flex flex-col items-start">
-						<span
-							className={`text-sm font-bold ${priceColorClass}`}
-						>
-							{formattedPrice}
-						</span>
-						<span className="text-dark-gray-200 text-xs font-medium">
-							${formattedPrice}
-						</span>
-					</div>
-					<div className="flex space-x-4">
-						<StatColumn
-							label="24H Change"
-							value={priceChangeDisplay}
-							valueClassName={priceColorClass}
-						/>
-						<StatColumn
-							label="24H Low"
-							value={data.low24h.toFixed(6)}
-						/>
-						<StatColumn
-							label={`24H Vol(USDT)`}
-							value={`${data.volume24h.toFixed(2)}${
-								data.volumeUnit
-							}`}
-						/>
-					</div>
-				</div>
-			</div>
 
-			<div className="flex items-center space-x-4 flex-0 justify-end">
-				<div className="flex items-center space-x-1 cursor-pointer text-dark-gray-200 hover:text-white transition-colors">
-					<PlayIcon className="w-5 h-5" />
-					<span className="text-xs">Tutorial</span>
+					<div className="flex items-start space-x-2 cursor-pointer">
+						<div className="flex flex-col">
+							<span className="text-white text-sm font-bold">
+								{baseToken}/{quoteToken}
+							</span>
+							<span className="text-dark-gray-200 text-xs">
+								{tokenInfo?.name}
+							</span>
+						</div>
+						<TokenSelector />
+					</div>
+					<div className="flex items-center space-x-8">
+						<div className="flex flex-col items-start">
+							<span
+								className={`text-sm font-bold ${priceColorClass}`}
+							>
+								{formatNumber(tokenInfoSocket?.price || 0)}
+							</span>
+							<span className="text-dark-gray-200 text-xs font-medium">
+								$
+								{formatNumber(
+									tokenInfoSocket?.price_change_percentage_24h ||
+										0
+								)}
+							</span>
+						</div>
+						<div className="flex space-x-4">
+							<StatColumn
+								label="24H Change"
+								value={priceChangeDisplay}
+								valueClassName={priceColorClass}
+							/>
+							<StatColumn
+								label="24H Low"
+								value={formatNumber(ohlcToken?.low)}
+							/>
+							<StatColumn
+								label={`24H Vol(USDT)`}
+								value={formatNumber(ohlcToken?.volume)}
+							/>
+						</div>
+					</div>
 				</div>
-				<div className="flex items-center space-x-1 cursor-pointer text-dark-gray-200 hover:text-white transition-colors">
-					<GuildeIcon className="w-5 h-5" />
-					<span className="text-xs">Guide</span>
+
+				<div className="flex items-center space-x-4 flex-0 justify-end">
+					<div className="flex items-center space-x-1 cursor-pointer text-dark-gray-200 hover:text-white transition-colors">
+						<PlayIcon className="w-5 h-5" />
+						<span className="text-xs">Tutorial</span>
+					</div>
+					<div className="flex items-center space-x-1 cursor-pointer text-dark-gray-200 hover:text-white transition-colors">
+						<GuildeIcon className="w-5 h-5" />
+						<span className="text-xs">Guide</span>
+					</div>
 				</div>
 			</div>
+			<AdvancedRealTimeChart
+				theme="dark"
+				height={470}
+				width={"100%"}
+				symbol="BITGET:SNEKUSDT"
+			></AdvancedRealTimeChart>
 		</div>
 	);
 };

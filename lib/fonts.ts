@@ -94,7 +94,7 @@ export const museoModerno = localFont({
 	display: "swap",
 });
 
-export const quickSan = localFont({
+export const quickSand = localFont({
 	src: [
 		{
 			path: "../public/fonts/Quicksand/Quicksand-Bold.ttf",
@@ -104,11 +104,6 @@ export const quickSan = localFont({
 		{
 			path: "../public/fonts/Quicksand/Quicksand-Light.ttf",
 			weight: "300",
-			style: "normal",
-		},
-		{
-			path: "../public/fonts/Quicksand/Quicksand-Regular.ttf",
-			weight: "400",
 			style: "normal",
 		},
 		{

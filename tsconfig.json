@@ -32,5 +32,9 @@
 		"global.d.ts",
 		"src/types",
 	],
-	"exclude": ["node_modules"]
+	"exclude": ["node_modules",".next",
+  "out",
+  "dist",
+  "**/*.spec.ts",
+  "**/*.test.ts"]
 }
