@@ -1,7 +1,3 @@
-import { exo, museoModerno, quickSan } from "@/lib/fonts";
-import Header from "@/page/layout/header";
-import Navigator from "@/page/layout/navigator";
-import { NextIntlClientProvider } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
 
