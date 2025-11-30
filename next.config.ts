@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
 	experimental: {
 		globalNotFound: false,
 	},
+	images: {
+		domains: ["asset-logos.minswap.org"],
+	},
 };
 const withNextIntl = createNextIntlPlugin();
 export default withNextIntl(nextConfig);

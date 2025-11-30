@@ -22,7 +22,9 @@ const ModalConnectWallet: React.FC<ModalConnectWalletProps> = ({
 	const { connect, isLoading } = useWalletConnect();
 	const { availableWallets, error } = useWalletStore();
 	const [modalState, setModalState] = useState<ModalState | string>("SELECT");
-	const [selectedWallet, setSelectedWallet] = useState<WalletInfo | null>(null);
+	const [selectedWallet, setSelectedWallet] = useState<WalletInfo | null>(
+		null
+	);
 
 	useEffect(() => {
 		if (!isOpen) {
@@ -48,8 +50,6 @@ const ModalConnectWallet: React.FC<ModalConnectWalletProps> = ({
 			setModalState("REJECTED");
 		}
 	};
-	console.log(availableWallets);
-
 	const renderContent = () => {
 		switch (modalState) {
 			case "SELECT":
@@ -61,7 +61,8 @@ const ModalConnectWallet: React.FC<ModalConnectWalletProps> = ({
 									key={wallet.id}
 									onClick={() => handleWalletSelect(wallet)}
 									className="flex items-center bg-dark-gray-950 rounded-md justify-between w-full py-2.5 px-4 transition duration-150 text-white disabled:opacity-50"
-									disabled={isLoading}>
+									disabled={isLoading}
+								>
 									<div className="flex items-center">
 										<Image
 											src={wallet.icon}
@@ -70,14 +71,20 @@ const ModalConnectWallet: React.FC<ModalConnectWalletProps> = ({
 											width={28}
 											height={28}
 										/>
-										<span className="font-medium">{wallet.name}</span>
+										<span className="font-medium">
+											{wallet.name}
+										</span>
 									</div>
-									<DirectIcon className="text-gray-400" size={20} />
+									<DirectIcon
+										className="text-gray-400"
+										size={20}
+									/>
 								</button>
 							))
 						) : (
 							<p className="text-gray-400 text-sm">
-								No Cardano wallet found. Please install a wallet.
+								No Cardano wallet found. Please install a
+								wallet.
 							</p>
 						)}
 					</div>
@@ -118,12 +125,13 @@ const ModalConnectWallet: React.FC<ModalConnectWalletProps> = ({
 							Connection declined
 						</p>
 						<p className="text-sm text-gray-400 text-center">
-							Connection could be declined if a previous request is still
-							active.
+							Connection could be declined if a previous request
+							is still active.
 						</p>
 						<button
 							onClick={() => setModalState("SELECT")}
-							className="w-full px-4 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition">
+							className="w-full px-4 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition"
+						>
 							Try again
 						</button>
 					</div>
@@ -156,7 +164,8 @@ const ModalConnectWallet: React.FC<ModalConnectWalletProps> = ({
 			title={title}
 			showBack={showBack}
 			handleBack={(x: string) => setModalState(x)}
-			className="">
+			className=""
+		>
 			{/* Nội dung chính của Modal */}
 			{renderContent()}
 

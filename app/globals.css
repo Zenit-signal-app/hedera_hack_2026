@@ -453,3 +453,26 @@
 		var(--color-primary-700)
 	);
 }
+
+
+::-webkit-scrollbar {
+  width: 4px; /* Chiều rộng của thanh cuộn (cho cuộn dọc) */
+  height: 4px; /* Chiều cao của thanh cuộn (cho cuộn ngang) */
+}
+
+/* Cấu hình màu nền của track (vùng chứa thanh cuộn) */
+::-webkit-scrollbar-track {
+  background: black; /* Màu nền là màu đen */
+  border-radius: 10px;
+}
+
+/* Cấu hình màu và kiểu của thumb (thanh kéo) */
+::-webkit-scrollbar-thumb {
+  background-color: #1f2937; /* Màu dark-gray-900 (mã hex tương đương trong Tailwind) */
+  border-radius: 10px;
+}
+
+/* Thêm hiệu ứng hover (tùy chọn) */
+::-webkit-scrollbar-thumb:hover {
+  background-color: #374151; /* Màu xám tối hơn khi hover */
+}

@@ -12,3 +12,5 @@ declare module "@/public/static/charting_library" {
 
   export default widget;
 }
+
+

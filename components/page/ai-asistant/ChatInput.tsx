@@ -67,7 +67,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, isLoading }) => {
 	}, [mediaBlobUrl]);
 	const toggleRecording = () => {
 		if (isRecording) {
-			stopRecording(); // Khi dừng, mediaBlobUrl sẽ được cập nhật và kích hoạt useEffect
+			stopRecording();
 		} else {
 			startRecording();
 		}
@@ -75,7 +75,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, isLoading }) => {
 	return (
 		<form
 			onSubmit={handleSubmit}
-			className="w-full flex justify-center backdrop-blur-sm"
+			className="w-full flex justify-center backdrop-blur-sm rounded-3xl"
 			style={{
 				background:
 					"linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0))",
@@ -97,8 +97,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, isLoading }) => {
 						<span className="text-sm">AI Ask</span>
 						<ChevronDownMini className="w-4 h-4" />
 					</div>
-
-					{/* Input */}
 
 					<div className="flex items-center space-x-2 pr-2">
 						<FileUploadButton
