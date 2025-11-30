@@ -16,7 +16,7 @@ const Assets = ({ data }: AssetsProps) => {
 	];
 
 	return (
-		<div className="bg-[#111113] bg-center bg-cover bg-no-repeat pt-6 px-2 md:px-4 pb-6 rounded-4xl border border-dark-gray-700">
+		<div className="bg-[#111113] bg-center bg-cover bg-no-repeat pt-6 px-4 pb-6 rounded-4xl border border-dark-gray-700">
 			{/* Header Text */}
 			<div className="mb-4">
 				<p className="text-sm text-dark-gray-100">
@@ -37,7 +37,7 @@ const Assets = ({ data }: AssetsProps) => {
 					timeFilters={filterOptions}
 					headerTitle={
 						<div className="flex flex-col justify-center items-start pt-4">
-							<div className="font-bold text-[16px] md:text-[20px] leading-[28px] tracking-[0.1px] text-white flex-none order-0 grow-0">
+							<div className="font-bold text-[20px] leading-[28px] tracking-[0.1px] text-white flex-none order-0 grow-0">
 								Total value locked
 							</div>
 							<div className="text-[14px] leading-3xl tracking-[0.1px] text-[#797B86] flex-none order-1 grow-0">
@@ -58,14 +58,14 @@ const Assets = ({ data }: AssetsProps) => {
 			</div>
 
 			{/* Divider */}
-			<div className="w-[calc(100%+32px)] h-px bg-dark-gray-700 my-6 -mx-4"></div>
+			<div className="w-full h-px bg-dark-gray-700 my-6 -mx-xl"></div>
 
 			{/* Fees Table */}
 			<div>
 				<h3 className="text-[20px] font-bold leading-[28px] tracking-[0.1px] text-white mb-6">
 					Fees
 				</h3>
-				<div className="bg-dark-glass px-3 space-y-0 w-full md:w-[387px] rounded-md relative">
+				<div className="bg-dark-glass px-3 space-y-0 w-[387px] rounded-md relative">
 					{dashboardData.feesTable.map((fee, index) => (
 						<div
 							key={index}

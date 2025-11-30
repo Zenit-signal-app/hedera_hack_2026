@@ -39,10 +39,6 @@ const Overview = ({ data }: { data: StrategyCardData }) => {
 
 	return (
 		<div className="flex flex-col gap-5">
-			{/* My Deposits - Right side */}
-			<div className="lg:hidden">
-				<MyDeposits />
-			</div>
 			{/* Block 1: Chart + Metrics - Background đen */}
 			<div className="bg-[#111113] rounded-2xl p-4 border border-dark-gray-700">
 				<CommonLineChart
@@ -52,8 +48,8 @@ const Overview = ({ data }: { data: StrategyCardData }) => {
 					dataKeyY="value"
 					timeFilters={filterOptions}
 					headerTitle={
-						<div className="flex items-center gap-1 tablet:gap-3 text-dark-gray-200">
-							<div className="text-red-500 py-0.5 px-1 tablet:px-3 bg-red-500/10 rounded-md">
+						<div className="flex items-center gap-3 text-dark-gray-200">
+							<div className="text-red-500 py-0.5 px-3 bg-red-500/10 rounded-md">
 								<GrowDownIcon size={16} /> 9.6%
 							</div>
 							<div>past 90 days</div>
@@ -76,6 +72,11 @@ const Overview = ({ data }: { data: StrategyCardData }) => {
 
 				<DescriptionSection />
 			</div>
+
+			{/* My Deposits - Right side */}
+			<div className="lg:hidden">
+				<MyDeposits />
+			</div>
 		</div>
 	);
 };
@@ -96,7 +97,7 @@ const MetricsGrid = ({ data }: { data: StrategyCardData }) => {
 							className="text-dark-gray-200"
 						/>
 					</div>
-					<div className="vault-metric-value text-green-500!">
+					<div className="vault-metric-value text-green-500">
 						{data.annualReturn}
 					</div>
 				</div>
@@ -222,7 +223,7 @@ const VaultInformationSection = ({ data }: { data: StrategyCardData }) => {
 			<h3 className="vault-section-title">Vault Information</h3>
 			<div className="vault-grid-3">
 				{/* Vault Type */}
-				<div className="vault-info-card py-2 tablet:py-4">
+				<div className="vault-info-card">
 					<div className="flex items-center gap-1">
 						<span className="vault-info-label">Vault Type</span>
 					</div>
@@ -243,7 +244,7 @@ const VaultInformationSection = ({ data }: { data: StrategyCardData }) => {
 				</div>
 
 				{/* Blockchain */}
-				<div className="vault-info-card py-2 tablet:py-4">
+				<div className="vault-info-card">
 					<div className="vault-info-label">Blockchain</div>
 					<div className="flex items-center gap-2">
 						{data.vaultInfo?.blockchainIcon ? (
@@ -266,7 +267,7 @@ const VaultInformationSection = ({ data }: { data: StrategyCardData }) => {
 				</div>
 
 				{/* Address */}
-				<div className="vault-info-card py-2 tablet:py-4">
+				<div className="vault-info-card">
 					<div className="vault-info-label">Address</div>
 					<div className="flex items-center gap-2">
 						<div className="vault-info-value truncate flex-1">

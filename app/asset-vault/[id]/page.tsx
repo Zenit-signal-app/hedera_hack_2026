@@ -8,7 +8,7 @@ interface AssetDetailPageProps {
 
 export default function Detail() {
 	return (
-		<div className="font-exo px-4 py-4 tablet:px-6">
+		<div className="font-exo px-6 py-4">
 			<DetailPage />
 		</div>
 	);

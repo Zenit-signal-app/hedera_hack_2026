@@ -173,8 +173,8 @@ const CommonComboChart: React.FC<CommonComboChartProps> = ({
 	};
 
 	return (
-		<div className="font-quicksand" style={{ minHeight: height + 60 }}>
-			<div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-4">
+		<div className="font-quicksand" style={{ height: height + 60 }}>
+			<div className="flex justify-between items-center mb-4">
 				{headerTitle && (
 					<div className="flex items-center space-x-2 text-sm font-semibold">
 						{headerTitle}
@@ -188,7 +188,7 @@ const CommonComboChart: React.FC<CommonComboChartProps> = ({
 								key={filter.key}
 								onClick={() => setActiveFilter(filter.key)}
 								className={cn(
-									"px-2 tablet:px-3 py-1 text-xs font-medium rounded-md text-white transition-all duration-150",
+									"px-3 py-1 text-xs font-medium rounded-md text-white transition-all duration-150",
 									activeFilter === filter.key
 										? "bg-dark-gray-800 "
 										: " hover:bg-gray-700"
@@ -204,7 +204,7 @@ const CommonComboChart: React.FC<CommonComboChartProps> = ({
 			<ResponsiveContainer width="100%" height={height}>
 				<ComposedChart
 					data={mappedData}
-					margin={{ top: 5, right: -5, left: 0, bottom: 5 }}
+					margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
 				>
 					<defs>
 						<linearGradient
@@ -251,8 +251,6 @@ const CommonComboChart: React.FC<CommonComboChartProps> = ({
 						domain={[NETFLOW_MIN, maxTvl]}
 						ticks={allTicks}
 						tickFormatter={tickFormatter}
-						width={40}
-						tickMargin={5}
 					/>
 
 					{/* Divider line giữa 2 scale zones */}

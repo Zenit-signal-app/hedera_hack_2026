@@ -31,7 +31,6 @@
 		"**/*.mts",
 		"global.d.ts",
 		"src/types",
-		"components/common/tvChartContainer/index.jsx"
 	],
 	"exclude": ["node_modules"]
 }

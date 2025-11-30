@@ -136,15 +136,24 @@
 /* ==================== Why SeerBOT Stats Cards ==================== */
 
 .landing-page-container .why-seerbot-stats-container {
-	@apply flex justify-center items-center w-full px-16 mt-12;
-	gap: 24px;
+	@apply flex justify-around items-center w-full px-16 mt-12 gap-5 overflow-x-auto;
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+	cursor: grab;
+	-webkit-overflow-scrolling: touch;
+}
+
+.landing-page-container .why-seerbot-stats-container::-webkit-scrollbar {
+	display: none;
+}
+
+.landing-page-container .why-seerbot-stats-container:active {
+	cursor: grabbing;
 }
 
 .landing-page-container .why-seerbot-stats-card {
-	@apply relative overflow-hidden;
-	flex: 1;
-	max-width: 410px;
-	min-width: 200px;
+	@apply relative flex-shrink-0 overflow-hidden;
+	width: 410px;
 	height: 220px;
 	border-radius: 24px;
 }
@@ -655,33 +664,6 @@
 
 /* ==================== Responsive Design ==================== */
 
-/* Tablet Responsive (768px - 1200px) - Layout chia đôi như PC */
-@media (min-width: 768px) and (max-width: 1200px) {
-	.landing-page-container .ai-assistant-content {
-		@apply flex flex-row px-8 pb-16 gap-8;
-	}
-
-	.landing-page-container .ai-assistant-accordion {
-		@apply flex-1;
-		max-width: 50%;
-	}
-
-	.landing-page-container .ai-assistant-image {
-		@apply flex-1;
-		max-width: 50%;
-	}
-
-	.landing-page-container .ai-assistant-image-desktop {
-		display: block;
-		width: 100%;
-		height: auto;
-	}
-
-	.landing-page-container .ai-assistant-image-mobile {
-		display: none;
-	}
-}
-
 @media (max-width: 1024px) {
 	.landing-page-container .landing-header-container {
 		@apply px-8;
@@ -817,10 +799,7 @@
 	.landing-page-container .ai-assistant-header {
 		@apply px-6 py-12;
 	}
-}
 
-/* Mobile Only - AI Assistant (< 768px) */
-@media (max-width: 767px) {
 	.landing-page-container .ai-assistant-content {
 		@apply flex-col px-6 pb-12 gap-8;
 	}
@@ -847,7 +826,7 @@
 }
 
 /* ==================== Mobile Responsive (375px) ==================== */
-@media (max-width: 768px) {
+@media (max-width: 911px) {
 	/* Header - Mobile Layout */
 	.landing-page-container .landing-header {
 		height: 44px;
@@ -1049,7 +1028,7 @@
 		@apply pb-6;
 	}
 
-	/* Stats Cards - Vertical layout, giữ kích thước như desktop */
+	/* Stats Cards - Vertical layout */
 	.landing-page-container .why-seerbot-stats-container {
 		@apply flex-col px-4 gap-6;
 		margin-top: 40px;
@@ -1057,12 +1036,10 @@
 	}
 
 	.landing-page-container .why-seerbot-stats-card {
-		width: 100%;
-		max-width: 410px;
-		min-width: unset;
+		width: 343px;
+		min-width: 343px;
+		max-width: 343px;
 		height: 220px;
-		margin: 0 auto;
-		padding: 64px 24px;
 	}
 
 	.landing-page-container .why-seerbot-stats-value {

@@ -25,7 +25,7 @@ const AssetVaultPage = () => {
 
 	return (
 		<div className="flex flex-col gap-y-6">
-			<div className="flex items-center justify-between gap-3">
+			<div className="flex items-center justify-between">
 				<TabsWrapper
 					tabs={[
 						{ value: "current", label: "Current" },

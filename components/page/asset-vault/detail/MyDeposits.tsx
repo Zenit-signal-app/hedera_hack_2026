@@ -1,6 +1,6 @@
 const MyDeposits = () => {
 	return (
-		<div className="box-border bg-dark-glass flex flex-col items-start p-3 gap-3 rounded-3xl border border-dark-gray-700">
+		<div className="box-border flex flex-col items-start p-3 gap-3 rounded-3xl border border-dark-gray-700">
 			<h1 
 				className="font-quickSan text-subtitle-2 font-bold text-white"
 				style={{ textShadow: '0px 4px 4px rgba(0, 0, 0, 0.25)' }}

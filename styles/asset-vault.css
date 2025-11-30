@@ -40,7 +40,7 @@
 
 /* Info Card Styles */
 .vault-info-card {
-	@apply rounded-lg flex flex-col gap-1;
+	@apply rounded-lg py-4 flex flex-col gap-1;
 }
 
 .vault-info-label {
@@ -92,7 +92,7 @@
 
 /* Grid Layouts */
 .vault-grid-2 {
-	@apply grid grid-cols-2 gap-2;
+	@apply grid grid-cols-1 md:grid-cols-2 gap-2;
 }
 
 .vault-grid-3 {
@@ -105,15 +105,15 @@
 }
 
 .positions-header {
-	@apply flex flex-col md:flex-row justify-between items-start gap-4 w-full;
+	@apply flex flex-row justify-between items-start gap-4 w-full;
 }
 
 .positions-title {
-	@apply text-white text-[16px] md:text-xl font-bold leading-7 tracking-[0.1px] md:flex-1;
+	@apply text-white text-xl font-bold leading-7 tracking-[0.1px] flex-1;
 }
 
 .positions-search-wrapper {
-	@apply flex flex-col items-start gap-1.5 w-full md:w-[270px] md:max-w-[270px];
+	@apply flex flex-col items-start gap-1.5 w-[270px] max-w-[270px];
 }
 
 .positions-search-input-container {

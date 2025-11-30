@@ -27,9 +27,9 @@ const Technical = ({ data }: TechnicalProps) => {
 	const tabs = ["Status", "Logs", "Analysis", "Decision making"];
 
 	return (
-		<div className="bg-[#111113] bg-center bg-cover bg-no-repeat p-2 md:p-4 rounded-4xl border border-dark-gray-700">
+		<div className="bg-[#111113] bg-center bg-cover bg-no-repeat p-4 rounded-4xl border border-dark-gray-700">
 			<div className="pb-6">
-				<h3 className="text-[14px] pt-4 md:pt-0 md:text-[20px] font-bold text-white">
+				<h3 className="text-[20px] font-bold text-white">
 					Technical details
 				</h3>
 			</div>
@@ -82,18 +82,18 @@ const Technical = ({ data }: TechnicalProps) => {
 						{statusMetrics.map((item, index) => (
 							<div
 								key={index}
-								className={`flex flex-row items-center gap-2 w-full h-11 rounded-lg ${
+								className={`flex flex-row items-center justify-between w-full h-11 rounded-lg ${
 									index % 2 === 0 ? "bg-dark-gray-900" : ""
 								}`}
 							>
 								{/* Left Cell */}
-								<div className="flex flex-row items-center py-1 pl-4">
+								<div className="flex flex-row items-center py-1 pr-2 pl-4 gap-2 flex-1">
 									<span className="font-semibold text-sm leading-6 tracking-[0.1px] text-white">
 										{item.metric}
 									</span>
 								</div>
 								{/* Right Cell */}
-								<div className="flex flex-row items-center justify-end py-1 pr-4 flex-1">
+								<div className="flex flex-row items-center justify-end py-1 px-2 gap-2 flex-1">
 									<span className="font-semibold text-sm leading-6 tracking-[0.1px] text-white">
 										{item.value}
 									</span>
@@ -108,7 +108,7 @@ const Technical = ({ data }: TechnicalProps) => {
 
 				{/* Source code block */}
 				<div className="mb-6">
-					<h4 className="text-[14px] md:text-[16px] font-semibold text-white mb-3">
+					<h4 className="text-[16px] font-semibold text-white mb-3">
 						Source code
 					</h4>
 					<p className="text-sm text-dark-gray-100">
@@ -121,7 +121,7 @@ const Technical = ({ data }: TechnicalProps) => {
 
 				{/* Backtest result block */}
 				<div>
-					<h4 className="text-[14px] md:text-[16px] font-semibold text-white mb-3">
+					<h4 className="text-[16px] font-semibold text-white mb-3">
 						Backtest result
 					</h4>
 					{/* Backtest result content will go here */}
