@@ -2,6 +2,7 @@
 
 import { Check } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
+import type { PlatformStatistics } from "@/types/platform";
 
 const STATS_CARDS = [
 	{

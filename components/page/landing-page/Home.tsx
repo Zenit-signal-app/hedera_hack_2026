@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import type { Partner } from "@/types/partner";
 
-export default function Home() {
+export default function Home({ partners = [] }: { partners?: Partner[] }) {
 	const wrapperRef = useRef<HTMLDivElement>(null);
 	const backgroundRef = useRef<HTMLDivElement>(null);
 	const [height, setHeight] = useState<number>(0);
@@ -23,6 +24,7 @@ export default function Home() {
 			window.removeEventListener("resize", updateHeight);
 		};
 	}, []);
+	console.log("Partners:", partners);
 
 	return (
 		<section id="home" className="landing-section">
@@ -73,70 +75,53 @@ export default function Home() {
 				{/* Brands Section */}
 				<div className="landing-brands">
 					{/* Backed by */}
-					<div className="landing-brands-group">
-						<p className="landing-brands-label w-[166px] mobile:w-[120px]">
-							Backed by
-						</p>
-						<div className="landing-brands-scroll">
-							<div className="landing-brands-track">
-								{[...Array(8)].map((_, i) => (
-									<div
-										key={`backed-${i}`}
-										className="landing-brand-logo"
-									>
+					{partners && partners.length > 0 && (
+						<div className="landing-brands-group">
+							<p className="landing-brands-label w-[166px] mobile:w-[120px]">
+								Backed by
+							</p>
+							<div className="">
+								{partners.map((p, i) => (
+									<div key={`partner-${i}-${p.name}`} className="landing-brand-logo">
 										<Image
-											src={
-												i % 2 === 0
-													? "/images/LogoRelume.png"
-													: "/images/LogoWebflow.png"
-											}
-											alt={
-												i % 2 === 0
-													? "Relume"
-													: "Webflow"
-											}
+											src={p.logo}
+											alt={p.name}
 											width={134}
 											height={35}
-											className="mobile:!w-[100px] mobile:!h-[40px]"
+											className="w-[134px] h-[35px] mobile:!w-[100px] mobile:!h-[40px] object-contain"
+											style={{ objectFit: "contain" }}
+											unoptimized
 										/>
 									</div>
 								))}
 							</div>
 						</div>
-					</div>
+					)}
 
 					{/* Angel investors */}
-					<div className="landing-brands-group">
-						<p className="landing-brands-label w-[292px] mobile:w-[200px]">
-							Angel investors form angel
-						</p>
-						<div className="landing-brands-scroll">
-							<div className="landing-brands-track">
-								{[...Array(8)].map((_, i) => (
-									<div
-										key={`angel-${i}`}
-										className="landing-brand-logo"
-									>
+					{partners && partners.length > 0 && (
+						<div className="landing-brands-group">
+							<p className="landing-brands-label w-[292px] mobile:w-[200px]">
+								Angel investors form angel
+							</p>
+							<div className="">
+								{partners.map((p, i) => (
+									<div key={`partner-${i}-${p.name}`} className="landing-brand-logo">
 										<Image
-											src={
-												i % 2 === 0
-													? "/images/LogoRelume.png"
-													: "/images/LogoWebflow.png"
-											}
-											alt={
-												i % 2 === 0
-													? "Relume"
-													: "Webflow"
-											}
+											src={p.logo}
+											alt={p.name}
 											width={134}
 											height={35}
-											className="mobile:!w-[100px] mobile:!h-[40px]"
+											className="w-[134px] h-[35px] mobile:!w-[100px] mobile:!h-[40px] object-contain"
+											style={{ objectFit: "contain" }}
+											unoptimized
 										/>
 									</div>
-								))}
+									))
+								}
 							</div>
 						</div>
-					</div>
+					)}
 				</div>
 			</div>
 		</section>
