@@ -51,7 +51,6 @@ const ModalConnectWallet: React.FC<ModalConnectWalletProps> = ({
 			setModalState("REJECTED");
 		}
 	};
-
 	const renderContent = () => {
 		switch (modalState) {
 			case "SELECT":
