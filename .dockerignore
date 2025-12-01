@@ -1,0 +1,15 @@
+
+node_modules
+
+.next
+
+.turbo
+.vercel
+npm-debug.log
+yarn-error.log
+.DS_Store
+
+.env.local
+.env*.local
+.vscode
+.git
