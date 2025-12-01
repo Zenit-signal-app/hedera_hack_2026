@@ -13,7 +13,7 @@ export default function TradeSmarter() {
 			<div className="landing-section-wrapper h-[524px] justify-between items-center">
 				<div className="trade-smarter-content">
 					<h2 className="landing-section-title">
-						Trade smarter. Earn more.
+						Ready to Start
 					</h2>
 
 					{/* CTA Buttons */}

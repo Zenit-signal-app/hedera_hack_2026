@@ -8,21 +8,21 @@ const STATS_CARDS = [
 	{
 		value: "7,302,402",
 		label: "Trading pairs",
-		numericValue: 7302402,
+		numericValue: "n_pair",
 		prefix: "",
 		suffix: "",
 	},
 	{
 		value: "$459.30B",
 		label: "liquidity",
-		numericValue: 459.3,
+		numericValue: "liquidity",
 		prefix: "$",
 		suffix: "B",
 	},
 	{
 		value: "8,450",
 		label: "decentralised exchanges",
-		numericValue: 8450,
+		numericValue: "n_tx",
 		prefix: "",
 		suffix: "",
 	},
@@ -77,7 +77,6 @@ function AnimatedCounter({
 			const elapsed = now - startTime;
 			const progress = Math.min(elapsed / duration, 1);
 
-			// Easing function (ease-out-quad) - faster and smoother
 			const easeOut = 1 - Math.pow(1 - progress, 2);
 			const currentValue = easeOut * endValue;
 
@@ -86,7 +85,6 @@ function AnimatedCounter({
 			if (progress < 1) {
 				requestAnimationFrame(updateCounter);
 			} else {
-				// Ensure final value is exact
 				setCount(endValue);
 			}
 		};
@@ -95,11 +93,9 @@ function AnimatedCounter({
 	};
 
 	const formatNumber = (num: number) => {
-		// For large numbers, add commas
 		if (num >= 1000) {
 			return Math.floor(num).toLocaleString("en-US");
 		}
-		// For decimal numbers (like 459.30)
 		return num.toFixed(1);
 	};
 
@@ -112,7 +108,7 @@ function AnimatedCounter({
 	);
 }
 
-export default function WhySeerBOT() {
+export default function WhySeerBOT({stats} : {stats: PlatformStatistics}) {
 	const cardsRef = useRef<HTMLDivElement>(null);
 	const [isDragging, setIsDragging] = useState(false);
 	const [startX, setStartX] = useState(0);
@@ -146,18 +142,11 @@ export default function WhySeerBOT() {
 			id="why-seerbot"
 			className="landing-section why-seerbot-section"
 		>
-			{/* Black Background */}
-			<div className="why-seerbot-background"></div>
-
 			<div className="landing-section-wrapper">
 				<div className="landing-section-content">
 					<h2 className="landing-section-title">Why SeerBOT</h2>
 					<p className="landing-section-subtitle">
-						Lorem Ipsum is simply dummy text of the printing and
-						typesetting industry. Lorem Ipsum has been the
-						industry's standard dummy text ever since the 1500s,
-						when an unknown printer took a galley of type and
-						scrambled it to make a type specimen book.
+						Navigating the Cardano DeFi ecosystem shouldn't be complicated. SeerBOT combines the security of non-custodial trading with the power of AI-driven analysis. We provide the tools you need to validate market trends, automate your strategies, and trade with confidence without ever giving up control of your assets
 					</p>
 				</div>
 
@@ -212,7 +201,7 @@ export default function WhySeerBOT() {
 							<div className="why-seerbot-stats-card-bg"></div>
 							<div className="why-seerbot-stats-card-content">
 								<AnimatedCounter
-									value={card.numericValue}
+									value={Number(stats[card.numericValue])}
 									prefix={card.prefix}
 									suffix={card.suffix}
 									duration={1000}

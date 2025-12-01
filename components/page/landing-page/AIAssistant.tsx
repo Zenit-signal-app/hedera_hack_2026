@@ -9,9 +9,9 @@ const ACCORDION_ITEMS = {
 	aiAsk: {
 		id: "ai-ask",
 		title: "AI Ask",
-		contentTitle: "This is title",
+		contentTitle: "Instant Market Data",
 		contentText:
-			"Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.",
+			"Get immediate answers about the market. Simply ask for the current price, volume, or specific technical indicators (like RSI, ADX, or PSAR) for any token in the Cardano ecosystem",
 	},
 	aiPlan: {
 		id: "ai-plan",
@@ -28,7 +28,7 @@ const ACCORDION_ITEMS = {
 } as const;
 
 export default function AIAssistant() {
-	const [openAccordion, setOpenAccordion] = useState<string>(
+	const [openAccordion, setOpenAccordion] = useState<string>( 
 		ACCORDION_ITEMS.aiAsk.id
 	);
 
@@ -39,10 +39,8 @@ export default function AIAssistant() {
 	return (
 		<section
 			id="ai-assistant"
-			className="landing-section ai-assistant-section"
+			className="landing-section"
 		>
-			{/* Black Background */}
-			<div className="ai-assistant-background"></div>
 
 			{/* Content Wrapper */}
 			<div className="landing-section-wrapper">
@@ -53,11 +51,7 @@ export default function AIAssistant() {
 						<span className="text-[#A373FF]">AI Assistant</span>
 					</h2>
 					<p className="landing-section-subtitle w-full max-w-[unset!important]">
-						Lorem Ipsum is simply dummy text of the printing and
-						typesetting industry. Lorem Ipsum has been the
-						industry's standard dummy text ever since the 1500s,
-						when an unknown printer took a galley of type and
-						scrambled it to make a type specimen book.
+						Stop trading on a hunch. Our AI Assistant provides instant price updates and deep technical analysis for any Cardano token. Get real-time data on RSI, ADX, and more to validate your market moves in seconds.
 					</p>
 				</div>
 

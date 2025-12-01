@@ -9,6 +9,7 @@ import Image from "next/image";
 import { cn } from "@/lib/ultils";
 import AnalysisIcon1 from "@/components/icon/Icon_ Analysis-1";
 import Link from "next/link";
+import { useIsMobile } from "@/src/components/hooks/useIsMobile";
 
 const listNavigators = [
 	{
@@ -35,22 +36,26 @@ const listNavigators = [
 ];
 const Navigator = () => {
 	const pathname = usePathname();
+	const isMobile = useIsMobile();
 	return (
-		<div className="flex h-screen flex-col gap-y-4 items-start py-4 px-3 bg-dark-gray-950">
-			<Link href="/">
-				<Image
-					className=""
-					width={174}
-					height={44}
-					alt="Logo"
-					src="/images/logo.png"
-				/>
-			</Link>
-
-			<Input
-				startIcon={<SearchIcon size={20} />}
-				className="w-full h-10"
-			/>
+		<div className="flex w-full lg:h-screen h-max flex-col gap-y-4 items-start py-4 px-3 lg:bg-dark-gray-950 bg-black">
+			{isMobile ? null : (
+				<>
+					<Link href="/">
+						<Image
+							className=""
+							width={174}
+							height={44}
+							alt="Logo"
+							src="/images/logo.png"
+						/>
+					</Link>{" "}
+					<Input
+						startIcon={<SearchIcon size={20} />}
+						className="w-full h-10"
+					/>
+				</>
+			)}
 
 			<div className="space-y-3 w-full">
 				{listNavigators.map((item) => {
