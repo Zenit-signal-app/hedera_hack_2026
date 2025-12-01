@@ -64,13 +64,12 @@ export default function Home({ partners = [] }: { partners?: Partner[] }) {
 				{/* Hero Section */}
 				<div className="landing-hero">
 					<h1 className="landing-hero-title">
-						Unleash the power
+						The next generation trading
 						<br />
-						of automated crypto trading
+					platform on Cardano
 					</h1>
 					<p className="landing-hero-subtitle">
-						Analyze, manage, and grow your crypto portfolio — all in
-						one secure platform
+						Analyze, manage, and grow your crypto balance — all in one secure platform
 					</p>
 					<div className="landing-hero-actions justify-center">
 						<button className="landing-btn-primary">
