@@ -45,11 +45,7 @@ export default function HowItWorks() {
 					<div className="how-it-works-text">
 						<h2 className="landing-section-title">How it works</h2>
 						<p className="landing-section-subtitle">
-							Lorem Ipsum is simply dummy text of the printing and
-							typesetting industry. Lorem Ipsum has been the
-							industry's standard dummy text ever since the 1500s,
-							when an unknown printer took a galley of type and
-							scrambled it to make a type specimen book.
+							SeerBOT aim to make trading on Cardano easier and more intuitive not just for ADA, but for the entire range of ecosystem token with On-chain Swap, Technical Analysis, AI Assistant, Strategy Vault and more.
 						</p>
 						<div className="landing-hero-actions">
 							<button className="landing-btn-primary">

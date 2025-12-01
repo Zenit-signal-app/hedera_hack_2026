@@ -29,18 +29,18 @@ export default function FAQ() {
 const FAQ_DATA = [
 	{
 		id: 1,
-		question: "Question text goes here",
-		answer: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros elementum tristique. Duis cursus, mi quis viverra ornare, eros dolor interdum nulla, ut commodo diam libero vitae erat. Aenean faucibus nibh et justo cursus id rutrum lorem imperdiet. Nunc ut sem vitae risus tristique posuere.",
+		question: "How does the AI Assistant help me trade?",
+		answer: "The AI acts as your personal analyst. It monitors the Cardano market 24/7 to provide real-time price updates and instant technical analysis (RSI, ADX, MACD trends), helping you validate your trading decisions based on data, not guesswork.",
 	},
 	{
 		id: 2,
-		question: "Question text goes here",
-		answer: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros elementum tristique. Duis cursus, mi quis viverra ornare, eros dolor interdum nulla, ut commodo diam libero vitae erat. Aenean faucibus nibh et justo cursus id rutrum lorem imperdiet. Nunc ut sem vitae risus tristique posuere.",
+		question: "Is there a fee to use SeerBOT?",
+		answer: "Currently, accessing the platform, market analysis, and manual trading tools is free. In the future, advanced features like automated 'Trading Pilot' bots or premium Strategy Vaults may carry a service fee or subscription model",
 	},
 	{
 		id: 3,
-		question: "Question text goes here",
-		answer: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros elementum tristique. Duis cursus, mi quis viverra ornare, eros dolor interdum nulla, ut commodo diam libero vitae erat. Aenean faucibus nibh et justo cursus id rutrum lorem imperdiet. Nunc ut sem vitae risus tristique posuere.",
+		question: "Do I need to register an account or KYC?",
+		answer: "No. We value your privacy and decentralization. There is no email sign-up or KYC process required. Simply connect a supported Cardano wallet, and you are ready to access the dashboard immediately.",
 	},
 	{
 		id: 4,
@@ -49,8 +49,13 @@ const FAQ_DATA = [
 	},
 	{
 		id: 5,
-		question: "Question text goes here",
-		answer: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros elementum tristique. Duis cursus, mi quis viverra ornare, eros dolor interdum nulla, ut commodo diam libero vitae erat. Aenean faucibus nibh et justo cursus id rutrum lorem imperdiet. Nunc ut sem vitae risus tristique posuere.",
+		question: "What is the Strategy Vault?",
+		answer: "The Strategy Vault is a library of trading setups. You can browse strategies shared by the community or proven via backtesting. It allows you to find a trading style that matches your risk tolerance without building a strategy from scratch.",
+	},
+	{
+		id: 6,
+		question: "Is SeerBOT safe? Do you hold my funds?",
+		answer: "SeerBOT is strictly non-custodial. We never have access to your private keys or funds. All trades are executed via smart contracts directly from your connected wallet (like Lace, Nami, or Eternl), meaning you retain full control of your assets at all times.",
 	},
 ];
 

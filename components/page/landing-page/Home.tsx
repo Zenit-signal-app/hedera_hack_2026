@@ -125,7 +125,7 @@ export default function Home({ partners = [] }: { partners?: Partner[] }) {
 						</div>
 					)}
 
-					{partners && partners.length > 0 && (
+					{/* {partners && partners.length > 0 && (
 						<div className="landing-brands-group">
 							<div className="landing-brands-label bg-linear-to-r from-[#0E0E0F] from-83% to-transparent font-semibold whitespace-nowrap w-full ">
 								<p className="lg:w-full w-max">
@@ -151,7 +151,7 @@ export default function Home({ partners = [] }: { partners?: Partner[] }) {
 								))}
 							</div>
 						</div>
-					)}
+					)} */}
 				</div>
 			</div>
 		</section>

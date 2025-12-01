@@ -149,11 +149,7 @@ export default function WhySeerBOT({stats} : {stats: PlatformStatistics}) {
 				<div className="landing-section-content">
 					<h2 className="landing-section-title">Why SeerBOT</h2>
 					<p className="landing-section-subtitle">
-						Lorem Ipsum is simply dummy text of the printing and
-						typesetting industry. Lorem Ipsum has been the
-						industry's standard dummy text ever since the 1500s,
-						when an unknown printer took a galley of type and
-						scrambled it to make a type specimen book.
+						Navigating the Cardano DeFi ecosystem shouldn't be complicated. SeerBOT combines the security of non-custodial trading with the power of AI-driven analysis. We provide the tools you need to validate market trends, automate your strategies, and trade with confidence without ever giving up control of your assets
 					</p>
 				</div>
 
