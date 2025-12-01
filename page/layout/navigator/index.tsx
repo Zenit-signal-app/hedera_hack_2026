@@ -37,24 +37,25 @@ const listNavigators = [
 const Navigator = () => {
 	const pathname = usePathname();
 	const isMobile = useIsMobile();
-	return isMobile ? <div>
-
-	</div>: (
-		<div className="flex h-screen flex-col gap-y-4 items-start py-4 px-3 bg-dark-gray-950">
-			<Link href="/">
-				<Image
-					className=""
-					width={174}
-					height={44}
-					alt="Logo"
-					src="/images/logo.png"
-				/>
-			</Link>
-
-			<Input
-				startIcon={<SearchIcon size={20} />}
-				className="w-full h-10"
-			/>
+	return (
+		<div className="flex w-full lg:h-screen h-max flex-col gap-y-4 items-start py-4 px-3 lg:bg-dark-gray-950 bg-black">
+			{isMobile ? null : (
+				<>
+					<Link href="/">
+						<Image
+							className=""
+							width={174}
+							height={44}
+							alt="Logo"
+							src="/images/logo.png"
+						/>
+					</Link>{" "}
+					<Input
+						startIcon={<SearchIcon size={20} />}
+						className="w-full h-10"
+					/>
+				</>
+			)}
 
 			<div className="space-y-3 w-full">
 				{listNavigators.map((item) => {
