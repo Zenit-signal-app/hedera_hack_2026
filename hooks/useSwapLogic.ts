@@ -11,7 +11,6 @@ import {
 } from "@/services/swapApi";
 import { formatNumber } from "@/lib/format";
 import { TokenData } from "@/types";
-import api from "@/axios/axiosInstance";
 import { convertUtxosToHex } from "@/lib/ultils";
 import { MinswapBalanceItem } from "@/types/minswap";
 import { Cardano } from "@cardano-sdk/core";
@@ -89,7 +88,6 @@ export const useSwapLogic = ({ initialTokenIn, initialTokenOut }: UseSwapLogicPr
 
     const sellToken = direction === 'sell' ? tokenIn : tokenOut;
     const buyToken = direction === 'sell' ? tokenOut : tokenIn;
-    console.log(buyToken);
     
     // Dữ liệu từ Socket
     const marketPriceKey = `${sellToken.asset.ticker}/${buyToken?.asset?.ticker}`;
