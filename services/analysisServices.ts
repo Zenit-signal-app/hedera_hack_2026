@@ -43,12 +43,17 @@ export const fetchTransactions = async (
 
 const BASE_TOPTRADERS_URL = "/analysis/toptraders";
 
+type TopTraderResponse = {
+	total: number,
+	page: number,
+	traders: TopTrader[]
+}
 export const fetchTopTraders = async (
 	params: PaginationParams
-): Promise<TopTrader[]> => {
+): Promise<TopTraderResponse> => {
 	try {
 		const response = await api.get(BASE_TOPTRADERS_URL, { params });
-		return response.data as TopTrader[];
+		return response.data as TopTraderResponse;
 	} catch (error) {
 		console.error("Lỗi khi gọi API Transactions:", error);
 		throw error;

@@ -82,22 +82,28 @@ export function parseBalance(hexBalance: string) {
   if (multiasset) {
     const policies = multiasset.keys();
     for (let i = 0; i < policies.len(); i++) {
-      const policyId = Buffer.from(policies.get(i).to_bytes()).toString("hex");
+      const policyObj = policies.get(i);
+      if (!policyObj) continue;
+      const policyId = Buffer.from(policyObj.to_bytes()).toString("hex");
 
-      const assets = multiasset.get(policies.get(i));
-      const assetNames = assets.keys();
+      const assets = multiasset.get(policyObj) as unknown as C.Assets;
+      if (!assets) continue;
+      const assetNames = (assets as any).keys();
+      if (!assetNames) continue;
 
       for (let j = 0; j < assetNames.len(); j++) {
-        const assetName = Buffer.from(
-          assetNames.get(j).name()
-        ).toString("hex");
+        const assetNameObj = assetNames.get(j);
+        if (!assetNameObj) continue;
+        const nameBytes = assetNameObj.name();
+        if (!nameBytes) continue;
 
-        const quantity = assets.get(assetNames.get(j)).to_str();
+        const assetNameHex = Buffer.from(nameBytes).toString("hex");
+        const quantity = (assets.get(assetNameObj) as any).to_str();
 
         tokens.push({
           policyId,
-          assetName: decodeAssetName(assetName),
-          unit: policyId + assetName,
+          assetName: decodeAssetName(assetNameHex),
+          unit: policyId + assetNameHex,
           quantity,
         });
       }

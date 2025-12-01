@@ -69,84 +69,84 @@ export function TableTopTrader() {
 				},
 				cell: ({ row }) => (
 					<div className="text-white text-sm font-semibold">
-						{formatNumber(row.original.bought) || "-"}
+						{formatNumber(row.original.total_trades) || "-"}
 					</div>
 				),
 				enableSorting: true,
 				enableColumnFilter: true,
 			},
-			{
-				accessorKey: "sold",
-				header: () => {
-					return (
-						<div className="flex items-center justify-between text-dark-gray-200">
-							SOLD
-							<UpdownIcon size={20} />
-						</div>
-					);
-				},
-				cell: ({ row }) => (
-					<div className="text-white text-sm">
-						<span>
-							{formatNumber(row.original.sold.totalValue)}{" "}
-						</span>
-						<span className="flex items-center text-dark-gray-200">
-							{formatNumber(row.original.sold.valueToken)}/
-							{formatNumber(row.original.sold.totalTransaction)}
-							tnxs
-						</span>
-					</div>
-				),
-				enableSorting: false,
-				enableColumnFilter: true,
-			},
-			{
-				accessorKey: "pnl",
-				header: () => {
-					return (
-						<div className="flex items-center justify-between text-dark-gray-200">
-							PNL
-							<UpdownIcon size={20} />
-						</div>
-					);
-				},
-				cell: ({ row }) => (
-					<div className="text-white text-sm">
-						{formatNumber(row.original.pnl)}
-					</div>
-				),
-				enableSorting: false,
-				enableColumnFilter: true,
-			},
+			// {
+			// 	accessorKey: "sold",
+			// 	header: () => {
+			// 		return (
+			// 			<div className="flex items-center justify-between text-dark-gray-200">
+			// 				SOLD
+			// 				<UpdownIcon size={20} />
+			// 			</div>
+			// 		);
+			// 	},
+			// 	cell: ({ row }) => (
+			// 		<div className="text-white text-sm">
+			// 			<span>
+			// 				{formatNumber(row.original.sold.totalValue)}{" "}
+			// 			</span>
+			// 			<span className="flex items-center text-dark-gray-200">
+			// 				{formatNumber(row.original.sold.valueToken)}/
+			// 				{formatNumber(row.original.sold.totalTransaction)}
+			// 				tnxs
+			// 			</span>
+			// 		</div>
+			// 	),
+			// 	enableSorting: false,
+			// 	enableColumnFilter: true,
+			// },
+			// {
+			// 	accessorKey: "pnl",
+			// 	header: () => {
+			// 		return (
+			// 			<div className="flex items-center justify-between text-dark-gray-200">
+			// 				PNL
+			// 				<UpdownIcon size={20} />
+			// 			</div>
+			// 		);
+			// 	},
+			// 	cell: ({ row }) => (
+			// 		<div className="text-white text-sm">
+			// 			{formatNumber(row.original.pnl)}
+			// 		</div>
+			// 	),
+			// 	enableSorting: false,
+			// 	enableColumnFilter: true,
+			// },
 
-			{
-				accessorKey: "unrealizedPNL",
-				header: () => {
-					return (
-						<div className="flex items-center justify-between text-dark-gray-200">
-							Unrealized
-						</div>
-					);
-				},
-				cell: ({ row }) => (
-					<div className="text-white/90 text-sm">
-						{formatNumber(row.original.unrealizedPNL)}
-					</div>
-				),
-			},
-			{
-				accessorKey: "balance",
-				header: () => {
-					return <div className="text-dark-gray-200">Balance</div>;
-				},
-				cell: ({ row }) => (
-					<button className="text-dark-gray-200 text-sm truncate max-w-[100px]">
-						{row.original.balance}
-					</button>
-				),
-				enableSorting: false,
-				enableColumnFilter: false,
-			},
+			// {
+			// 	accessorKey: "unrealizedPNL",
+			// 	header: () => {
+			// 		return (
+			// 			<div className="flex items-center justify-between text-dark-gray-200">
+			// 				Unrealized
+			// 			</div>
+			// 		);
+			// 	},
+			// 	cell: ({ row }) => (
+			// 		<div className="text-white/90 text-sm">
+			// 			{formatNumber(row.original.unrealizedPNL)}
+			// 		</div>
+			// 	),
+			// },
+			// {
+			// 	accessorKey: "balance",
+			// 	header: () => {
+			// 		return <div className="text-dark-gray-200">Balance</div>;
+			// 	},
+			// 	cell: ({ row }) => (
+			// 		<button className="text-dark-gray-200 text-sm truncate max-w-[100px]">
+			// 			{row.original.balance}
+			// 		</button>
+			// 	),
+			// 	enableSorting: false,
+			// 	enableColumnFilter: false,
+			// },
 			{
 				id: "actions",
 				header: () => {

@@ -1,16 +1,14 @@
 import { fetchTopTraders } from "@/services/analysisServices";
 import {
-  ApiResponse,
   PaginationParams,
   TopTrader,
-  Transaction,
 } from "@/types/transaction";
 import { useState, useEffect, useCallback } from "react";
 
 const INITIAL_LIMIT = 20;
 
 interface HookResult {
-  data: Transaction[];
+  data: TopTrader[];
   isLoading: boolean;
   pagination: {
     pageIndex: number;
@@ -40,13 +38,12 @@ export const useFetchTopTraders = (): HookResult => {
           limit: currentLimit,
         };
 
-        const result: ApiResponse = await fetchTopTraders(params);
+        const result = await fetchTopTraders(params);
 
-        setData(result.transactions);
+        setData(result.traders);
         setTotalRecords(result.total);
-        setTotalPages(result.totalPages);
+        setTotalPages(result.total%10);
       } catch (e) {
-        console.error("Failed to load transaction data:", e);
         setData([]);
       } finally {
         setIsLoading(false);
