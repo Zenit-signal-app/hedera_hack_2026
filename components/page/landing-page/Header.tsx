@@ -15,9 +15,6 @@ export default function Header() {
 				"home",
 				"how-it-works",
 				"ai-assistant",
-				// "why-seerbot",
-				// "faq",
-				// "trade-smarter",
 			];
 
 			const scrollPosition = window.scrollY + 150; // Offset for header height + buffer

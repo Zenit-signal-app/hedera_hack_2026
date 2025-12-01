@@ -71,13 +71,21 @@ const FALLBACK_ADA: MinswapBalanceItem = {
     }
 };
 
+const getBalanceByTicker = (ticker: string, allAssets: MinswapBalanceItem[]): number => {
+    const asset = allAssets.find(a => a.asset.ticker === ticker);
+    if (!asset) return 0;
+    
+    const amount = parseFloat(asset.amount);
+    return asset.asset.ticker === 'ADA' ? amount / 1000000 : amount;
+};
+
 export const useSwapLogic = ({ initialTokenIn, initialTokenOut }: UseSwapLogicProps) => {
     const { activeWallet, usedAddress, balance: walletBalance } = useWalletStore(); 
     const ohlcData = useMarketStore((state) => state.prices?.ohlc);
 
     const [direction, setDirection] = useState<SwapDirection>('sell');
     const [swapState, setSwapState] = useState<SwapState>({
-        inputAmount: '500',
+        inputAmount: '0',
         quote: null,
         isQuoteLoading: false,
         error: null,
@@ -89,14 +97,19 @@ export const useSwapLogic = ({ initialTokenIn, initialTokenOut }: UseSwapLogicPr
     const sellToken = direction === 'sell' ? tokenIn : tokenOut;
     const buyToken = direction === 'sell' ? tokenOut : tokenIn;
     
-    // Dữ liệu từ Socket
-    const marketPriceKey = `${sellToken.asset.ticker}/${buyToken?.asset?.ticker}`;
+ const getSocketKey = (t1: MinswapBalanceItem, t2: MinswapBalanceItem) => {
+        const inId = t1.asset.ticker === "ADA" ? "lovelace" : t1.asset.ticker;
+        const outId = t2.asset.ticker === "ADA" ? "lovelace" : t2.asset.ticker;
+        return `${inId}/${outId}`;
+    };
+    const marketPriceKey = getSocketKey(sellToken, buyToken);
     const currentSocketPrice = ohlcData?.[marketPriceKey]?.price || 1;
-
+const sellTokenActualBalance = getBalanceByTicker(sellToken.asset.ticker, walletBalance);
     const calculateUsdValue = (amount: number, price: number) => {
         return formatNumber(amount * price, 2);
     };
 
+   
     const handleChangeTokenIn = useCallback((token: MinswapBalanceItem) => {
         setTokenIn(token);
         setSwapState(prev => ({ ...prev, quote: null, inputAmount: '0' }));
@@ -151,35 +164,36 @@ export const useSwapLogic = ({ initialTokenIn, initialTokenOut }: UseSwapLogicPr
     }, [swapState.inputAmount, tokenIn, tokenOut, direction, fetchQuoteData]); // Thêm tokenIn/Out
 
     const handleSwapDirection = useCallback(() => {
-        // ✨ Hoán đổi giá trị của state tokenIn và tokenOut
+        const tokenToMoveToSell = buyToken; 
+        
+        const balanceCheck = getBalanceByTicker(tokenToMoveToSell.asset.ticker, walletBalance);
+
+        if (balanceCheck <= 0) {
+             console.warn(`Không thể hoán đổi: Số dư ${tokenToMoveToSell.asset.ticker} bằng 0.`);
+             return; 
+        }
+
+        // 2. CHẠY LOGIC HOÁN ĐỔI
         setTokenIn(tokenOut);
         setTokenOut(tokenIn);
-        
-        // Đảo chiều (chỉ đảo trạng thái UI, token đã được hoán đổi ở trên)
         setDirection((prev) => (prev === "sell" ? "buy" : "sell")); 
         
-        // Reset state
+        // 3. RESET STATE và RE-FETCH
         setSwapState((prev) => ({
             ...prev,
             inputAmount: "0",
             quote: null,
         }));
-    }, [tokenIn, tokenOut]);
+    }, [tokenIn, tokenOut, buyToken.asset.ticker, walletBalance]);
 
-    const SLIPPAGE_RATE = 0.005; // 0.5%
+    const SLIPPAGE_RATE = 0.005;
     
     const signAndSubmitSwap = useCallback(async () => {
         const currentQuote = swapState.quote;
-        const amountIn = swapState.inputAmount;
-
         if (!activeWallet || !usedAddress || !currentQuote || !tokenIn || !tokenOut) {
             setSwapState((prev) => ({ ...prev, error: "Ví chưa sẵn sàng hoặc thiếu quote.", }));
             return;
         }
-
-        const amountOut = parseFloat(`${currentQuote.amount_out}`);
-        const minAmountOut = (amountOut * (1 - SLIPPAGE_RATE)).toString();
-        
         try {
 
            const utxos: Cardano.Utxo[] = await activeWallet.getUtxos(); 
@@ -187,7 +201,7 @@ export const useSwapLogic = ({ initialTokenIn, initialTokenOut }: UseSwapLogicPr
 
             const buildData = await buildTransaction({
                 sender: usedAddress, 
-                estimate: currentQuote,
+                estimate: {...currentQuote, amount: Number(swapState.inputAmount) , slippage: 0.005},
                 inputsToChoose,
             });
             const unsignedTxCbor = buildData.cbor;
@@ -198,14 +212,14 @@ export const useSwapLogic = ({ initialTokenIn, initialTokenOut }: UseSwapLogicPr
 
     const amountOut = Number(swapState.quote?.amount_out) || 0;
 
-    const topCardData = useMemo(() => ({
+ const topCardData = useMemo(() => ({
         type: "Sell",
         value: swapState.inputAmount,
         usdValue: `$${calculateUsdValue(parseFloat(swapState.inputAmount || "0"), sellToken.asset.price_by_ada)}`,
         token: sellToken.asset.ticker,
-        balance: sellToken.asset.ticker === "ADA" ? `${formatNumber((Number(sellToken.amount)/1000000))} ${sellToken.asset.ticker}` : `${formatNumber(parseFloat(sellToken.amount))} ${sellToken.asset.ticker}`,
+        balance: `${formatNumber(sellTokenActualBalance)} ${sellToken.asset.ticker}`,
         iconUrl: sellToken.asset.logo,
-    }), [swapState.inputAmount, sellToken]);
+    }), [swapState.inputAmount, sellToken, sellTokenActualBalance]);
 
     const bottomCardData = useMemo(() => ({
         type: "Buy",

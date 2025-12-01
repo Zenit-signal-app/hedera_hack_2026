@@ -1,6 +1,4 @@
-
-
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Input from "@/components/common/input";
 import SwapIcon from "@/components/icon/Icon_Swap";
@@ -29,12 +27,27 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
 	iconUrl,
 	onAmountChange,
 	isLoading,
-	onSelect
+	onSelect,
 }) => {
 	const isSell = type === "sell";
 	const listToken = useWalletStore((state) => state.balance);
 	const [open, setOpen] = useState(false);
 	const isSelectable = isSell;
+
+	const error = useMemo(() => {
+		const balanceToken = listToken.find(
+			(item) => item.asset.ticker.toUpperCase() === token.toUpperCase()
+		);
+
+		const valueToken =
+			balanceToken?.asset.ticker === "ADA"
+				? Number(balanceToken.amount) / 1000000
+				: Number(balanceToken?.amount);
+
+		return Number(value) > Number(valueToken) || balanceToken === undefined;
+	}, [value, token, listToken]);
+	console.log(error);
+
 	return (
 		<div
 			className={`px-5 py-4 rounded-xl bg-white/10 border border-dark-gray-600`}
@@ -57,51 +70,72 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
 						placeholder="0"
 						disabled={!isSell || isLoading}
 					/>
-					<span className="text-dark-gray-100 font-semibold text-sm mt-2">
-						{usdValue}
-					</span>
+					{error ? (
+						<span className="text-red-600 font-semibold text-xs mt-2">
+							You do not have enough balance
+						</span>
+					) : null}
 				</div>
-{isSell ? <PopoverWrapper
-					open={open}
-					onOpenChange={(r) => setOpen(r)}
-					trigger={
-						<div className="flex items-center space-x-2 p-1 bg-white/5 border-dark-gray-500 border rounded-full cursor-pointer">
-							<Image
-								src={iconUrl}
-								alt={token}
-								className="w-6 h-6 rounded-full"
-								width={24}
-								height={24}
-								unoptimized
-							/>
-							<span className="text-white font-bold text-base">
-								{token}
-							</span>
-							<ChevronDownMini size={20} />
+				{isSell ? (
+					<PopoverWrapper
+						open={open}
+						onOpenChange={(r) => setOpen(r)}
+						trigger={
+							<div className="flex items-center space-x-2 p-1 bg-white/5 border-dark-gray-500 border rounded-full cursor-pointer">
+								<Image
+									src={iconUrl}
+									alt={token}
+									className="w-6 h-6 rounded-full"
+									width={24}
+									height={24}
+									unoptimized
+								/>
+								<span className="text-white font-bold text-base">
+									{token}
+								</span>
+								<ChevronDownMini size={20} />
+							</div>
+						}
+					>
+						<div className="flex flex-col gap-y-2">
+							{listToken.map((item) => {
+								return (
+									<button
+										key={item.asset.token_id}
+										onClick={() =>
+											onSelect && onSelect(item)
+										}
+										className="flex items-center justify-between gap-x-4 bg-dark-gray-900 py-2 px-4 rounded-md hover:bg-dark-gray-700"
+									>
+										<Image
+											src={item.asset.logo}
+											width={24}
+											height={24}
+											alt={item.asset.token_id}
+											className="rounded-full"
+										/>
+										{item.asset.ticker}
+									</button>
+								);
+							})}
 						</div>
-					}
-				>
-					<div className="flex flex-col gap-y-2">{listToken.map((item) => {
-						return (<button key={item.asset.token_id} onClick={() => onSelect && onSelect(item)} className="flex items-center justify-between gap-x-4 bg-dark-gray-900 py-2 px-4 rounded-md hover:bg-dark-gray-700">
-							<Image src={item.asset.logo} width={24} height={24} alt={item.asset.token_id} className="rounded-full"/>
-							{item.asset.ticker}
-						</button>)
-					})}</div>
-				</PopoverWrapper> :<div className="flex items-center space-x-2 p-1 bg-white/5 border-dark-gray-500 border rounded-full cursor-pointer">
-							<Image
-								src={iconUrl}
-								alt={token}
-								className="w-6 h-6 rounded-full"
-								width={24}
-								height={24}
-								unoptimized
-							/>
-							<span className="text-white font-bold text-base">
-								{token}
-							</span>
-							<ChevronDownMini size={20} />
-						</div> }
-				
+					</PopoverWrapper>
+				) : (
+					<div className="flex items-center space-x-2 p-1 bg-white/5 border-dark-gray-500 border rounded-full cursor-pointer">
+						<Image
+							src={iconUrl}
+							alt={token}
+							className="w-6 h-6 rounded-full"
+							width={24}
+							height={24}
+							unoptimized
+						/>
+						<span className="text-white font-bold text-base">
+							{token}
+						</span>
+						<ChevronDownMini size={20} />
+					</div>
+				)}
 			</div>
 
 			<div className="text-right text-gray-500 text-sm mt-2">
@@ -110,30 +144,31 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
 		</div>
 	);
 };
-type TokenSide = 'IN' | 'OUT' | null;
+type TokenSide = "IN" | "OUT" | null;
 
 export const SwapInterface: React.FC = () => {
-
-
 	const { balance } = useWalletStore();
-	const token = useTokenStore((state) => state.token)
-	const {baseToken} = parseTokenPair(token)
+	const token = useTokenStore((state) => state.token);
+	const { baseToken } = parseTokenPair(token);
 
 	const [selectingSide, setSelectingSide] = useState<TokenSide>(null);
-	const initialIn = balance.find(a => a.asset.ticker === 'ADA') || balance[0];
-const initialOut = balance.find(a => a.asset.ticker === baseToken) || balance[1];
-const { 
-    topCardData, 
-    bottomCardData, 
-    swapState, 
-    handleSwapDirection, 
-    setInputAmount,signAndSubmitSwap,
+	const initialIn =
+		balance.find((a) => a.asset.ticker === "ADA") || balance[0];
+	const initialOut =
+		balance.find((a) => a.asset.ticker === baseToken) || balance[1];
+	const {
+		topCardData,
+		bottomCardData,
+		swapState,
+		handleSwapDirection,
+		setInputAmount,
+		signAndSubmitSwap,
 		handleChangeTokenIn,
-		handleChangeTokenOut
-} = useSwapLogic({
-    initialTokenIn: initialIn,
-    initialTokenOut: initialOut,
-});
+		handleChangeTokenOut,
+	} = useSwapLogic({
+		initialTokenIn: initialIn,
+		initialTokenOut: initialOut,
+	});
 
 	const { usedAddress } = useWalletStore();
 
@@ -168,10 +203,9 @@ const {
 			setIsSubmitting(false);
 		}
 	};
-const handleTokenSelect = (token: MinswapBalanceItem) => {
-        // Chỉ gọi handler cho Token IN
-        handleChangeTokenIn(token); 
-    };
+	const handleTokenSelect = (token: MinswapBalanceItem) => {
+		handleChangeTokenIn(token);
+	};
 	return (
 		<div className="w-full relative mx-auto rounded-2xl shadow-2xl flex flex-col gap-y-5">
 			<div className="flex flex-col space-y-2">

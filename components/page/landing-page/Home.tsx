@@ -24,7 +24,6 @@ export default function Home({ partners = [] }: { partners?: Partner[] }) {
 			window.removeEventListener("resize", updateHeight);
 		};
 	}, []);
-	console.log("Partners:", partners);
 
 	return (
 		<section id="home" className="landing-section">

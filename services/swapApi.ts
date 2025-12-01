@@ -53,7 +53,7 @@ export const fetchEstimate = async (params: {
 };
 export const buildTransaction = async (params: { 
     sender: string, 
-    estimate: SwapQuote, 
+    estimate: SwapQuote & {amount: number , slippage: number}, 
     inputsToChoose: string[] 
 }): Promise<{ cbor: string }> => {
     
@@ -67,13 +67,31 @@ export const buildTransaction = async (params: {
         amount_in_decimal: true,
     };
     
-    const response = await api.post(`${MINSWAP_API_BASE}/build-tx`, requestBody);
-    
-    if (!response.data || !response.data.cbor) {
-        throw new Error('Lỗi xây dựng giao dịch từ Aggregator.');
+  try {
+        const response = await api.post(`${MINSWAP_API_BASE}/build-tx`, requestBody);
+        
+        // 1. Kiểm tra status HTTP (Axios thường ném lỗi nếu status >= 400)
+        // Nếu API Minswap trả về 200, nhưng data rỗng:
+        if (!response.data || typeof response.data !== 'object') {
+             throw new Error('Minswap trả về phản hồi rỗng hoặc không phải JSON.');
+        }
+
+        // 2. Kiểm tra trường CBOR:
+        if (!response.data.cbor) {
+             throw new Error('Lỗi xây dựng giao dịch: Thiếu trường CBOR.');
+        }
+        
+        return { cbor: response.data.cbor }; 
+
+    } catch (error: any) {
+        // Xử lý lỗi Axios (400/500)
+        const errorMessage = error.response?.data?.message || error.message || "Lỗi mạng hoặc server Aggregator.";
+        
+        // ⚠️ LOG LỖI RAW: Lỗi "Invalid character '"'" thường nằm ở đây
+        console.error("AXIOS BUILD-TX ERROR:", error.response?.data); 
+
+        throw new Error(`Build Tx thất bại: ${errorMessage}`);
     }
-    // Trả về CBOR hex string của unsigned transaction
-    return { cbor: response.data.cbor }; 
 };
 
 export const submitTransaction = async (
