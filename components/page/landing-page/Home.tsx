@@ -1,14 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Partner } from "@/types/partner";
+import { useIsMobile } from "@/src/components/hooks/useIsMobile";
 
 export default function Home({ partners = [] }: { partners?: Partner[] }) {
 	const wrapperRef = useRef<HTMLDivElement>(null);
 	const backgroundRef = useRef<HTMLDivElement>(null);
 	const [height, setHeight] = useState<number>(0);
-
+  const isMobile = useIsMobile()
 	useEffect(() => {
 		const updateHeight = () => {
 			if (wrapperRef.current && backgroundRef.current) {
@@ -24,8 +25,29 @@ export default function Home({ partners = [] }: { partners?: Partner[] }) {
 			window.removeEventListener("resize", updateHeight);
 		};
 	}, []);
-	console.log("Partners:", partners);
+	const scaledPartners = useMemo(() => {
+        const MIN_ITEMS = isMobile ? 1 : 10;
+        const currentCount = partners.length;
+        
+        if (currentCount >= MIN_ITEMS) {
+            return partners;
+        }
+        let scaledList: Partner[] = [...partners];
+        while (scaledList.length < MIN_ITEMS) {
+            const remaining = MIN_ITEMS - scaledList.length;
+            
+            const itemsToAppend = partners.slice(0, Math.min(remaining, currentCount));
+            
+            scaledList = scaledList.concat(itemsToAppend);
+            
+            if (currentCount > 0 && scaledList.length < MIN_ITEMS) {
+                 scaledList = scaledList.concat(partners);
+            }
+        }
+        
+        return scaledList.slice(0, MIN_ITEMS);
 
+    }, [partners]);
 	return (
 		<section id="home" className="landing-section">
 			{/* Home Background */}
@@ -77,12 +99,12 @@ export default function Home({ partners = [] }: { partners?: Partner[] }) {
 					{/* Backed by */}
 					{partners && partners.length > 0 && (
 						<div className="landing-brands-group">
-							<p className="landing-brands-label w-[166px] mobile:w-[120px]">
-								Backed by
-							</p>
-							<div className="">
-								{partners.map((p, i) => (
-									<div key={`partner-${i}-${p.name}`} className="landing-brand-logo">
+							<div className="landing-brands-label bg-linear-to-r from-[#0E0E0F] from-73% to-transparent font-semibold whitespace-nowrap w-full ">
+								<p className="lg:w-full w-max">Backed by</p>
+							</div>
+							<div className="landing-brands-track">
+								{scaledPartners.map((p, i) => (
+									<div key={`partner-${i}-${p.name}`} className="landing-brand-logo flex items-center">
 										<Image
 											src={p.logo}
 											alt={p.name}
@@ -92,21 +114,21 @@ export default function Home({ partners = [] }: { partners?: Partner[] }) {
 											style={{ objectFit: "contain" }}
 											unoptimized
 										/>
+										<p className="text-white text-3xl font-bold">{p.name}</p>
 									</div>
 								))}
 							</div>
 						</div>
 					)}
 
-					{/* Angel investors */}
 					{partners && partners.length > 0 && (
 						<div className="landing-brands-group">
-							<p className="landing-brands-label w-[292px] mobile:w-[200px]">
-								Angel investors form angel
-							</p>
-							<div className="">
-								{partners.map((p, i) => (
-									<div key={`partner-${i}-${p.name}`} className="landing-brand-logo">
+							<div className="landing-brands-label bg-linear-to-r from-[#0E0E0F] from-83% to-transparent font-semibold whitespace-nowrap w-full ">
+								<p className="w-full lg:w-full w-max">Angel investors form angel</p>
+							</div>
+							<div className="landing-brands-track">
+								{scaledPartners.map((p, i) => (
+									<div key={`partner-${i}-${p.name}`} className="landing-brand-logo flex items-center">
 										<Image
 											src={p.logo}
 											alt={p.name}
@@ -116,6 +138,7 @@ export default function Home({ partners = [] }: { partners?: Partner[] }) {
 											style={{ objectFit: "contain" }}
 											unoptimized
 										/>
+										<p className="text-white text-3xl font-bold">{p.name}</p>
 									</div>
 									))
 								}

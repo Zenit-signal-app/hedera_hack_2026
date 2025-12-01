@@ -454,7 +454,7 @@
 /* ==================== Brands Section ==================== */
 
 .landing-page-container .landing-brands {
-	@apply flex  flex-col items-center w-full p-10 pt-0 gap-12;
+	@apply flex  flex-col items-center w-full pt-0 gap-12;
 	margin: 0 auto;
 }
 
@@ -463,10 +463,10 @@
 }
 
 .landing-page-container .landing-brands-label {
-	@apply text-white text-sm font-medium text-center;
+	@apply text-white text-sm font-medium text-center lg:pl-5 pl-4 lg:pr-16 pr-6 py-4;
 	font-family: var(--font-quicksand), sans-serif;
-	font-style: normal;
 	letter-spacing: 0.1px;
+	z-index: 9999;
 }
 
 .landing-page-container .landing-brands-scroll {
@@ -693,9 +693,9 @@
 		@apply text-lg;
 	}
 
-	.landing-page-container .landing-brands {
+	/* .landing-page-container .landing-brands {
 		@apply px-8 py-12;
-	}
+	} */
 
 	.landing-page-container .landing-demo {
 		@apply px-8 pt-8 pb-[60px];
@@ -768,9 +768,9 @@
 		@apply text-base;
 	}
 
-	.landing-page-container .landing-brands {
+	/* .landing-page-container .landing-brands {
 		@apply px-6 py-10 gap-8;
-	}
+	} */
 
 	.landing-page-container .landing-brand-logo {
 		width: 150px;
@@ -941,10 +941,10 @@
 		height: auto;
 	}
 
-	/* Brands Section */
+	/* Brands Section
 	.landing-page-container .landing-brands {
 		@apply px-4 py-8 gap-6;
-	}
+	} */
 
 	.landing-page-container .landing-brands-label {
 		font-size: 12px;
