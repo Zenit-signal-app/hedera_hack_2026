@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Partner } from "@/types/partner";
 import { useIsMobile } from "@/src/components/hooks/useIsMobile";
+import Link from "next/link";
 
 export default function Home({ partners = [] }: { partners?: Partner[] }) {
 	const wrapperRef = useRef<HTMLDivElement>(null);
@@ -105,9 +106,11 @@ export default function Home({ partners = [] }: { partners?: Partner[] }) {
 							</div>
 							<div className="landing-brands-track">
 								{scaledPartners.map((p, i) => (
-									<div
+									<Link
 										key={`partner-${i}-${p.name}`}
 										className="landing-brand-logo flex items-center"
+										href={p.url}
+										target="_blank"
 									>
 										<Image
 											src={p.logo}
@@ -118,7 +121,7 @@ export default function Home({ partners = [] }: { partners?: Partner[] }) {
 											style={{ objectFit: "contain" }}
 											unoptimized
 										/>
-									</div>
+									</Link>
 								))}
 							</div>
 						</div>
