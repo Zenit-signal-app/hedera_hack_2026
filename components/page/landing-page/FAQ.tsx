@@ -5,8 +5,6 @@ import { useState } from "react";
 export default function FAQ() {
 	return (
 		<section id="faq" className="landing-section faq-section">
-			{/* Black Background */}
-			<div className="faq-background"></div>
 
 			<div className="landing-section-wrapper">
 				<div className="landing-section-content">

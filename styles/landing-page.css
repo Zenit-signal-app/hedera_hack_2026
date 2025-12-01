@@ -562,9 +562,6 @@
 
 /* ==================== AI Assistant Section ==================== */
 
-.landing-page-container .ai-assistant-section {
-	@apply bg-black;
-}
 
 .landing-page-container .ai-assistant-header {
 	@apply flex flex-col px-16 pt-20 pb-10 w-full;

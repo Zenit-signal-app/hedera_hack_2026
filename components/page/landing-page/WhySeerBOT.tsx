@@ -142,9 +142,6 @@ export default function WhySeerBOT({stats} : {stats: PlatformStatistics}) {
 			id="why-seerbot"
 			className="landing-section why-seerbot-section"
 		>
-			{/* Black Background */}
-			<div className="why-seerbot-background"></div>
-
 			<div className="landing-section-wrapper">
 				<div className="landing-section-content">
 					<h2 className="landing-section-title">Why SeerBOT</h2>

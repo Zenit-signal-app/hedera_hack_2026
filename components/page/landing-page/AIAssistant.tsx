@@ -28,7 +28,7 @@ const ACCORDION_ITEMS = {
 } as const;
 
 export default function AIAssistant() {
-	const [openAccordion, setOpenAccordion] = useState<string>(
+	const [openAccordion, setOpenAccordion] = useState<string>( 
 		ACCORDION_ITEMS.aiAsk.id
 	);
 
@@ -39,10 +39,8 @@ export default function AIAssistant() {
 	return (
 		<section
 			id="ai-assistant"
-			className="landing-section ai-assistant-section"
+			className="landing-section"
 		>
-			{/* Black Background */}
-			<div className="ai-assistant-background"></div>
 
 			{/* Content Wrapper */}
 			<div className="landing-section-wrapper">
