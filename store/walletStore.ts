@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { WalletApi, WalletInfo } from "../types/wallet";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { MinswapBalanceItem } from "@/types/minswap";
+
 interface WalletState {
 	isConnected: boolean;
 	activeWallet: WalletApi | null;
@@ -10,7 +12,7 @@ interface WalletState {
 	availableWallets: WalletInfo[];
 	networkId: number | null;
 	usedAddress: string | null;
-	balance: string | null;
+	balance: MinswapBalanceItem[];
 	isWalletInfoLoading: boolean;
 }
 interface WalletActions {
@@ -23,13 +25,12 @@ interface WalletActions {
 	setWalletInfo: (info: {
 		networkId: number | null;
 		usedAddress: string | null;
-		balance: string | null;
+		balance: MinswapBalanceItem[];
 	}) => void;
 	accessToken: string;
 	setAccessToken: (key: string) => void;
 }
-
-// 3. Tạo Store
+const initialBalance: MinswapBalanceItem[] = [];
 const initialState: Omit<WalletState, "availableWallets"> &
 	Pick<WalletActions, "accessToken"> = {
 	isConnected: false,
@@ -38,7 +39,7 @@ const initialState: Omit<WalletState, "availableWallets"> &
 	error: null,
 	networkId: null,
 	usedAddress: null,
-	balance: null,
+	balance:initialBalance,
 	isWalletInfoLoading: false,
 	accessToken: "",
 };

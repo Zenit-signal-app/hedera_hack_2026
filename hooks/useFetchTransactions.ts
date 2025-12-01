@@ -12,10 +12,10 @@ interface HookResult {
 	data: Transaction[];
 	isLoading: boolean;
 	pagination: {
-		pageIndex: number; // Tương đương với page - 1
-		pageSize: number; // Limit
+		pageIndex: number;
+		pageSize: number; 
 		totalPages: number;
-		totalRecords: number; // Total
+		totalRecords: number; 
 	};
 	setPageIndex: (page: number) => void;
 	setPageSize: (size: number) => void;
@@ -25,17 +25,15 @@ interface HookResult {
 export const useFetchTransactions = (): HookResult => {
 	const [data, setData] = useState<Transaction[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
-	const [pageIndex, setPageIndex] = useState(0); // 0-indexed page
+	const [pageIndex, setPageIndex] = useState(0);
 	const [pageSize, setPageSize] = useState(INITIAL_LIMIT);
 	const [totalRecords, setTotalRecords] = useState(0);
 	const [totalPages, setTotalPages] = useState(0);
 
-	// 1. Hàm chính để fetch dữ liệu
 	const fetchData = useCallback(
 		async (currentPage: number, currentLimit: number) => {
 			setIsLoading(true);
 			try {
-				// API yêu cầu page là 1-indexed, nên ta cộng 1
 				const params: PaginationParams = {
 					page: currentPage + 1,
 					limit: currentLimit,
@@ -56,24 +54,21 @@ export const useFetchTransactions = (): HookResult => {
 		[]
 	);
 
-	// 2. useEffect để kích hoạt fetch data khi params thay đổi
 	useEffect(() => {
 		fetchData(pageIndex, pageSize);
 	}, [pageIndex, pageSize, fetchData]);
 
-	// 3. Hàm refetch thủ công
 	const refetch = useCallback(() => {
 		fetchData(pageIndex, pageSize);
 	}, [pageIndex, pageSize, fetchData]);
 
-	// 4. Các hàm điều khiển pagination
 	const handleSetPageIndex = useCallback((page: number) => {
 		setPageIndex(page);
 	}, []);
 
 	const handleSetPageSize = useCallback((size: number) => {
 		setPageSize(size);
-		setPageIndex(0); // Reset về trang 1 khi thay đổi size
+		setPageIndex(0);
 	}, []);
 
 	return {

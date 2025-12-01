@@ -33,8 +33,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 
 
-ENV PORT 3000
+ENV PORT 3005
 
-EXPOSE 3000
+EXPOSE 3005
 
 CMD ["npm", "start"]

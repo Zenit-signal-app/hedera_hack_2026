@@ -99,7 +99,6 @@ export const TradingPairInfoComponent: React.FC = () => {
 	}${tokenInfoSocket?.change_24h?.toFixed(
 		5
 	)} (${tokenInfoSocket?.change_24h?.toFixed(2)}%)`;
-	console.log(tokenInfoSocket);
 
 	return (
 		<div>

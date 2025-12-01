@@ -46,7 +46,7 @@ export default async function LandingPage() {
 				<Home partners={partners}/>
 				<HowItWorks />
 				<AIAssistant />
-				<WhySeerBOT stats={statistics} />
+				<WhySeerBOT />
 				<FAQ />
 				<TradeSmarter />
 			</div>

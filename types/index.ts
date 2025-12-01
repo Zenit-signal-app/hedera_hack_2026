@@ -1,16 +1,14 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-declare module "@/public/static/charting_library" {
-  export type ResolutionString = string;
-  export type LanguageCode = string;
+import { Cardano } from "@cardano-sdk/core";
 
-  export interface ChartingLibraryWidgetOptions {
-    [key: string]: any;
-  }
+type SwapDirection = "sell" | "buy";
 
-  export const Datafeeds: any;
-  export const widget: any;
-
-  export default widget;
+export interface TokenData {
+	type: SwapDirection;
+	value: string;
+	usdValue: string;
+	token: string;
+	balance: string;
+	iconUrl: string;
 }
 
-
+export type Utxo = Cardano.Utxo;

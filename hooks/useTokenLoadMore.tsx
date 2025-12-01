@@ -17,8 +17,6 @@ export const useTokenLoadMore = (query?: string): TokenHookResult => {
 	// const [total, setTotal] = useState(0);
 	const [isLoading, setIsLoading] = useState(false);
 	const { updateListToken } = useTokenStore();
-	// const loadedCount = tokens.length + 10;
-	// const canLoadMore = !isLoading && loadedCount < total;
 
 	const fetchData = useCallback(
 		async (currentOffset: number) => {
@@ -34,10 +32,12 @@ export const useTokenLoadMore = (query?: string): TokenHookResult => {
 				});
 
 				setTokens((prev) =>
-					currentOffset === 0 ? data : [...prev, ...data]
+					currentOffset === 0
+						? data.tokens
+						: [...prev, ...data.tokens]
 				);
 
-				updateListToken(data);
+				updateListToken(data.tokens);
 				// setTotal(data.length + 5);
 
 				if (currentOffset !== 0) {

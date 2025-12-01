@@ -6,7 +6,6 @@ import { PromptSuggestions } from "./PromptSuggest";
 import { ChatInput } from "./ChatInput";
 import LoadingAI from "@/components/common/loading/loading_ai";
 
-// Định nghĩa kiểu dữ liệu cho một tin nhắn
 interface ChatMessage {
 	id: number;
 	text: string;
@@ -17,7 +16,6 @@ export default function AIChatPage() {
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 
-	// Giả định API Route để gọi AI Backend của bạn
 	const CHAT_API_ROUTE = "/api/chat-ai";
 
 	const handleSend = async (message: string) => {

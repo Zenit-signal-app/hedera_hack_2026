@@ -7,6 +7,7 @@ import { WalletInfo } from "@/types/wallet";
 import DirectIcon from "../icon/IconDirect";
 import Image from "next/image";
 import { useWalletStore } from "@/store/walletStore";
+import { SUPPORTED_WALLETS } from "@/lib/constant";
 
 type ModalState = "SELECT" | "CONNECTING" | "REJECTED";
 
@@ -55,13 +56,18 @@ const ModalConnectWallet: React.FC<ModalConnectWalletProps> = ({
 			case "SELECT":
 				return (
 					<div className="space-y-2 mt-4 max-h-96 overflow-y-auto">
-						{availableWallets.length > 0 ? (
-							availableWallets.map((wallet) => (
+						{SUPPORTED_WALLETS.map((wallet) => {
+							const isInstalled = availableWallets.some(
+								(installedWallet) =>
+									installedWallet.id === wallet.id
+							);
+							const isDisabled = isLoading || !isInstalled;
+							return (
 								<button
 									key={wallet.id}
 									onClick={() => handleWalletSelect(wallet)}
 									className="flex items-center bg-dark-gray-950 rounded-md justify-between w-full py-2.5 px-4 transition duration-150 text-white disabled:opacity-50"
-									disabled={isLoading}
+									disabled={isDisabled}
 								>
 									<div className="flex items-center">
 										<Image
@@ -80,13 +86,8 @@ const ModalConnectWallet: React.FC<ModalConnectWalletProps> = ({
 										size={20}
 									/>
 								</button>
-							))
-						) : (
-							<p className="text-gray-400 text-sm">
-								No Cardano wallet found. Please install a
-								wallet.
-							</p>
-						)}
+							);
+						})}
 					</div>
 				);
 
@@ -166,10 +167,8 @@ const ModalConnectWallet: React.FC<ModalConnectWalletProps> = ({
 			handleBack={(x: string) => setModalState(x)}
 			className=""
 		>
-			{/* Nội dung chính của Modal */}
 			{renderContent()}
 
-			{/* Nếu có lỗi chung không liên quan đến rejected */}
 			{error && modalState !== "REJECTED" && (
 				<p className="text-red-500 text-sm mt-3">{error}</p>
 			)}

@@ -19,3 +19,10 @@ export interface PaginationParams {
     page: number;
     limit: number;
 }
+
+export interface TopTrader {
+  rank: number;
+  user_id: string;
+  total_volume: number;
+  total_trades: number;
+}
