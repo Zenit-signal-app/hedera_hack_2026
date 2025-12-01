@@ -7,6 +7,7 @@ import WalletIcon from "../icon/Icon_ Wallet";
 import { useWalletStore } from "@/store/walletStore";
 import Drawer from "../common/drawer";
 import WalletPortfolio from "./WalletPortfolio";
+import { useIsMobile } from "@/src/components/hooks/useIsMobile";
 
 const WalletConnectButton: React.FC = () => {
 	const { disconnect } = useWalletConnect();
@@ -15,8 +16,9 @@ const WalletConnectButton: React.FC = () => {
 		useWalletStore();
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [open, setOpen] = useState(false);
+	const isMobile = useIsMobile()
 	const buttonText = useMemo(() => {
-		return isConnected
+		return isMobile ? null : isConnected
 			? isWalletInfoLoading
 				? "Đang tải thông tin..."
 				: `${usedAddress?.slice(0, 6)}...${usedAddress?.slice(-4)}`

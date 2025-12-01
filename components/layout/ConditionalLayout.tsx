@@ -12,10 +12,8 @@ export default async function ConditionalLayout({
 }: ConditionalLayoutProps) {
 	const headersList = await headers();
 	const pathname = headersList.get("x-pathname") || "";
-
+  
 	if (
-		pathname === "/landing-page" ||
-		pathname.startsWith("/landing-page") ||
 		pathname === "/"
 	) {
 		return <>{children}</>;
@@ -23,7 +21,7 @@ export default async function ConditionalLayout({
 
 	return (
 		<div className="flex bg-gray-950 font-museomoderno">
-			<div className="w-[18%] border-r-2 border-black flex flex-col">
+			<div className="lg:w-[18%] hidden border-r-2 border-black lg:flex flex-col">
 				<Navigator />
 			</div>
 			<div className="w-[82%] h-screen relative background-container">

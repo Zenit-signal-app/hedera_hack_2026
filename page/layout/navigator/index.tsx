@@ -9,6 +9,7 @@ import Image from "next/image";
 import { cn } from "@/lib/ultils";
 import AnalysisIcon1 from "@/components/icon/Icon_ Analysis-1";
 import Link from "next/link";
+import { useIsMobile } from "@/src/components/hooks/useIsMobile";
 
 const listNavigators = [
 	{
@@ -35,7 +36,10 @@ const listNavigators = [
 ];
 const Navigator = () => {
 	const pathname = usePathname();
-	return (
+	const isMobile = useIsMobile();
+	return isMobile ? <div>
+
+	</div>: (
 		<div className="flex h-screen flex-col gap-y-4 items-start py-4 px-3 bg-dark-gray-950">
 			<Link href="/">
 				<Image
