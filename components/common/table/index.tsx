@@ -34,7 +34,9 @@ type TProps<TData> = {
 	setPageIndex: (page: number) => void;
 	setPageSize: (page: number) => void;
 	variant?: TableVariant;
-	className?: string; // Thêm prop variant
+	className?: string;
+	rowClassName?: string | ((row: TData, index: number) => string); // Custom class cho row
+	showHeaderBorder?: boolean; // Hiển thị border giữa header và row, mặc định true
 };
 
 export function TableWrapper<TData>({
@@ -45,6 +47,8 @@ export function TableWrapper<TData>({
 	setPageIndex,
 	setPageSize,
 	className,
+	rowClassName,
+	showHeaderBorder = true, // Mặc định hiển thị border
 	variant = "default", // Giá trị mặc định là "default"
 }: TProps<TData>) {
 	const { pageIndex, pageSize, totalPages, totalRecords } = pagination;
@@ -75,14 +79,14 @@ export function TableWrapper<TData>({
 		? "rounded-lg  shadow-lg w-full"
 		: "w-full";
 	const tableHeaderClass = isDefaultVariant
-		? "bg-dark-gray-950 border-b text-white border-r border-dark-gray-700"
-		: "bg-transparent border-none";
+		? `bg-dark-gray-950 text-white border-r border-dark-gray-700 ${showHeaderBorder ? "border-b" : ""}`
+		: `bg-transparent ${showHeaderBorder ? "[&_tr]:border-b" : "[&_tr]:!border-none"}`;
 	const tableRowClass = isDefaultVariant
 		? "border-b border-dark-gray-700 transition-colors hover:bg-muted/50"
-		: "border-none hover:bg-gray-100/50";
+		: "!border-none hover:bg-gray-100/50";
 	const tableCellClass = isDefaultVariant
 		? "py-3 border-r border-dark-gray-700 border-b"
-		: "py-3 border-none";
+		: "py-3 !border-none first:rounded-l-lg last:rounded-r-lg";
 	const tableHeadClass = isDefaultVariant
 		? "text-white/80 border-r border-dark-gray-700"
 		: "border-none";
@@ -147,32 +151,39 @@ export function TableWrapper<TData>({
 								)
 							)
 						) : table.getRowModel().rows?.length ? (
-							table.getRowModel().rows.map((row, index) => (
-								<TableRow
-									key={row.id}
-									data-state={
-										row.getIsSelected() && "selected"
-									}
-									className={cn(
-										tableRowClass,
-										index % 2 === 0 && variant === "minimal"
-											? "bg-dark-gray-900"
-											: "bg-transparent"
-									)}
-								>
-									{row.getVisibleCells().map((cell) => (
-										<TableCell
-											key={cell.id}
-											className={tableCellClass}
-										>
-											{flexRender(
-												cell.column.columnDef.cell,
-												cell.getContext()
-											)}
-										</TableCell>
-									))}
-								</TableRow>
-							))
+							table.getRowModel().rows.map((row, index) => {
+								const customRowClass = typeof rowClassName === "function" 
+									? rowClassName(row.original, index)
+									: rowClassName || "";
+								
+								return (
+									<TableRow
+										key={row.id}
+										data-state={
+											row.getIsSelected() && "selected"
+										}
+										className={cn(
+											tableRowClass,
+											index % 2 === 0 && variant === "minimal"
+												? "bg-dark-gray-900"
+												: "bg-transparent",
+											customRowClass
+										)}
+									>
+										{row.getVisibleCells().map((cell) => (
+											<TableCell
+												key={cell.id}
+												className={tableCellClass}
+											>
+												{flexRender(
+													cell.column.columnDef.cell,
+													cell.getContext()
+												)}
+											</TableCell>
+										))}
+									</TableRow>
+								);
+							})
 						) : (
 							<TableRow>
 								<TableCell
