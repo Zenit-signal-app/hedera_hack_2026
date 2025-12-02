@@ -114,3 +114,21 @@ export function parseTokenPair(symbol: string): TType {
 
 	return { baseToken, quoteToken };
 }
+
+
+export const formatTokenAmount = (
+  rawAmount: string | number, 
+  decimals: number, 
+  displayDecimals: number = 6
+): string => {
+  if (!rawAmount) return "0";
+
+  const value = typeof rawAmount === 'string' ? parseFloat(rawAmount) : rawAmount;
+  
+  const realAmount = value / Math.pow(10, decimals);
+
+  return realAmount.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: displayDecimals,
+  });
+};

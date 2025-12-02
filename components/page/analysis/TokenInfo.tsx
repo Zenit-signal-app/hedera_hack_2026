@@ -11,6 +11,7 @@ import { useMarketStore } from "@/store/marketStore";
 import { useMarketSocket } from "@/hooks/useMarketSocket";
 import { formatNumber } from "@/lib/format";
 import dynamic from "next/dynamic";
+import { useSwapLogic } from "@/hooks/useSwapLogic";
 const AdvancedRealTimeChart = dynamic(
 	() =>
 		import("react-ts-tradingview-widgets").then(
@@ -81,9 +82,8 @@ const StatColumn: React.FC<StatColumnProps> = ({
 export const TradingPairInfoComponent: React.FC = () => {
 	const data = mockPairData;
 	const priceColorClass = data.isPriceUp ? "text-green-500" : "text-red-500";
-
 	const { token, listToken, quoteAsset } = useTokenStore();
-	
+
 	useMarketSocket(`${token.symbol}_${quoteAsset}`, "token_info");
 	useMarketSocket(`${token.symbol}_${quoteAsset}`, "ohlc");
 	const tokenInfo = useMemo(() => {

@@ -1,4 +1,5 @@
 import { SwapQuote } from "@/hooks/useSwapLogic";
+import { Utxo } from ".";
 
 export interface MinswapEstimate {
   amount: string; // Số lượng vào
@@ -9,24 +10,23 @@ export interface MinswapEstimate {
   exclude_protocols?: string[];
   allow_multi_hops?: boolean;
   partner?: string; // Tùy chọn
-  // ... có thể có các trường khác từ API Quote
 }
 
 export interface BuildTxBody {
     sender: string; 
     min_amount_out: string; 
-    estimate: SwapQuote; // ✨ Estimate là toàn bộ đối tượng SwapQuote
-    inputs_to_choose: string[]; 
+    estimate: SwapQuote;
+    inputs_to_choose: Utxo[]; 
     amount_in_decimal: boolean; 
 }
 
 
 export interface MinswapAssetDetails {
-    token_id: string; // PolicyID + AssetName Hex
-    logo: string;     // URL Logo
-    ticker: string;   // Ví dụ: MIN, SNEK
+    token_id: string;
+    logo: string;
+    ticker: string;
     is_verified: boolean;
-    price_by_ada: number; // Giá trị tính theo ADA
+    price_by_ada: number;
     project_name: string;
     decimals: number;
 }

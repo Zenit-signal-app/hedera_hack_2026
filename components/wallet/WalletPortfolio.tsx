@@ -5,31 +5,7 @@ import Image from "next/image";
 import { LogOut, Copy } from "lucide-react";
 import { formatWallet } from "@/lib/format";
 import { formatNumber } from "@/lib/format";
-
-interface Asset {
-	symbol: string;
-	name: string;
-	balance: number; // Số lượng token
-	usdValue: number; // Giá trị USD (đã tính toán)
-	iconUrl: string;
-}
-
-const mockWalletAssets: Asset[] = [
-	{
-		symbol: "ADA",
-		name: "Cardano",
-		balance: 26.908407,
-		usdValue: 10.397,
-		iconUrl: "/images/ada.png",
-	},
-	{
-		symbol: "SNEK",
-		name: "Snek",
-		balance: 587,
-		usdValue: 0.784,
-		iconUrl: "/images/snek.png",
-	},
-];
+import { formatTokenAmount } from "@/lib/ultils";
 
 
 
@@ -42,7 +18,6 @@ export const WalletPortfolio: React.FC< {handleClose: (o: boolean) =>void }> = (
 		isWalletInfoLoading,
 	} = useWalletStore();
 	const { disconnect } = useWalletConnect();
-
 	const displayAddress = usedAddress
 		? formatWallet(usedAddress, 6, 4)
 		: "Chưa kết nối";
@@ -137,7 +112,7 @@ export const WalletPortfolio: React.FC< {handleClose: (o: boolean) =>void }> = (
 
 							<div className="flex flex-col items-end">
 								<span className="text-white font-bold">
-									{asset.asset.ticker === "ADA" ? formatNumber(Number(asset.amount)/1000000, 4) :formatNumber(asset.amount, 4)}
+									{formatTokenAmount(asset.amount, asset.asset.decimals)}
 								</span>
 							</div>
 						</div>

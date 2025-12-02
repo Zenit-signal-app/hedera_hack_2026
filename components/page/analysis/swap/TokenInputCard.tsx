@@ -30,13 +30,11 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
 	onSelect,
 }) => {
 	const isSell = type === "sell";
-	const listToken = useWalletStore((state) => state.balance);
+	const listBalanceToken = useWalletStore((state) => state.balance);
 	const [open, setOpen] = useState(false);
-	const isSelectable = isSell;
-
 	const error = useMemo(() => {
-		const balanceToken = listToken.find(
-			(item) => item.asset.ticker.toUpperCase() === token.toUpperCase()
+		const balanceToken = listBalanceToken.find(
+			(item) => item.asset.ticker.toUpperCase() === token?.toUpperCase()
 		);
 
 		const valueToken =
@@ -45,7 +43,7 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
 				: Number(balanceToken?.amount);
 
 		return Number(value) > Number(valueToken) || balanceToken === undefined;
-	}, [value, token, listToken]);
+	}, [value, token, listBalanceToken]);
 
 	return (
 		<div
@@ -69,7 +67,7 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
 						placeholder="0"
 						disabled={!isSell || isLoading}
 					/>
-					{error ? (
+					{error && isSell ? (
 						<span className="text-red-600 font-semibold text-xs mt-2">
 							You do not have enough balance
 						</span>
@@ -97,7 +95,7 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
 						}
 					>
 						<div className="flex flex-col gap-y-2">
-							{listToken.map((item) => {
+							{listBalanceToken.map((item) => {
 								return (
 									<button
 										key={item.asset.token_id}
@@ -190,7 +188,7 @@ export const SwapInterface: React.FC = () => {
 
 			const transactionId = await signAndSubmitSwap();
 
-			setTxHash(transactionId || "");
+			setTxHash(transactionId?.tx_id || "");
 		} catch (error: any) {
 			console.error("Giao dịch Swap thất bại:", error);
 			alert(
@@ -252,15 +250,6 @@ export const SwapInterface: React.FC = () => {
 					"Swap"
 				)}
 			</button>
-
-			{swapState.error && (
-				<p className="text-red-500 text-sm">{swapState.error}</p>
-			)}
-			{txHash && (
-				<p className="text-green-500 text-sm">
-					TX Hash: {txHash.slice(0, 15)}...
-				</p>
-			)}
 		</div>
 	);
 };

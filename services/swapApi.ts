@@ -1,5 +1,6 @@
 import api from "@/axios/axiosInstance";
 import { SwapQuote } from "@/hooks/useSwapLogic";
+import { Utxo } from "@/types";
 import { BuildTxBody, MinswapBalanceItem, MinswapEstimate, MinswapTokensInfoResponse, MinswapWalletBalanceResponse } from "@/types/minswap";
 import { Cardano } from '@cardano-sdk/core';
 
@@ -54,7 +55,7 @@ export const fetchEstimate = async (params: {
 export const buildTransaction = async (params: { 
     sender: string, 
     estimate: SwapQuote & {amount: number , slippage: number}, 
-    inputsToChoose: string[] 
+    inputsToChoose: Utxo[] 
 }): Promise<{ cbor: string }> => {
     
     const minAmountOut = params.estimate.min_amount_out; 
@@ -69,14 +70,10 @@ export const buildTransaction = async (params: {
     
   try {
         const response = await api.post(`${MINSWAP_API_BASE}/build-tx`, requestBody);
-        
-        // 1. Kiểm tra status HTTP (Axios thường ném lỗi nếu status >= 400)
-        // Nếu API Minswap trả về 200, nhưng data rỗng:
+
         if (!response.data || typeof response.data !== 'object') {
              throw new Error('Minswap trả về phản hồi rỗng hoặc không phải JSON.');
         }
-
-        // 2. Kiểm tra trường CBOR:
         if (!response.data.cbor) {
              throw new Error('Lỗi xây dựng giao dịch: Thiếu trường CBOR.');
         }
@@ -84,15 +81,11 @@ export const buildTransaction = async (params: {
         return { cbor: response.data.cbor }; 
 
     } catch (error: any) {
-        // Xử lý lỗi Axios (400/500)
         const errorMessage = error.response?.data?.message || error.message || "Lỗi mạng hoặc server Aggregator.";
-        
-        // ⚠️ LOG LỖI RAW: Lỗi "Invalid character '"'" thường nằm ở đây
-        console.error("AXIOS BUILD-TX ERROR:", error.response?.data); 
 
         throw new Error(`Build Tx thất bại: ${errorMessage}`);
     }
-};
+}
 
 export const submitTransaction = async (
 	txHex: string,
@@ -146,9 +139,35 @@ type ParamsTokenInfo = {
 
 export const fetchMinswapTokenInfo = async (params : ParamsTokenInfo):Promise<MinswapTokensInfoResponse> => {
     const response = await api.post(`${MINSWAP_API_BASE}/tokens` , params)
-    if (!response.data || !response.data.balance) {
+    if (!response.data) {
         throw new Error('Không nhận được dữ liệu số dư hợp lệ từ Minswap.');
     }
     
     return response.data as MinswapTokensInfoResponse;
 }
+
+
+
+export const finalizeAndSubmitTransaction = async (
+  cbor: string,       // Unsigned Transaction Hex (từ bước Build)
+  witness_set: string // Chữ ký Hex (từ ví trả về)
+): Promise<{ tx_id: string }> => {
+
+  const response = await fetch(`${MINSWAP_API_BASE}/finalize-and-submit-tx`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      cbor: cbor,         // ⚠️ Phải khớp tên trường server yêu cầu
+      witness_set: witness_set 
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Submit Error:", errorText);
+    throw new Error(`Gửi giao dịch thất bại: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return { tx_id: data.tx_id };
+};
