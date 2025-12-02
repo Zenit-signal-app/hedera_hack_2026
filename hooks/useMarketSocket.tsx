@@ -4,7 +4,8 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useMarketStore } from "../store/marketStore";
-import { parseTokenPair } from "@/lib/ultils";
+import { parseTokenPair } from '../lib/ultils';
+
 
 const SOCKET_URL = "wss://api.seerbot.io/ws";
 

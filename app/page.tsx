@@ -40,7 +40,6 @@ export default async function LandingPage() {
 	} catch (err) {
 		console.error("Failed to load landing page content", err);
 	}
-	console.log("statistics", statistics);
 
 	return (
 		<div className="landing-page-container">

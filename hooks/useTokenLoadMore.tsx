@@ -7,65 +7,76 @@ const INITIAL_LIMIT = 10;
 interface TokenHookResult {
 	tokens: Token[];
 	isLoading: boolean;
-	// canLoadMore: boolean;
-	// loadMore: () => void;
+	canLoadMore: boolean;
+	loadMore: () => void;
 }
-
 export const useTokenLoadMore = (query?: string): TokenHookResult => {
-	const [tokens, setTokens] = useState<Token[]>([]);
-	const [offset, setOffset] = useState(0);
-	// const [total, setTotal] = useState(0);
-	const [isLoading, setIsLoading] = useState(false);
-	const { updateListToken } = useTokenStore();
+  const [tokens, setTokens] = useState<Token[]>([]);
+  const [offset, setOffset] = useState(0);
+  const [total, setTotal] = useState(0); // Tổng số bản ghi từ Server
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const { updateListToken } = useTokenStore();
 
-	const fetchData = useCallback(
-		async (currentOffset: number) => {
-			if (isLoading) return;
+  // 1. Tính toán logic canLoadMore
+  // Chỉ load tiếp khi chưa loading VÀ số lượng hiện tại nhỏ hơn tổng số
+  const canLoadMore = !isLoading && total > 0 && tokens.length < total;
 
-			setIsLoading(true);
+  const fetchData = useCallback(
+    async (currentOffset: number) => {
+      // Lưu ý: Không check isLoading ở đây để tránh dependency loop trong useCallback
+      // Việc check isLoading sẽ được thực hiện ở hàm gọi (loadMore) hoặc useEffect
+      
+      setIsLoading(true);
 
-			try {
-				const data = await getListToken({
-					query,
-					limit: INITIAL_LIMIT,
-					offset: currentOffset,
-				});
+      try {
+        const data = await getListToken({
+          query,
+          limit: INITIAL_LIMIT,
+          offset: currentOffset,
+        });
 
-				setTokens((prev) =>
-					currentOffset === 0
-						? data.tokens
-						: [...prev, ...data.tokens]
-				);
+        // Giả sử API trả về { tokens: Token[], total: number }
+        // Nếu API trả về tên khác (ví dụ totalRecords), hãy sửa lại ở đây
+        const newTokens = data.tokens || [];
+        const totalRecords = data.total || 0; 
 
-				updateListToken(data.tokens);
-				// setTotal(data.length + 5);
+        setTokens((prev) =>
+          currentOffset === 0 ? newTokens : [...prev, ...newTokens]
+        );
+        
+        // Cập nhật vào Store (Zustand)
+        updateListToken(newTokens);
 
-				if (currentOffset !== 0) {
-					setOffset(currentOffset + INITIAL_LIMIT);
-				} else {
-					setOffset(INITIAL_LIMIT);
-				}
-			} catch (e) {
-				console.error("Failed to fetch tokens", e);
-			} finally {
-				setIsLoading(false);
-			}
-		},
-		[query]
-	);
+        // Cập nhật tổng số bản ghi (QUAN TRỌNG để tính canLoadMore)
+        setTotal(totalRecords);
 
-	useEffect(() => {
-		setTokens([]);
-		setOffset(0);
-		// setTotal(0);
-		fetchData(0);
-	}, [query, fetchData]);
+        // Tính toán offset cho lần sau
+        setOffset(currentOffset + INITIAL_LIMIT);
 
-	// const loadMore = useCallback(() => {
-	// 	if (canLoadMore) {
-	// 		fetchData(offset);
-	// 	}
-	// }, [canLoadMore, offset, fetchData]);
+      } catch (e) {
+        console.error("Failed to fetch tokens", e);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [query, updateListToken] // Dependencies tối thiểu
+  );
 
-	return { tokens, isLoading };
+  // 2. Reset và Fetch lần đầu khi Query thay đổi
+  useEffect(() => {
+    setTokens([]);
+    setOffset(0);
+    setTotal(0);
+    // Gọi offset 0
+    fetchData(0);
+  }, [query, fetchData]);
+
+  const loadMore = useCallback(() => {
+    if (canLoadMore) {
+      fetchData(offset);
+    }
+  }, [canLoadMore, offset, fetchData]);
+
+  return { tokens, isLoading, canLoadMore, loadMore };
 };

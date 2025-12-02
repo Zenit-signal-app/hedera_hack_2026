@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { useTokenLoadMore } from "@/hooks/useTokenLoadMore";
 import { Loader2, Search } from "lucide-react";
@@ -16,13 +16,18 @@ const SCROLL_CONTAINER_ID = "token-list-scroll-container";
 export const TokenSelector: React.FC = () => {
 	const [isOpen, setIsOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
-	const [tab, setTab] = useState("usdt");
 	const { tokens, isLoading } = useTokenLoadMore(searchQuery);
-	const { handleSelectToken } = useTokenStore();
-	const handleToken = (token: Token) => {
-		setIsOpen(false);
-		handleSelectToken(`${token.symbol}_${tab}`);
-	};
+	const { handleSelectToken, handleSelectQuoteAsset, quoteAsset } =
+		useTokenStore();
+	const [tab, setTabs] = useState(quoteAsset);
+	const handleToken = useCallback(
+		(token: Token) => {
+			setIsOpen(false);
+			handleSelectToken(token);
+			handleSelectQuoteAsset(tab);
+		},
+		[tab]
+	);
 	return (
 		<PopoverWrapper
 			trigger={
@@ -44,13 +49,13 @@ export const TokenSelector: React.FC = () => {
 
 			<TabsWrapper
 				tabs={[
-					{ value: "usdt", label: "USDT" },
-					{ value: "ada", label: "ADA" },
+					{ value: "USDM", label: "USDM" },
+					{ value: "ADA", label: "ADA" },
 				]}
 				defaultValue={tab}
 				variant="underline"
 				className="text-sm py-1 px-0"
-				onValueChange={(tab) => setTab(tab)}
+				onValueChange={(tab) => setTabs(tab as "USDM" | "ADA")}
 			/>
 
 			<div id={SCROLL_CONTAINER_ID} className="max-h-60 overflow-y-auto">

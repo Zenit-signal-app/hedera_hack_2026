@@ -152,8 +152,8 @@ const sellTokenActualBalance = getBalanceByTicker(sellToken.asset.ticker, wallet
         }
     }, [
         swapState.inputAmount,
-        tokenIn, // Dependency quan trọng
-        tokenOut, // Dependency quan trọng
+        tokenIn,
+        tokenOut,
     ]);
 
 
@@ -165,20 +165,14 @@ const sellTokenActualBalance = getBalanceByTicker(sellToken.asset.ticker, wallet
 
     const handleSwapDirection = useCallback(() => {
         const tokenToMoveToSell = buyToken; 
-        
         const balanceCheck = getBalanceByTicker(tokenToMoveToSell.asset.ticker, walletBalance);
-
         if (balanceCheck <= 0) {
              console.warn(`Không thể hoán đổi: Số dư ${tokenToMoveToSell.asset.ticker} bằng 0.`);
              return; 
         }
-
-        // 2. CHẠY LOGIC HOÁN ĐỔI
         setTokenIn(tokenOut);
         setTokenOut(tokenIn);
         setDirection((prev) => (prev === "sell" ? "buy" : "sell")); 
-        
-        // 3. RESET STATE và RE-FETCH
         setSwapState((prev) => ({
             ...prev,
             inputAmount: "0",

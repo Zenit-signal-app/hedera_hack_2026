@@ -43,3 +43,8 @@ export interface MinswapWalletBalanceResponse {
     balance: MinswapBalanceItem[]; // Danh sách các token khác ADA
     amount_in_decimal: boolean;
 }
+
+export interface MinswapTokensInfoResponse {
+    tokens: MinswapAssetDetails[],
+    search_after: any[]
+}

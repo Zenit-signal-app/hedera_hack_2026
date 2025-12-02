@@ -1,6 +1,6 @@
 import api from "@/axios/axiosInstance";
 import { SwapQuote } from "@/hooks/useSwapLogic";
-import { BuildTxBody, MinswapBalanceItem, MinswapEstimate, MinswapWalletBalanceResponse } from "@/types/minswap";
+import { BuildTxBody, MinswapBalanceItem, MinswapEstimate, MinswapTokensInfoResponse, MinswapWalletBalanceResponse } from "@/types/minswap";
 import { Cardano } from '@cardano-sdk/core';
 
 const MINSWAP_API_BASE = "https://agg-api.minswap.org/aggregator";
@@ -137,3 +137,18 @@ export const fetchMinswapBalance = async (walletAddress: string): Promise<Minswa
     
     return nativeTokens
 };
+
+type ParamsTokenInfo = {
+    query: string,
+    only_verified: boolean,
+    assets: string[]
+}
+
+export const fetchMinswapTokenInfo = async (params : ParamsTokenInfo):Promise<MinswapTokensInfoResponse> => {
+    const response = await api.post(`${MINSWAP_API_BASE}/tokens` , params)
+    if (!response.data || !response.data.balance) {
+        throw new Error('Không nhận được dữ liệu số dư hợp lệ từ Minswap.');
+    }
+    
+    return response.data as MinswapTokensInfoResponse;
+}

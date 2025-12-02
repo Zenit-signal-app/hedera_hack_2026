@@ -46,7 +46,6 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
 
 		return Number(value) > Number(valueToken) || balanceToken === undefined;
 	}, [value, token, listToken]);
-	console.log(error);
 
 	return (
 		<div
@@ -149,13 +148,12 @@ type TokenSide = "IN" | "OUT" | null;
 export const SwapInterface: React.FC = () => {
 	const { balance } = useWalletStore();
 	const token = useTokenStore((state) => state.token);
-	const { baseToken } = parseTokenPair(token);
 
 	const [selectingSide, setSelectingSide] = useState<TokenSide>(null);
 	const initialIn =
 		balance.find((a) => a.asset.ticker === "ADA") || balance[0];
 	const initialOut =
-		balance.find((a) => a.asset.ticker === baseToken) || balance[1];
+		balance.find((a) => a.asset.ticker === token.symbol) || balance[1];
 	const {
 		topCardData,
 		bottomCardData,

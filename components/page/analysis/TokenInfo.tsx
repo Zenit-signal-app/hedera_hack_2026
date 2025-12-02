@@ -4,7 +4,7 @@ import PlayIcon from "@/components/icon/Icon_Play";
 import { getListToken } from "@/services/analysisServices";
 import { useTokenStore } from "@/store/tokenStore";
 import Image from "next/image";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TokenSelector } from "./TokenSelector";
 import { parseTokenPair } from "@/lib/ultils";
 import { useMarketStore } from "@/store/marketStore";
@@ -82,17 +82,21 @@ export const TradingPairInfoComponent: React.FC = () => {
 	const data = mockPairData;
 	const priceColorClass = data.isPriceUp ? "text-green-500" : "text-red-500";
 
-	const { token, listToken } = useTokenStore();
-	useMarketSocket(token, "token_info");
-	useMarketSocket(token, "ohlc");
-	const { baseToken, quoteToken } = parseTokenPair(token);
+	const { token, listToken, quoteAsset } = useTokenStore();
+	
+	useMarketSocket(`${token.symbol}_${quoteAsset}`, "token_info");
+	useMarketSocket(`${token.symbol}_${quoteAsset}`, "ohlc");
 	const tokenInfo = useMemo(() => {
-		const foundToken = listToken.find((item) => item?.symbol === baseToken);
+		const foundToken = listToken.find(
+			(item) => item?.symbol === token.symbol
+		);
 		return foundToken ?? listToken?.[0];
-	}, [baseToken, listToken]);
-	const ohlcToken = useMarketStore((state) => state.prices?.ohlc?.[token]);
+	}, [token.symbol, listToken]);
+	const ohlcToken = useMarketStore(
+		(state) => state.prices?.ohlc?.[token.symbol]
+	);
 	const tokenInfoSocket = useMarketStore(
-		(state) => state.prices.token_info?.[baseToken]
+		(state) => state.prices.token_info?.[token.symbol]
 	);
 	const priceChangeDisplay = `${
 		tokenInfoSocket?.change_24h > 0 ? "+" : ""
@@ -115,7 +119,7 @@ export const TradingPairInfoComponent: React.FC = () => {
 					<div className="flex items-start space-x-2 cursor-pointer">
 						<div className="flex flex-col">
 							<span className="text-white text-sm font-bold">
-								{baseToken}/{quoteToken}
+								{token.symbol}/{quoteAsset}
 							</span>
 							<span className="text-dark-gray-200 text-xs">
 								{tokenInfo?.name}
