@@ -67,10 +67,11 @@ export default function Home({ partners = [] }: { partners?: Partner[] }) {
 					<h1 className="landing-hero-title">
 						The next generation trading
 						<br />
-					platform on Cardano
+						platform on Cardano
 					</h1>
 					<p className="landing-hero-subtitle">
-						Analyze, manage, and grow your crypto balance — all in one secure platform
+						Analyze, manage, and grow your crypto balance — all in
+						one secure platform
 					</p>
 					<div className="landing-hero-actions justify-center">
 						<button className="landing-btn-primary">
@@ -115,9 +116,9 @@ export default function Home({ partners = [] }: { partners?: Partner[] }) {
 										<Image
 											src={p.logo}
 											alt={p.name}
-											width={134}
-											height={35}
-											className="w-[134px] h-[35px] mobile:!w-[100px] mobile:!h-[40px] object-contain"
+											width={200}
+											height={56}
+											className="lg:w-[200px] lg:h-14 w-[100px] h-[40px] object-contain"
 											style={{ objectFit: "contain" }}
 											unoptimized
 										/>
