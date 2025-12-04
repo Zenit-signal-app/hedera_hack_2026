@@ -12,3 +12,32 @@ export interface TokenData {
 }
 
 export type Utxo = Cardano.Utxo;
+
+
+export interface TradingPairTrend {
+  pair: string;       
+  confidence: number;  
+  price: number;      
+  change_24h: number; 
+  volume_24h: number;  
+}
+
+export type TimeFrame = '5m' | '30m' | '1h' | '4h' | '1d';
+
+export interface TrendPair {
+  pair: string;        
+  confidence: number; 
+  price: number;       
+  change_24h: number;  
+  volume_24h: number;  
+}
+
+export interface TrendAnalysisResponse {
+  uptrend: TrendPair[];
+  downtrend: TrendPair[];
+}
+
+export interface TrendAnalysisParams {
+  timeframe?: TimeFrame; 
+  limit?: number; 
+}

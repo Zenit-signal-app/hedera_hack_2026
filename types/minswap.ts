@@ -1,15 +1,35 @@
 import { SwapQuote } from "@/hooks/useSwapLogic";
 import { Utxo } from ".";
 
+export interface SwapPathStep {
+  pool_id: string;
+  protocol: string; // Ví dụ: "MinswapV2", "WingRiders", v.v.
+  lp_token: string;
+  token_in: string;
+  token_out: string;
+  amount_in: string;
+  amount_out: string;
+  min_amount_out: string;
+  lp_fee: string;
+  dex_fee: string;
+  deposits: string; // Phí đặt cọc (Lovelace)
+  price_impact: number; // Ví dụ: 0.1 (10%) hoặc 0.01 (1%)
+}
 export interface MinswapEstimate {
-  amount: string; // Số lượng vào
-  token_in: string; // Token ID vào
-  token_out: string; // Token ID ra
-  slippage: number; // Độ trượt giá (ví dụ: 0.01)
-  include_protocols?: string[]; // Ví dụ: ["MinswapV2"]
-  exclude_protocols?: string[];
-  allow_multi_hops?: boolean;
-  partner?: string; // Tùy chọn
+ token_in: string;
+  token_out: string;
+  amount_in: string;
+  amount_out: string;
+  min_amount_out: string;
+  total_lp_fee: string;
+  total_dex_fee: string;
+  deposits: string;
+  avg_price_impact: number;
+  paths: SwapPathStep[][]; 
+  
+  aggregator_fee: string;
+  aggregator_fee_percent: number;
+  amount_in_decimal: boolean;
 }
 
 export interface BuildTxBody {

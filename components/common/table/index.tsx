@@ -35,8 +35,9 @@ type TProps<TData> = {
 	setPageSize: (page: number) => void;
 	variant?: TableVariant;
 	className?: string;
-	rowClassName?: string | ((row: TData, index: number) => string); // Custom class cho row
-	showHeaderBorder?: boolean; // Hiển thị border giữa header và row, mặc định true
+	rowClassName?: string | ((row: TData, index: number) => string);
+	showHeaderBorder?: boolean;
+	showPagination?: boolean;
 };
 
 export function TableWrapper<TData>({
@@ -49,7 +50,8 @@ export function TableWrapper<TData>({
 	className,
 	rowClassName,
 	showHeaderBorder = true, // Mặc định hiển thị border
-	variant = "default", // Giá trị mặc định là "default"
+	variant = "default",
+	showPagination = true, // Giá trị mặc định là "default"
 }: TProps<TData>) {
 	const { pageIndex, pageSize, totalPages, totalRecords } = pagination;
 	const tableData = useMemo(() => data || ([] as TData[]), [data]);
@@ -79,8 +81,12 @@ export function TableWrapper<TData>({
 		? "rounded-lg  shadow-lg w-full"
 		: "w-full";
 	const tableHeaderClass = isDefaultVariant
-		? `bg-dark-gray-950 text-white border-r border-dark-gray-700 ${showHeaderBorder ? "border-b" : ""}`
-		: `bg-transparent ${showHeaderBorder ? "[&_tr]:border-b" : "[&_tr]:!border-none"}`;
+		? `bg-dark-gray-950 text-white border-r border-dark-gray-700 ${
+				showHeaderBorder ? "border-b" : ""
+		  }`
+		: `bg-transparent ${
+				showHeaderBorder ? "[&_tr]:border-b" : "[&_tr]:!border-none"
+		  }`;
 	const tableRowClass = isDefaultVariant
 		? "border-b border-dark-gray-700 transition-colors hover:bg-muted/50"
 		: "!border-none hover:bg-gray-100/50";
@@ -152,10 +158,11 @@ export function TableWrapper<TData>({
 							)
 						) : table.getRowModel().rows?.length ? (
 							table.getRowModel().rows.map((row, index) => {
-								const customRowClass = typeof rowClassName === "function" 
-									? rowClassName(row.original, index)
-									: rowClassName || "";
-								
+								const customRowClass =
+									typeof rowClassName === "function"
+										? rowClassName(row.original, index)
+										: rowClassName || "";
+
 								return (
 									<TableRow
 										key={row.id}
@@ -164,7 +171,8 @@ export function TableWrapper<TData>({
 										}
 										className={cn(
 											tableRowClass,
-											index % 2 === 0 && variant === "minimal"
+											index % 2 === 0 &&
+												variant === "minimal"
 												? "bg-dark-gray-900"
 												: "bg-transparent",
 											customRowClass
@@ -198,14 +206,16 @@ export function TableWrapper<TData>({
 				</Table>
 			</div>
 
-			<ServerPagination
-				pageIndex={pageIndex}
-				pageSize={pageSize}
-				totalPages={totalPages}
-				totalRecords={totalRecords}
-				setPageIndex={setPageIndex}
-				setPageSize={setPageSize}
-			/>
+			{showPagination ? (
+				<ServerPagination
+					pageIndex={pageIndex}
+					pageSize={pageSize}
+					totalPages={totalPages}
+					totalRecords={totalRecords}
+					setPageIndex={setPageIndex}
+					setPageSize={setPageSize}
+				/>
+			) : null}
 		</div>
 	);
 }

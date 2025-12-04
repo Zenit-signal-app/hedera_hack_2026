@@ -67,7 +67,7 @@ export default function AIChatPage() {
 	};
 
 	return (
-		<div className="w-full py-6 lg:px-[217px] px-6 h-screen flex flex-col justify-between">
+		<div className="w-full lg:static relative py-6 lg:px-[217px] px-6 h-screen flex flex-col justify-between">
 			<div className="flex flex-col items-center flex-1 justify-center">
 				{messages.length === 0 ? (
 					<PromptSuggestions onSelectPrompt={handleSelectPrompt} />

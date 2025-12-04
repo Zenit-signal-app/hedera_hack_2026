@@ -112,7 +112,7 @@ export const useSwapLogic = ({
 	const [direction, setDirection] = useState<SwapDirection>("sell");
 	const token = useTokenStore((state) => state.token);
 	const [swapState, setSwapState] = useState<SwapState>({
-		inputAmount: "0",
+		inputAmount: "",
 		quote: null,
 		isQuoteLoading: false,
 		error: null,
@@ -124,6 +124,9 @@ export const useSwapLogic = ({
 	const [tokenOut, setTokenOut] = useState<MinswapBalanceItem>(
 		initialTokenOut || FALLBACK_USDM
 	);
+    const handleSetEstimateDetail = useTokenStore((state) => state.handleSetEstimateDetail)
+
+
 
 	const sellToken = direction === "sell" ? tokenIn : tokenOut;
 	const buyToken = direction === "sell" ? tokenOut : tokenIn;
@@ -150,6 +153,7 @@ export const useSwapLogic = ({
                 slippage: SLIPPAGE_RATE,
             });
             setSwapState((prev) => ({ ...prev, quote: estimateResult }));
+            handleSetEstimateDetail(estimateResult)
         } catch (e: any) {
             setSwapState((prev) => ({
                 ...prev,
@@ -201,24 +205,21 @@ export const useSwapLogic = ({
 		setTokenOut(token);
 		setSwapState((prev) => ({ ...prev, quote: null, inputAmount: "0" }));
 	}, []);
-	const handleSwapDirection = useCallback(() => {
-		const tokenToMoveToSell = buyToken;
-		const balanceCheck = getBalanceByTicker(
-			tokenToMoveToSell.asset.ticker,
-			walletBalance
-		);
-		if (Number(balanceCheck) <= 0) {
-			return;
-		}
-		setTokenIn(tokenOut);
-		setTokenOut(tokenIn);
-		setDirection((prev) => (prev === "sell" ? "buy" : "sell"));
-		setSwapState((prev) => ({
-			...prev,
-			inputAmount: "0",
-			quote: null,
-		}));
-	}, [tokenIn, tokenOut, buyToken.asset?.ticker, walletBalance]);
+const handleSwapDirection = useCallback(() => {
+        const currentIn = tokenIn;
+        const currentOut = tokenOut;
+
+        setTokenIn(currentOut);
+        setTokenOut(currentIn);
+        
+        setSwapState((prev) => ({
+            ...prev,
+            inputAmount: "0", 
+            quote: null,     
+        }));
+        
+        
+    }, [tokenIn, tokenOut, buyToken, walletBalance]);
 
 	const SLIPPAGE_RATE = 0.005;
 
@@ -285,8 +286,6 @@ export const useSwapLogic = ({
 		}),
 		[swapState.inputAmount, sellToken, sellTokenActualBalance]
 	);
-   console.log(topCardData);
-   
 	const bottomCardData = useMemo(
 		() => ({
 			type: "Buy",

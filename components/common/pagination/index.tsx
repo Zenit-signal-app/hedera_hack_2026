@@ -35,15 +35,7 @@ export function ServerPagination({
 	const pageOptions = [10, 20, 30, 50, 100];
 
 	return (
-		<div className="flex items-center justify-between px-2 py-3 bg-card rounded-b-lg">
-			<div className="flex items-center justify-center text-sm font-medium">
-				Page {pageIndex + 1}/ {totalPages}
-				<span className="ml-2 text-muted-foreground">
-					(Total: {totalRecords} bản ghi)
-				</span>
-			</div>
-
-			{/* Các nút điều hướng */}
+		<div className="flex items-center justify-end px-2 py-3 bg-card rounded-b-lg">
 			<div className="flex items-center space-x-2">
 				<Button
 					variant="default"

@@ -3,7 +3,7 @@ import InfiniteScroll from "react-infinite-scroll-component";
 import { useTokenLoadMore } from "@/hooks/useTokenLoadMore";
 import { Loader2, Search } from "lucide-react";
 import { Token } from "@/services/analysisServices";
-import PopoverWrapper from "@/components/common/popover";
+import {PopoverWrapper} from "@/components/common/popover";
 import ChevronDownMini from "@/components/icon/Icon_ChevronDownMini";
 import Image from "next/image";
 import Input from "@/components/common/input";

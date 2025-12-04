@@ -1,17 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Input from "@/components/common/input";
-import SwapIcon from "@/components/icon/Icon_Swap";
 import ChevronDownMini from "@/components/icon/Icon_ChevronDownMini";
-import { TransactionDetails } from "./TransactionDetail";
-import { Loader2 } from "lucide-react";
-import { useSwapLogic } from "@/hooks/useSwapLogic";
 import { useWalletStore } from "@/store/walletStore";
 import { TokenData } from "@/types";
-import PopoverWrapper from "@/components/common/popover";
+import {PopoverWrapper} from "@/components/common/popover";
 import { MinswapBalanceItem } from "@/types/minswap";
-import { useTokenStore } from "@/store/tokenStore";
-import { parseTokenPair } from "@/lib/ultils";
+
 interface TokenInputCardProps extends TokenData {
 	onAmountChange: (value: string) => void;
 	isLoading: boolean;
@@ -21,7 +16,6 @@ interface TokenInputCardProps extends TokenData {
 const TokenInputCard: React.FC<TokenInputCardProps> = ({
 	type,
 	value,
-	usdValue,
 	token,
 	balance,
 	iconUrl,
@@ -67,11 +61,6 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
 						placeholder="0"
 						disabled={!isSell || isLoading}
 					/>
-					{error && isSell ? (
-						<span className="text-red-600 font-semibold text-xs mt-2">
-							You do not have enough balance
-						</span>
-					) : null}
 				</div>
 				{isSell ? (
 					<PopoverWrapper
@@ -141,115 +130,5 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
 		</div>
 	);
 };
-type TokenSide = "IN" | "OUT" | null;
 
-export const SwapInterface: React.FC = () => {
-	const { balance } = useWalletStore();
-	const token = useTokenStore((state) => state.token);
-
-	const [selectingSide, setSelectingSide] = useState<TokenSide>(null);
-	const initialIn =
-		balance.find((a) => a.asset.ticker === "ADA") || balance[0];
-	const initialOut =
-		balance.find((a) => a.asset.ticker === token.symbol) || balance[1];
-	const {
-		topCardData,
-		bottomCardData,
-		swapState,
-		handleSwapDirection,
-		setInputAmount,
-		signAndSubmitSwap,
-		handleChangeTokenIn,
-		handleChangeTokenOut,
-	} = useSwapLogic({
-		initialTokenIn: initialIn,
-		initialTokenOut: initialOut,
-	});
-
-	const { usedAddress } = useWalletStore();
-
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [txHash, setTxHash] = useState<string | null>(null);
-
-	const isQuoteLoading = swapState.isQuoteLoading;
-	const isReadyToSwap =
-		parseFloat(topCardData.value) > 0 && !!swapState.quote;
-
-	const handleSwapSubmit = async () => {
-		if (!isReadyToSwap || isSubmitting) return;
-		if (!usedAddress || !swapState.quote) return; // Kiểm tra ví và quote lần cuối
-
-		setIsSubmitting(true);
-		setTxHash(null);
-
-		try {
-			const currentQuote = swapState.quote;
-			const amountIn = topCardData.value;
-
-			const transactionId = await signAndSubmitSwap();
-
-			setTxHash(transactionId?.tx_id || "");
-		} catch (error: any) {
-			console.error("Giao dịch Swap thất bại:", error);
-			alert(
-				error.message ||
-					"Giao dịch thất bại. Vui lòng kiểm tra lại phí hoặc lỗi từ ví."
-			);
-		} finally {
-			setIsSubmitting(false);
-		}
-	};
-	const handleTokenSelect = (token: MinswapBalanceItem) => {
-		handleChangeTokenIn(token);
-	};
-	return (
-		<div className="w-full relative mx-auto rounded-2xl shadow-2xl flex flex-col gap-y-5">
-			<div className="flex flex-col space-y-2">
-				{/* Card Sell */}
-				<TokenInputCard
-					{...topCardData}
-					onAmountChange={setInputAmount}
-					isLoading={isQuoteLoading}
-					onSelect={(token) => handleTokenSelect(token)}
-					type="sell"
-				/>
-
-				{/* Nút Swap Direction */}
-				<div className="relative z-10">
-					<button
-						onClick={handleSwapDirection}
-						disabled={isQuoteLoading}
-						className="w-8 h-8 rounded-full left-1/2 -ml-4 -top-3.5 absolute bg-purple-700 hover:bg-purple-800 transition-colors text-white flex items-center justify-center border-4 border-[#0a0a1a]"
-						aria-label="Swap tokens"
-					>
-						<SwapIcon className="w-5 h-5" />
-					</button>
-				</div>
-
-				{/* Card Buy */}
-				<TokenInputCard
-					{...bottomCardData}
-					onAmountChange={() => {}}
-					isLoading={isQuoteLoading}
-					type="buy"
-				/>
-			</div>
-			<TransactionDetails />
-			<button
-				onClick={handleSwapSubmit}
-				disabled={!isReadyToSwap || isSubmitting}
-				className={`w-full py-3 text-lg font-bold text-white rounded-lg transition-colors ${
-					!isReadyToSwap || isSubmitting
-						? "bg-gray-600 cursor-not-allowed"
-						: "bg-primary-700 hover:shadow-md hover:shadow-primary-800"
-				}`}
-			>
-				{isSubmitting ? (
-					<Loader2 className="w-6 h-6 mx-auto animate-spin" />
-				) : (
-					"Swap"
-				)}
-			</button>
-		</div>
-	);
-};
+export default TokenInputCard;

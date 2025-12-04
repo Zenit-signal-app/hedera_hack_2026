@@ -1,4 +1,5 @@
 import api from "@/axios/axiosInstance";
+import { TrendAnalysisParams, TrendAnalysisResponse } from "@/types";
 import { ApiResponse, PaginationParams, TopTrader } from "@/types/transaction";
 
 const BASE_ANALYSIS_API = "/analysis/tokens";
@@ -58,4 +59,20 @@ export const fetchTopTraders = async (
 		console.error("Lỗi khi gọi API Transactions:", error);
 		throw error;
 	}
+};
+
+export const getTrendAnalysisServer = async (timeframe: string = '1d'): Promise<TrendAnalysisResponse> => {
+  const res = await fetch(`https://api.seerbot.io/analysis/trend?timeframe=${timeframe}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    next: { revalidate: 60 }
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch trends');
+  }
+
+  return res.json();
 };

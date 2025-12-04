@@ -12,6 +12,7 @@ import { useMarketSocket } from "@/hooks/useMarketSocket";
 import { formatNumber } from "@/lib/format";
 import dynamic from "next/dynamic";
 import { useSwapLogic } from "@/hooks/useSwapLogic";
+import { useIsMobile } from "@/src/components/hooks/useIsMobile";
 const AdvancedRealTimeChart = dynamic(
 	() =>
 		import("react-ts-tradingview-widgets").then(
@@ -73,7 +74,7 @@ const StatColumn: React.FC<StatColumnProps> = ({
 	value,
 	valueClassName = "text-white",
 }) => (
-	<div className="flex flex-col text-right items-end mr-6">
+	<div className="flex flex-col text-right lg:items-end items-start mr-6">
 		<span className="text-dark-gray-200 text-xs">{label}</span>
 		<span className={`text-xs font-medium ${valueClassName}`}>{value}</span>
 	</div>
@@ -83,7 +84,7 @@ export const TradingPairInfoComponent: React.FC = () => {
 	const data = mockPairData;
 	const priceColorClass = data.isPriceUp ? "text-green-500" : "text-red-500";
 	const { token, listToken, quoteAsset } = useTokenStore();
-
+	const isMobile = useIsMobile();
 	useMarketSocket(`${token.symbol}_${quoteAsset}`, "token_info");
 	useMarketSocket(`${token.symbol}_${quoteAsset}`, "ohlc");
 	const tokenInfo = useMemo(() => {
@@ -106,29 +107,31 @@ export const TradingPairInfoComponent: React.FC = () => {
 
 	return (
 		<div>
-			<div className="w-full p-3 flex gap-x-4 items-start text-white font-sans">
-				<div className="flex items-center gap-x-4 flex-1">
-					<Image
-						src={tokenInfo?.logo_url || "/images/snek.png"}
-						alt={tokenInfo?.name || "Snek"}
-						className="w-10 h-10 rounded-full"
-						width={40}
-						height={40}
-					/>
+			<div className="w-full lg:p-3 flex gap-x-4 gap-y-3 items-start text-white lg:flex-row flex-col  font-sans">
+				<div className="flex lg:items-center items-start lg:flex-row flex-col gap-y-3 gap-x-4 flex-1 w-full">
+					<div className="flex items-center gap-x-2">
+						<Image
+							src={tokenInfo?.logo_url || "/images/snek.png"}
+							alt={tokenInfo?.name || "Snek"}
+							className="w-10 h-10 rounded-full"
+							width={40}
+							height={40}
+						/>
 
-					<div className="flex items-start space-x-2 cursor-pointer">
-						<div className="flex flex-col">
-							<span className="text-white text-sm font-bold">
-								{token.symbol}/{quoteAsset}
-							</span>
-							<span className="text-dark-gray-200 text-xs">
-								{tokenInfo?.name}
-							</span>
+						<div className="flex items-start space-x-2 cursor-pointer">
+							<div className="flex flex-col">
+								<span className="text-white text-sm font-bold">
+									{token.symbol}/{quoteAsset}
+								</span>
+								<span className="text-dark-gray-200 text-xs">
+									{tokenInfo?.name}
+								</span>
+							</div>
+							<TokenSelector />
 						</div>
-						<TokenSelector />
 					</div>
-					<div className="flex items-center space-x-8">
-						<div className="flex flex-col items-start">
+					<div className="lg:flex grid grid-cols-2 gap-2 lg:items-center items-start space-x-8 w-full">
+						<div className="flex flex-col items-start col-span-1">
 							<span
 								className={`text-sm font-bold ${priceColorClass}`}
 							>
@@ -142,21 +145,19 @@ export const TradingPairInfoComponent: React.FC = () => {
 								)}
 							</span>
 						</div>
-						<div className="flex space-x-4">
-							<StatColumn
-								label="24H Change"
-								value={priceChangeDisplay}
-								valueClassName={priceColorClass}
-							/>
-							<StatColumn
-								label="24H Low"
-								value={formatNumber(ohlcToken?.low)}
-							/>
-							<StatColumn
-								label={`24H Vol(USDT)`}
-								value={formatNumber(ohlcToken?.volume)}
-							/>
-						</div>
+						<StatColumn
+							label="24H Change"
+							value={priceChangeDisplay}
+							valueClassName={priceColorClass}
+						/>
+						<StatColumn
+							label="24H Low"
+							value={formatNumber(ohlcToken?.low)}
+						/>
+						<StatColumn
+							label={`24H Vol(USDT)`}
+							value={formatNumber(ohlcToken?.volume)}
+						/>
 					</div>
 				</div>
 
@@ -171,12 +172,14 @@ export const TradingPairInfoComponent: React.FC = () => {
 					</div>
 				</div>
 			</div>
-			<AdvancedRealTimeChart
-				theme="dark"
-				height={470}
-				width={"100%"}
-				symbol="BITGET:SNEKUSDT"
-			></AdvancedRealTimeChart>
+			{isMobile ? null : (
+				<AdvancedRealTimeChart
+					theme="dark"
+					height={470}
+					width={"100%"}
+					symbol="BITGET:SNEKUSDT"
+				></AdvancedRealTimeChart>
+			)}
 		</div>
 	);
 };

@@ -9,101 +9,19 @@ import GrowUpIcon from "@/components/icon/Icon_GrowUp";
 import { formatNumber } from "@/lib/format";
 import GrowDownIcon from "@/components/icon/Icon_GrowDown";
 import { TableWrapper } from "@/components/common/table";
-type TData = {
-	assetInfo: {
-		assetName: string;
-		assetPrefix: string;
-		avatar: string;
-	};
-	isFavorites: boolean;
-	marketCap: number;
-	lastPrice: number;
-	volumeChangePercent: number;
-};
+import { TradingPairTrend } from "@/types";
+
 
 type TProps = {
-	data?: TData[];
+	data: TradingPairTrend[];
 	type: "UP" | "DOWN";
 };
-export const mockMarketData: TData[] = [
-	{
-		assetInfo: {
-			assetName: "Bitcoin",
-			assetPrefix: "BTC",
-			avatar: "/icons/btc.png",
-		},
-		isFavorites: true,
-		marketCap: 1300000000000, // 1.3 nghìn tỷ USD
-		lastPrice: 65000.55,
-		volumeChangePercent: 2.56, // Tăng 2.56%
-	},
-	{
-		assetInfo: {
-			assetName: "Ethereum",
-			assetPrefix: "ETH",
-			avatar: "/icons/eth.png",
-		},
-		isFavorites: false,
-		marketCap: 500000000000, // 500 tỷ USD
-		lastPrice: 3800.72,
-		volumeChangePercent: -1.15, // Giảm 1.15%
-	},
-	{
-		assetInfo: {
-			assetName: "Cardano",
-			assetPrefix: "ADA",
-			avatar: "/icons/ada.png",
-		},
-		isFavorites: true,
-		marketCap: 15000000000, // 15 tỷ USD
-		lastPrice: 0.4501,
-		volumeChangePercent: 5.92, // Tăng 5.92%
-	},
-	{
-		assetInfo: {
-			assetName: "Solana",
-			assetPrefix: "SOL",
-			avatar: "/icons/sol.png",
-		},
-		isFavorites: false,
-		marketCap: 60000000000, // 60 tỷ USD
-		lastPrice: 125.8,
-		volumeChangePercent: 0.05, // Tăng 0.05%
-	},
-	{
-		assetInfo: {
-			assetName: "Tether USD",
-			assetPrefix: "USDT",
-			avatar: "/icons/usdt.png",
-		},
-		isFavorites: false,
-		marketCap: 110000000000, // 110 tỷ USD
-		lastPrice: 1.0001,
-		volumeChangePercent: -0.01, // Giảm 0.01%
-	},
-];
-const TableStatisticTrend = ({ data = mockMarketData, type }: TProps) => {
+
+const TableStatisticTrend = ({ data, type }: TProps) => {
 	const [page, setPage] = useState(0);
 	const [isLoading, setIsLoading] = useState(false);
-	const columns: ColumnDef<TData, any>[] = useMemo(
+	const columns: ColumnDef<TradingPairTrend, any>[] = useMemo(
 		() => [
-			{
-				accessorKey: "isFavorites",
-				header: "",
-				cell: ({ row }) => (
-					<div className="font-medium text-dark-gray-200">
-						{row.original.isFavorites ? (
-							<StarIcon
-								color="var(--color-orange-400)"
-								fill="var(--color-orange-400)"
-								size={18}
-							/>
-						) : null}
-					</div>
-				),
-				enableSorting: true,
-				enableColumnFilter: true,
-			},
 			{
 				accessorKey: "token",
 				header: () => (
@@ -114,15 +32,14 @@ const TableStatisticTrend = ({ data = mockMarketData, type }: TProps) => {
 				cell: ({ row }) => {
 					return (
 						<div className="flex items-center text-sm text-white gap-x-1">
-							<Image
-								src={row.original.assetInfo.avatar}
+							{/* <Image
+								src={row.original.pair}
 								width={18}
 								height={18}
 								alt="Top Trader Icon"
-							/>{" "}
+							/>{" "} */}
 							<span className="flex items-center">
-								{row.original.assetInfo.assetName}/
-								{row.original.assetInfo.assetPrefix}
+								{row.original.pair}
 							</span>
 						</div>
 					);
@@ -131,24 +48,24 @@ const TableStatisticTrend = ({ data = mockMarketData, type }: TProps) => {
 				enableColumnFilter: true,
 			},
 			{
-				accessorKey: "marketCap",
+				accessorKey: "confidence",
 				header: () => {
 					return (
-						<div className="flex items-center justify-between text-dark-gray-200">
-							Market Cap
+						<div className="flex items-center justify-between text-dark-gray-200 capitalize">
+							confidence
 						</div>
 					);
 				},
 				cell: ({ row }) => (
 					<div className="text-white text-sm font-semibold">
-						${formatNumber(row.original.marketCap)}
+						${formatNumber(row.original.confidence)}
 					</div>
 				),
 				enableSorting: true,
 				enableColumnFilter: true,
 			},
 			{
-				accessorKey: "lastPrice",
+				accessorKey: "number",
 				header: () => {
 					return (
 						<div className="flex items-center justify-between text-dark-gray-200">
@@ -158,14 +75,14 @@ const TableStatisticTrend = ({ data = mockMarketData, type }: TProps) => {
 				},
 				cell: ({ row }) => (
 					<div className="text-white text-sm font-semibold">
-						{row.original.lastPrice}
+						{row.original.price}
 					</div>
 				),
 				enableSorting: true,
 				enableColumnFilter: true,
 			},
 			{
-				accessorKey: "volume24h",
+				accessorKey: "volume_24h",
 				header: () => {
 					return (
 						<div className="flex items-center justify-between text-dark-gray-200">
@@ -175,16 +92,16 @@ const TableStatisticTrend = ({ data = mockMarketData, type }: TProps) => {
 				},
 				cell: ({ row }) => (
 					<div className="text-white text-sm">
-						{row.original.volumeChangePercent > 0 ? (
+						{row.original.change_24h > 0 ? (
 							<div className="text-green-500 flex items-center gap-x-1">
 								<GrowUpIcon />{" "}
-								{formatNumber(row.original.volumeChangePercent)}
+								{formatNumber(row.original.change_24h)}
 								%
 							</div>
 						) : (
 							<div className="text-red-600  flex items-center gap-x-1">
 								<GrowDownIcon />
-								{formatNumber(row.original.volumeChangePercent)}
+								{formatNumber(row.original.change_24h)}
 							</div>
 						)}
 					</div>
@@ -214,6 +131,7 @@ const TableStatisticTrend = ({ data = mockMarketData, type }: TProps) => {
 				setPageIndex={(page) => setPage(page)}
 				setPageSize={(page) => {}}
 				className="bg-[url(/images/image.png)] bg-cover bg-center bg-no-repeat rounded-md"
+				showPagination={false}
 			/>
 		</div>
 	);
