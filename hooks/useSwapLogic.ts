@@ -10,6 +10,7 @@ import {
 	fetchEstimate,
 	finalizeAndSubmitTransaction,
 	fetchMinswapTokenInfo,
+	submitTransaction,
 } from "@/services/swapApi";
 import { formatNumber } from "@/lib/format";
 import { TokenData } from "@/types";
@@ -17,6 +18,7 @@ import { convertUtxosToHex, formatTokenAmount } from "@/lib/ultils";
 import { MinswapBalanceItem } from "@/types/minswap";
 import { Cardano } from "@cardano-sdk/core";
 import { useTokenStore } from "@/store/tokenStore";
+import api from "@/axios/axiosInstance";
 
 export interface SwapPathDetail {
 	pool_id: string;
@@ -194,11 +196,15 @@ export const useSwapLogic = () => {
 
 				if (res) {
 					const amount = walletBalance.find(
-						(item) => item.asset.token_id === res?.tokens[0]?.token_id
+						(item) =>
+							item.asset.token_id === res?.tokens[0]?.token_id
 					)?.amount;
 					const tokenInfo = {
 						amount: amount
-							? formatTokenAmount(amount, res.tokens[0].decimals || 6)
+							? formatTokenAmount(
+									amount,
+									res.tokens[0].decimals || 6
+							  )
 							: "0",
 						asset: res.tokens[0],
 					};
@@ -271,9 +277,14 @@ export const useSwapLogic = () => {
 				unsignedTxCbor,
 				txWitnessSetHex
 			);
-			console.log(submitData);
 
-			return submitData;
+			if (submitData.tx_id) {
+				await api.post("/analysis/swaps", {
+					order_tx_id: submitData.tx_id,
+					from_token: tokenIn.asset.token_id,
+					to_token: tokenOut.asset.token_id,
+				});
+			}
 		} catch (error: any) {}
 	}, [
 		activeWallet,
@@ -311,9 +322,7 @@ export const useSwapLogic = () => {
 				buyToken.asset?.price_by_ada
 			)}`,
 			token: buyToken.asset?.ticker,
-			balance: `${buyToken.amount} ${
-				buyToken.asset?.ticker
-			}`,
+			balance: `${buyToken.amount} ${buyToken.asset?.ticker}`,
 			iconUrl: buyToken.asset?.logo,
 		}),
 		[amountOut, buyToken]
