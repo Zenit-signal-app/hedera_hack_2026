@@ -6,34 +6,36 @@ dayjs.extend(relativeTime);
 dayjs.extend(updateLocale);
 
 dayjs.updateLocale("en", {
-	relativeTime: {
-		future: "in %s",
-		past: "%s ago",
-		s: "1m",
-		m: "1m",
-		mm: "%dm",
-		h: "1h",
-		hh: "%dh",
-		d: "1d",
-		dd: "%dd",
-		M: "1mo",
-		MM: "%dmo",
-		y: "1y",
-		yy: "%dy",
-	},
+  relativeTime: {
+    future: "in %s",
+    past: "%s ago",
+    s: "1m",   
+    m: "1m",  
+    mm: "%dm",
+    h: "1h",
+    hh: "%dh",
+    d: "1d",
+    dd: "%dd",
+    M: "1mo",
+    MM: "%dmo",
+    y: "1y",
+    yy: "%dy",
+  },
 });
 
 export function formatTime(timeValue: dayjs.ConfigType): string {
-	const targetTime = dayjs(timeValue);
-	const now = dayjs();
-	const minutesDifference = Math.abs(targetTime.diff(now, "minute"));
+  const targetTime = dayjs(timeValue);
+  const now = dayjs();
+  
+  const minutesDifference = Math.abs(now.diff(targetTime, "minute"));
 
-	const thresholdMinutes = 30;
-	if (minutesDifference < thresholdMinutes) {
-		return targetTime.format("MMM DD, HH:mm:ss A");
-	} else {
-		return targetTime.fromNow();
-	}
+  const thresholdMinutes = 30;
+
+  if (minutesDifference < thresholdMinutes) {
+    return targetTime.fromNow();
+  } else {
+    return targetTime.format("MMM DD, HH:mm:ss A");
+  }
 }
 
 export function formatNumber(

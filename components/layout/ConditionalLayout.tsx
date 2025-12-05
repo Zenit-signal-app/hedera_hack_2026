@@ -12,24 +12,25 @@ export default async function ConditionalLayout({
 }: ConditionalLayoutProps) {
 	const headersList = await headers();
 	const pathname = headersList.get("x-pathname") || "";
-  
-	if (
-		pathname === "/"
-	) {
+
+	if (pathname === "/") {
 		return <>{children}</>;
 	}
 
 	return (
-		<div className="flex bg-gray-950 font-museomoderno">
+		<div className="lg:flex bg-gray-950 font-museomoderno">
 			<div className="lg:w-[18%] hidden border-r-2 border-black lg:flex flex-col">
 				<Navigator />
 			</div>
-			<div className="w-[82%] h-screen relative background-container">
+			<div className="lg:w-[82%] w-full flex flex-col overflow-hidden">
 				<Header />
-				<div className="overflow-y-auto overflow-x-hidden h-[calc(100%-72px)] content">
-					{children}
+				<div className="relative background-container flex-1 h-content overflow-y-auto ">
+					<div className="overflow-x-hidden h-content content">
+						{children}
+					</div>
 				</div>
 			</div>
 		</div>
 	);
 }
+ 

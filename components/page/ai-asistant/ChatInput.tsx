@@ -75,7 +75,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSend, isLoading }) => {
 	return (
 		<form
 			onSubmit={handleSubmit}
-			className="w-full flex justify-center backdrop-blur-sm rounded-3xl"
+			className="lg:w-full w-[calc(100%-32px)] flex lg:static fixed bottom-0 left-4 justify-center backdrop-blur-sm rounded-3xl"
 			style={{
 				background:
 					"linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0))",

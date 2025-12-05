@@ -35,34 +35,34 @@ export function AIAssistantGradient({ className, ...props }: Props) {
   <path d="M12.5008 6.04164C12.6519 6.04165 12.7978 6.09635 12.9116 6.19562C13.0254 6.29489 13.0995 6.43202 13.12 6.58164L13.125 6.66664C13.125 7.20581 13.535 7.64998 14.0608 7.70331L14.1667 7.70831C14.3324 7.70831 14.4914 7.77416 14.6086 7.89137C14.7258 8.00858 14.7917 8.16755 14.7917 8.33331C14.7917 8.49907 14.7258 8.65804 14.6086 8.77525C14.4914 8.89246 14.3324 8.95831 14.1667 8.95831C13.5589 8.95831 12.976 8.71687 12.5462 8.2871C12.1164 7.85733 11.875 7.27443 11.875 6.66664C11.875 6.50088 11.9409 6.34191 12.0581 6.2247C12.1753 6.10749 12.3342 6.04164 12.5 6.04164H12.5008Z" fill="url(#paint5_linear_718_22355)"/>
   <defs>
     <linearGradient id="paint0_linear_718_22355" x1="5.83219" y1="18.1314" x2="17.2802" y2="16.6869" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#07B6FF"/>
-      <stop offset="0.5" stop-color="#1B60F5"/>
-      <stop offset="1" stop-color="#A373FF"/>
+      <stop stopColor="#07B6FF"/>
+      <stop offset="0.5" stopColor="#1B60F5"/>
+      <stop offset="1" stopColor="#A373FF"/>
     </linearGradient>
     <linearGradient id="paint1_linear_718_22355" x1="5.83219" y1="18.1314" x2="17.2802" y2="16.6869" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#07B6FF"/>
-      <stop offset="0.5" stop-color="#1B60F5"/>
-      <stop offset="1" stop-color="#A373FF"/>
+      <stop stopColor="#07B6FF"/>
+      <stop offset="0.5" stopColor="#1B60F5"/>
+      <stop offset="1" stopColor="#A373FF"/>
     </linearGradient>
     <linearGradient id="paint2_linear_718_22355" x1="5.83219" y1="18.1314" x2="17.2802" y2="16.6869" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#07B6FF"/>
-      <stop offset="0.5" stop-color="#1B60F5"/>
-      <stop offset="1" stop-color="#A373FF"/>
+      <stop stopColor="#07B6FF"/>
+      <stop offset="0.5" stopColor="#1B60F5"/>
+      <stop offset="1" stopColor="#A373FF"/>
     </linearGradient>
     <linearGradient id="paint3_linear_718_22355" x1="5.83219" y1="18.1314" x2="17.2802" y2="16.6869" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#07B6FF"/>
-      <stop offset="0.5" stop-color="#1B60F5"/>
-      <stop offset="1" stop-color="#A373FF"/>
+      <stop stopColor="#07B6FF"/>
+      <stop offset="0.5" stopColor="#1B60F5"/>
+      <stop offset="1" stopColor="#A373FF"/>
     </linearGradient>
     <linearGradient id="paint4_linear_718_22355" x1="5.83219" y1="18.1314" x2="17.2802" y2="16.6869" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#07B6FF"/>
-      <stop offset="0.5" stop-color="#1B60F5"/>
-      <stop offset="1" stop-color="#A373FF"/>
+      <stop stopColor="#07B6FF"/>
+      <stop offset="0.5" stopColor="#1B60F5"/>
+      <stop offset="1" stopColor="#A373FF"/>
     </linearGradient>
     <linearGradient id="paint5_linear_718_22355" x1="5.83219" y1="18.1314" x2="17.2802" y2="16.6869" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#07B6FF"/>
-      <stop offset="0.5" stop-color="#1B60F5"/>
-      <stop offset="1" stop-color="#A373FF"/>
+      <stop stopColor="#07B6FF"/>
+      <stop offset="0.5" stopColor="#1B60F5"/>
+      <stop offset="1" stopColor="#A373FF"/>
     </linearGradient>
   </defs>
 </svg>

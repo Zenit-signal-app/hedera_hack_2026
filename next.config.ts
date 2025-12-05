@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
 		globalNotFound: false,
 	},
 	images: {
-		domains: ["asset-logos.minswap.org"],
+		domains: ["asset-logos.minswap.org" , "minswap.org"],
 	},
 };
 const withNextIntl = createNextIntlPlugin();

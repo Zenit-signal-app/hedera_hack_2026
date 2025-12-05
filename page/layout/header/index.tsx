@@ -1,6 +1,5 @@
 "use client";
 
-import PopoverWrapper from "@/components/common/popover";
 import BurgerMenuIcon from "@/components/icon/Icon_BugerMenu";
 import ChevronDownMini from "@/components/icon/Icon_ChevronDownMini";
 import WalletConnectButton from "@/components/wallet/WalletConnectButton";
@@ -31,7 +30,7 @@ const Header = () => {
 						isOpen={open}
 						onOpenChange={(o) => setOpen(o)}
 						trigger={<BurgerMenuIcon />}
-						className="mt-10 w-full top-[20%]"
+						className="mt-10 w-full top-[22%]"
 					>
 						<Navigator />
 					</CommonModal>

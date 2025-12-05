@@ -1,32 +1,52 @@
 import { SwapQuote } from "@/hooks/useSwapLogic";
+import { Utxo } from ".";
 
+export interface SwapPathStep {
+  pool_id: string;
+  protocol: string; // Ví dụ: "MinswapV2", "WingRiders", v.v.
+  lp_token: string;
+  token_in: string;
+  token_out: string;
+  amount_in: string;
+  amount_out: string;
+  min_amount_out: string;
+  lp_fee: string;
+  dex_fee: string;
+  deposits: string; // Phí đặt cọc (Lovelace)
+  price_impact: number; // Ví dụ: 0.1 (10%) hoặc 0.01 (1%)
+}
 export interface MinswapEstimate {
-  amount: string; // Số lượng vào
-  token_in: string; // Token ID vào
-  token_out: string; // Token ID ra
-  slippage: number; // Độ trượt giá (ví dụ: 0.01)
-  include_protocols?: string[]; // Ví dụ: ["MinswapV2"]
-  exclude_protocols?: string[];
-  allow_multi_hops?: boolean;
-  partner?: string; // Tùy chọn
-  // ... có thể có các trường khác từ API Quote
+ token_in: string;
+  token_out: string;
+  amount_in: string;
+  amount_out: string;
+  min_amount_out: string;
+  total_lp_fee: string;
+  total_dex_fee: string;
+  deposits: string;
+  avg_price_impact: number;
+  paths: SwapPathStep[][]; 
+  
+  aggregator_fee: string;
+  aggregator_fee_percent: number;
+  amount_in_decimal: boolean;
 }
 
 export interface BuildTxBody {
     sender: string; 
     min_amount_out: string; 
-    estimate: SwapQuote; // ✨ Estimate là toàn bộ đối tượng SwapQuote
-    inputs_to_choose: string[]; 
+    estimate: SwapQuote;
+    inputs_to_choose: Utxo[]; 
     amount_in_decimal: boolean; 
 }
 
 
 export interface MinswapAssetDetails {
-    token_id: string; // PolicyID + AssetName Hex
-    logo: string;     // URL Logo
-    ticker: string;   // Ví dụ: MIN, SNEK
+    token_id: string;
+    logo: string;
+    ticker: string;
     is_verified: boolean;
-    price_by_ada: number; // Giá trị tính theo ADA
+    price_by_ada: number;
     project_name: string;
     decimals: number;
 }
@@ -42,4 +62,9 @@ export interface MinswapWalletBalanceResponse {
     minimum_lovelace: string;
     balance: MinswapBalanceItem[]; // Danh sách các token khác ADA
     amount_in_decimal: boolean;
+}
+
+export interface MinswapTokensInfoResponse {
+    tokens: MinswapAssetDetails[],
+    search_after: any[]
 }

@@ -1,5 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -7,107 +5,113 @@ import { useMarketStore } from "../store/marketStore";
 import { parseTokenPair } from "@/lib/ultils";
 
 const SOCKET_URL = "wss://api.seerbot.io/ws";
+const RECONNECT_INTERVAL = 3000; 
 
 export const useMarketSocket = (
-	tokenSymbols: string[] | string,
-	type: "ohlc" | "token_info"
+  tokenSymbols: string[] | string,
+  type: "ohlc" | "token_info"
 ) => {
-	const { updatePrices } = useMarketStore();
-	const wsRef = useRef<WebSocket | null>(null);
+  const { updatePrices } = useMarketStore();
+  const wsRef = useRef<WebSocket | null>(null);
+  const [status, setStatus] = useState<number>(WebSocket.CLOSED);
+  
+  const symbols = Array.isArray(tokenSymbols) ? tokenSymbols : [tokenSymbols];
+  const symbolsKey = symbols.join(",");
+  const subscribeToSymbols = useCallback(() => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
-	const symbols = Array.isArray(tokenSymbols) ? tokenSymbols : [tokenSymbols];
+    symbols.forEach((symbol) => {
+      const tokenPair = parseTokenPair(symbol); 
+      const baseToken = tokenPair?.baseToken;
 
-	useEffect(() => {
-		const ws = new WebSocket(SOCKET_URL);
-		wsRef.current = ws;
+      const channelName =
+        type === "ohlc"
+          ? `${type}:${symbol}|5m`
+          : `${type}:${baseToken}`;
 
-		ws.onopen = () => {
-			symbols.forEach((symbol) => {
-				const { baseToken } = parseTokenPair(symbol);
-				const channelName =
-					type === "ohlc"
-						? `${type}:${symbol}|5m`
-						: `${type}:${baseToken}`;
+      const subscribeMessage = JSON.stringify({
+        action: "subscribe",
+        channel: channelName,
+      });
 
-				const subscribeMessage = JSON.stringify({
-					action: "subscribe",
-					channel: channelName,
-				});
+      ws.send(subscribeMessage);
+    });
+  }, [symbolsKey, type]); 
 
-				if (ws.readyState === WebSocket.OPEN) {
-					ws.send(subscribeMessage);
-				}
-			});
-		};
+  useEffect(() => {
+    let reconnectTimeout: NodeJS.Timeout;
 
-		ws.onmessage = (event) => {
-			try {
-				const data = JSON.parse(event.data);
+    const connect = () => {
+      const ws = new WebSocket(SOCKET_URL);
+      wsRef.current = ws;
+      setStatus(WebSocket.CONNECTING);
 
-				if (data.status === "already_subscribed") {
-					return;
-				}
+      ws.onopen = () => {
+        console.log("Socket Connected.");
+        setStatus(WebSocket.OPEN);
+        // Khi kết nối thành công, gọi subscribe ngay lập tức
+        subscribeToSymbols();
+      };
 
-				if (data.channel && data.data) {
-					const symbol = data.channel.split(":")[1].split("|")[0];
-					const update = {
-						[symbol]: data.data,
-					};
-					updatePrices(update, type);
-				}
-			} catch (e) {
-				console.error("Error parsing socket message:", e);
-			}
-		};
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
 
-		ws.onclose = () => {
-			console.log("Socket Disconnected.");
-		};
+          if (data.status === "already_subscribed") return;
 
-		ws.onerror = (error) => {
-			console.error("Socket Error:", error);
-		};
+          if (data.channel && data.data) {
+            const parts = data.channel.split(":");
+            if (parts.length > 1) {
+                const symbolPart = parts[1].split("|")[0];
+                const update = { [symbolPart]: data.data };
+                updatePrices(update, type);
+            }
+          }
+        } catch (e) {
+          console.error("Socket parse error:", e);
+        }
+      };
 
-		return () => {
-			ws.close();
-			wsRef.current = null;
-		};
-	}, [symbols.join(","), updatePrices]);
+      ws.onclose = () => {
+        console.log("Socket Disconnected. Reconnecting...");
+        setStatus(WebSocket.CLOSED);
+        reconnectTimeout = setTimeout(connect, RECONNECT_INTERVAL);
+      };
 
-	const [status, setStatus] = useState<number | null>(null);
+      ws.onerror = (error) => {
+        console.error("Socket Error:", error);
+        ws.close();
+      };
+    };
 
-	useEffect(() => {
-		const current = wsRef.current;
-		if (!current) {
-			setStatus(null);
-			return;
-		}
+    connect();
 
-		setStatus(current.readyState);
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.onclose = null; 
+        wsRef.current.close();
+      }
+      clearTimeout(reconnectTimeout);
+    };
+ 
+  }, []); 
 
-		const handleOpen = () => setStatus(WebSocket.OPEN);
-		const handleClose = () => setStatus(WebSocket.CLOSED);
-		const handleError = () => setStatus(current.readyState);
+  useEffect(() => {
 
-		current.addEventListener("open", handleOpen);
-		current.addEventListener("close", handleClose);
-		current.addEventListener("error", handleError);
+    if (status === WebSocket.OPEN) {
+      subscribeToSymbols();
+    }
+  }, [subscribeToSymbols, status]); 
 
-		return () => {
-			current.removeEventListener("open", handleOpen);
-			current.removeEventListener("close", handleClose);
-			current.removeEventListener("error", handleError);
-		};
-	}, [symbols.join(",")]);
+  const sendMessage = useCallback((message: any) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(message));
+    }
+  }, []);
 
-	const sendMessage = useCallback((message: any) => {
-		if (wsRef.current?.readyState === WebSocket.OPEN) {
-			wsRef.current.send(JSON.stringify(message));
-		}
-	}, []);
-
-	return {
-		sendMessage,
-		status,
-	};
+  return {
+    sendMessage,
+    status,
+  };
 };
