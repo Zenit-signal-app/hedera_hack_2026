@@ -29,7 +29,9 @@ export interface TrendPair {
   confidence: number; 
   price: number;       
   change_24h: number;  
-  volume_24h: number;  
+  volume_24h: number;
+  market_cap: number
+  logo_url: string
 }
 
 export interface TrendAnalysisResponse {

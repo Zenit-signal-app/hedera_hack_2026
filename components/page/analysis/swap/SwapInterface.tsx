@@ -11,11 +11,6 @@ import Loader from "@/components/common/loading/loader";
 
 export const SwapInterface: React.FC = () => {
 	const { balance } = useWalletStore();
-	const token = useTokenStore((state) => state.token);
-	const initialIn =
-		balance.find((a) => a.asset.ticker === "ADA") || balance[0];
-	const initialOut =
-		balance.find((a) => a.asset.ticker === token.symbol) || balance[1];
 
 	const {
 		topCardData,
@@ -25,10 +20,7 @@ export const SwapInterface: React.FC = () => {
 		setInputAmount,
 		signAndSubmitSwap,
 		handleChangeTokenIn,
-	} = useSwapLogic({
-		initialTokenIn: initialIn,
-		initialTokenOut: initialOut,
-	});
+	} = useSwapLogic();
 	const isInsufficientBalance = useMemo(() => {
 		const balanceToken = balance.find(
 			(item) =>

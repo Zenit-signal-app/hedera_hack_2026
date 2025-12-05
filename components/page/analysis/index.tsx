@@ -16,9 +16,9 @@ type TProps = {
 };
 
 const AnalysisWrapper = ({ uptrendData, downtrendData }: TProps) => {
-	const isMoble = useIsMobile();
+	const isMobile = useIsMobile();
 	const [open, setOpen] = useState(false);
-	return isMoble ? (
+	return isMobile ? (
 		<div className="h-screen">
 			<div className="font-quicksand grid grid-cols-1 lg:px-6 px-4 pt-4 gap-y-4 pb-40">
 				<div className="col-span-1 space-y-3">

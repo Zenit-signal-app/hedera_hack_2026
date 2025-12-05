@@ -54,6 +54,8 @@ function DialogContent({
 }) {
 	return (
 		<DialogPortal data-slot="dialog-portal">
+			<DialogTitle className="sr-only">Popup Content</DialogTitle>
+        <DialogDescription className="sr-only">Chi tiết nội dung</DialogDescription>
 			<DialogOverlay />
 			<DialogPrimitive.Content
 				data-slot="dialog-content"

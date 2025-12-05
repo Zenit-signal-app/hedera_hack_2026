@@ -13,9 +13,10 @@ type TabVariant = "pill" | "underline";
 interface TabsWrapperProps {
 	tabs: TabItem[];
 	variant: TabVariant;
-	defaultValue: string;
+	defaultValue?: string;
 	onValueChange?: (value: string) => void;
 	className?: string;
+	value: string;
 }
 
 const TabsWrapper: React.FC<TabsWrapperProps> = ({
@@ -24,6 +25,7 @@ const TabsWrapper: React.FC<TabsWrapperProps> = ({
 	defaultValue,
 	onValueChange,
 	className,
+	value,
 }) => {
 	const tabsListBaseClasses = "flex items-center space-x-1 p-1 ";
 	let tabsListVariantClasses = "";
@@ -52,6 +54,7 @@ const TabsWrapper: React.FC<TabsWrapperProps> = ({
 			defaultValue={defaultValue}
 			onValueChange={onValueChange}
 			className={cn("w-full", className)}
+			value={value}
 		>
 			<TabsList
 				className={cn(tabsListBaseClasses, tabsListVariantClasses)}

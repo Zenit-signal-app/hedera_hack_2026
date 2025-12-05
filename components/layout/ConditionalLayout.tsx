@@ -18,11 +18,11 @@ export default async function ConditionalLayout({
 	}
 
 	return (
-		<div className="lg:flex bg-gray-950 font-museomoderno">
-			<div className="lg:w-[18%] hidden border-r-2 border-black lg:flex flex-col">
+		<div className="lg:grid grid-cols-5 bg-gray-950 font-museomoderno">
+			<div className="lg:col-span-1 hidden border-r-2 border-dark-gray-900 lg:flex flex-col lg:h-full">
 				<Navigator />
 			</div>
-			<div className="lg:w-[82%] w-full flex flex-col overflow-hidden">
+			<div className="lg:col-span-4 w-full flex flex-col overflow-hidden">
 				<Header />
 				<div className="relative background-container flex-1 h-content overflow-y-auto ">
 					<div className="overflow-x-hidden h-content content">

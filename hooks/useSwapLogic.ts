@@ -77,14 +77,14 @@ const FALLBACK_ADA: MinswapBalanceItem = {
 const FALLBACK_USDM: MinswapBalanceItem = {
 	amount: "0",
 	asset: {
+		decimals: 6,
+		is_verified: true,
+		logo: "https://asset-logos.minswap.org/c48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ad0014df105553444d",
+		price_by_ada: 2.2754404927623213,
+		project_name: "USDM",
+		ticker: "USDM",
 		token_id:
 			"c48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ad0014df105553444d",
-		logo: "https://asset-logos.minswap.org/c48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ad0014df105553444d",
-		ticker: "USDM",
-		is_verified: true,
-		price_by_ada: 1,
-		project_name: "USDM",
-		decimals: 6,
 	},
 };
 
@@ -96,13 +96,10 @@ const getBalanceByTicker = (
 	if (!asset) return "0";
 
 	const amount = parseFloat(asset.amount);
-	return formatTokenAmount(amount, asset.asset.decimals)
+	return formatTokenAmount(amount, asset.asset.decimals);
 };
 
-export const useSwapLogic = ({
-	initialTokenIn,
-	initialTokenOut,
-}: UseSwapLogicProps) => {
+export const useSwapLogic = () => {
 	const {
 		activeWallet,
 		usedAddress,
@@ -110,7 +107,7 @@ export const useSwapLogic = ({
 	} = useWalletStore();
 	const ohlcData = useMarketStore((state) => state.prices?.ohlc);
 	const [direction, setDirection] = useState<SwapDirection>("sell");
-	const token = useTokenStore((state) => state.token);
+	const { token, quoteToken } = useTokenStore((state) => state);
 	const [swapState, setSwapState] = useState<SwapState>({
 		inputAmount: "",
 		quote: null,
@@ -118,52 +115,63 @@ export const useSwapLogic = ({
 		error: null,
 		isSubmitting: false,
 	});
-	const [tokenIn, setTokenIn] = useState<MinswapBalanceItem>(
-		initialTokenIn || FALLBACK_ADA
+	const [tokenIn, setTokenIn] = useState<MinswapBalanceItem>(FALLBACK_ADA);
+	const [tokenOut, setTokenOut] = useState<MinswapBalanceItem>(FALLBACK_USDM);
+	const handleSetEstimateDetail = useTokenStore(
+		(state) => state.handleSetEstimateDetail
 	);
-	const [tokenOut, setTokenOut] = useState<MinswapBalanceItem>(
-		initialTokenOut || FALLBACK_USDM
-	);
-    const handleSetEstimateDetail = useTokenStore((state) => state.handleSetEstimateDetail)
-
-
 
 	const sellToken = direction === "sell" ? tokenIn : tokenOut;
 	const buyToken = direction === "sell" ? tokenOut : tokenIn;
 
 	const getSocketKey = (t1: MinswapBalanceItem, t2: MinswapBalanceItem) => {
 		const inId = t1.asset?.ticker === "ADA" ? "lovelace" : t1.asset?.ticker;
-		const outId = t2.asset?.ticker === "ADA" ? "lovelace" : t2.asset?.ticker;
+		const outId =
+			t2.asset?.ticker === "ADA" ? "lovelace" : t2.asset?.ticker;
 		return `${inId}/${outId}`;
 	};
-    const executeFetchQuote = useCallback(async (
-        amount: string, 
-        inToken: MinswapBalanceItem, 
-        outToken: MinswapBalanceItem
-    ) => {
-        if (!amount || parseFloat(amount) <= 0 || !inToken || !outToken) return;
+	const executeFetchQuote = useCallback(
+		async (
+			amount: string,
+			inToken: MinswapBalanceItem,
+			outToken: MinswapBalanceItem
+		) => {
+			if (!amount || parseFloat(amount) <= 0 || !inToken || !outToken)
+				return;
 
-        setSwapState((prev) => ({ ...prev, isQuoteLoading: true, error: null }));
+			setSwapState((prev) => ({
+				...prev,
+				isQuoteLoading: true,
+				error: null,
+			}));
 
-        try {
-            const estimateResult = await fetchEstimate({
-                amount: amount,
-                token_in: inToken.asset.ticker === "ADA" ? "lovelace" : inToken.asset.token_id,
-                token_out: outToken.asset.ticker === "ADA" ? "lovelace" : outToken.asset.token_id,
-                slippage: SLIPPAGE_RATE,
-            });
-            setSwapState((prev) => ({ ...prev, quote: estimateResult }));
-            handleSetEstimateDetail(estimateResult)
-        } catch (e: any) {
-            setSwapState((prev) => ({
-                ...prev,
-                error: e.message || "Không thể lấy tỷ giá swap.",
-                quote: null,
-            }));
-        } finally {
-            setSwapState((prev) => ({ ...prev, isQuoteLoading: false }));
-        }
-    }, []);
+			try {
+				const estimateResult = await fetchEstimate({
+					amount: amount,
+					token_in:
+						inToken.asset.ticker === "ADA"
+							? "lovelace"
+							: inToken.asset.token_id,
+					token_out:
+						outToken.asset.ticker === "ADA"
+							? "lovelace"
+							: outToken.asset.token_id,
+					slippage: SLIPPAGE_RATE,
+				});
+				setSwapState((prev) => ({ ...prev, quote: estimateResult }));
+				handleSetEstimateDetail(estimateResult);
+			} catch (e: any) {
+				setSwapState((prev) => ({
+					...prev,
+					error: e.message || "Không thể lấy tỷ giá swap.",
+					quote: null,
+				}));
+			} finally {
+				setSwapState((prev) => ({ ...prev, isQuoteLoading: false }));
+			}
+		},
+		[]
+	);
 	const marketPriceKey = getSocketKey(sellToken, buyToken);
 	const currentSocketPrice = ohlcData?.[marketPriceKey]?.price || 1;
 	const sellTokenActualBalance = getBalanceByTicker(
@@ -178,15 +186,23 @@ export const useSwapLogic = ({
 		const handleGetTokenInfo = async () => {
 			try {
 				const res = await fetchMinswapTokenInfo({
-					query: token.symbol,
+					query:
+						direction === "sell" ? quoteToken.symbol : token.symbol,
 					only_verified: true,
-					assets: [token.id],
+					assets: [direction === "sell" ? quoteToken.id : token.id],
 				});
-				if (res) {
-                    const amount = walletBalance.find((item) => item.asset.token_id === token.id)?.amount;
-                    const tokenInfo = { amount: amount ? formatTokenAmount(amount , res.tokens[0].decimals):  "0", asset: res.tokens[0] }
 
-                    
+				if (res) {
+					const amount = walletBalance.find(
+						(item) => item.asset.token_id === res?.tokens[0]?.token_id
+					)?.amount;
+					const tokenInfo = {
+						amount: amount
+							? formatTokenAmount(amount, res.tokens[0].decimals || 6)
+							: "0",
+						asset: res.tokens[0],
+					};
+
 					setTokenOut(tokenInfo);
 				}
 			} catch (err: any) {
@@ -194,8 +210,8 @@ export const useSwapLogic = ({
 			}
 		};
 		handleGetTokenInfo();
-	}, [token , walletBalance]);
-    
+	}, [token, walletBalance]);
+
 	const handleChangeTokenIn = useCallback((token: MinswapBalanceItem) => {
 		setTokenIn(token);
 		setSwapState((prev) => ({ ...prev, quote: null, inputAmount: "0" }));
@@ -205,21 +221,19 @@ export const useSwapLogic = ({
 		setTokenOut(token);
 		setSwapState((prev) => ({ ...prev, quote: null, inputAmount: "0" }));
 	}, []);
-const handleSwapDirection = useCallback(() => {
-        const currentIn = tokenIn;
-        const currentOut = tokenOut;
+	const handleSwapDirection = useCallback(() => {
+		const currentIn = tokenIn;
+		const currentOut = tokenOut;
 
-        setTokenIn(currentOut);
-        setTokenOut(currentIn);
-        
-        setSwapState((prev) => ({
-            ...prev,
-            inputAmount: "0", 
-            quote: null,     
-        }));
-        
-        
-    }, [tokenIn, tokenOut, buyToken, walletBalance]);
+		setTokenIn(currentOut);
+		setTokenOut(currentIn);
+
+		setSwapState((prev) => ({
+			...prev,
+			inputAmount: "0",
+			quote: null,
+		}));
+	}, [tokenIn, tokenOut, buyToken, walletBalance]);
 
 	const SLIPPAGE_RATE = 0.005;
 
@@ -281,7 +295,9 @@ const handleSwapDirection = useCallback(() => {
 				sellToken.asset.price_by_ada
 			)}`,
 			token: sellToken.asset?.ticker,
-			balance: `${formatNumber(sellTokenActualBalance)} ${sellToken.asset.ticker}`,
+			balance: `${formatNumber(sellTokenActualBalance)} ${
+				sellToken.asset.ticker
+			}`,
 			iconUrl: sellToken.asset.logo,
 		}),
 		[swapState.inputAmount, sellToken, sellTokenActualBalance]
@@ -295,29 +311,28 @@ const handleSwapDirection = useCallback(() => {
 				buyToken.asset?.price_by_ada
 			)}`,
 			token: buyToken.asset?.ticker,
-			balance: `${formatNumber(parseFloat(buyToken.amount))} ${
+			balance: `${buyToken.amount} ${
 				buyToken.asset?.ticker
 			}`,
 			iconUrl: buyToken.asset?.logo,
 		}),
 		[amountOut, buyToken]
 	);
-useEffect(() => {
-        const amount = swapState.inputAmount;
-        if (!amount || parseFloat(amount) <= 0) return;
 
-        const handler = setTimeout(() => {
-            
-            executeFetchQuote(amount, sellToken, buyToken);
-        }, 500);
+	useEffect(() => {
+		const amount = swapState.inputAmount;
+		if (!amount || parseFloat(amount) <= 0) return;
 
-        return () => clearTimeout(handler);
-    }, [
-        swapState.inputAmount, 
-        sellToken.asset?.token_id, 
-        buyToken.asset?.token_id, 
+		const handler = setTimeout(() => {
+			executeFetchQuote(amount, sellToken, buyToken);
+		}, 500);
 
-    ]);
+		return () => clearTimeout(handler);
+	}, [
+		swapState.inputAmount,
+		sellToken.asset?.token_id,
+		buyToken.asset?.token_id,
+	]);
 
 	return {
 		topCardData,

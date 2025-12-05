@@ -41,7 +41,7 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
 
 	return (
 		<div
-			className={`px-5 py-4 rounded-xl bg-white/10 border border-dark-gray-600`}
+			className={`px-5 py-4 rounded-xl bg-white/10 border hover:border-primary-600 border-dark-gray-600`}
 		>
 			<div className="flex justify-between items-center mb-4">
 				<span className="text-sm font-semibold text-dark-gray-100 capitalize">

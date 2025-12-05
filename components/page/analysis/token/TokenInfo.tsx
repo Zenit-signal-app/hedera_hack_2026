@@ -2,7 +2,7 @@
 import GuildeIcon from "@/components/icon/Icon_GuildeBook";
 import PlayIcon from "@/components/icon/Icon_Play";
 import { getListToken } from "@/services/analysisServices";
-import { useTokenStore } from "@/store/tokenStore";
+import { INITIAL_ADA, useTokenStore } from "@/store/tokenStore";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { TokenSelector } from "./TokenSelector";
@@ -83,15 +83,15 @@ const StatColumn: React.FC<StatColumnProps> = ({
 export const TradingPairInfoComponent: React.FC = () => {
 	const data = mockPairData;
 	const priceColorClass = data.isPriceUp ? "text-green-500" : "text-red-500";
-	const { token, listToken, quoteAsset } = useTokenStore();
+	const { token, listToken, quoteToken } = useTokenStore();
 	const isMobile = useIsMobile();
-	useMarketSocket(`${token.symbol}_${quoteAsset}`, "token_info");
-	useMarketSocket(`${token.symbol}_${quoteAsset}`, "ohlc");
+	useMarketSocket(`${token.symbol}_${quoteToken.symbol}`, "token_info");
+	useMarketSocket(`${token.symbol}_${quoteToken.symbol}`, "ohlc");
 	const tokenInfo = useMemo(() => {
 		const foundToken = listToken.find(
 			(item) => item?.symbol === token.symbol
 		);
-		return foundToken ?? listToken?.[0];
+		return foundToken ?? INITIAL_ADA;
 	}, [token.symbol, listToken]);
 	const ohlcToken = useMarketStore(
 		(state) => state.prices?.ohlc?.[token.symbol]
@@ -108,8 +108,8 @@ export const TradingPairInfoComponent: React.FC = () => {
 	return (
 		<div>
 			<div className="w-full lg:p-3 flex gap-x-4 gap-y-3 items-start text-white lg:flex-row flex-col  font-sans">
-				<div className="flex lg:items-center items-start lg:flex-row flex-col gap-y-3 gap-x-4 flex-1 w-full">
-					<div className="flex items-center gap-x-2">
+				<div className="flex lg:items-center items-start lg:flex-row flex-col gap-y-3 gap-x-4 w-full">
+					<div className="flex items-center gap-x-2 flex-1">
 						<Image
 							src={tokenInfo?.logo_url || "/images/snek.png"}
 							alt={tokenInfo?.name || "Snek"}
@@ -121,7 +121,7 @@ export const TradingPairInfoComponent: React.FC = () => {
 						<div className="flex items-start space-x-2 cursor-pointer">
 							<div className="flex flex-col">
 								<span className="text-white text-sm font-bold">
-									{token.symbol}/{quoteAsset}
+									{token.symbol}/{quoteToken.symbol}
 								</span>
 								<span className="text-dark-gray-200 text-xs">
 									{tokenInfo?.name}
@@ -130,7 +130,7 @@ export const TradingPairInfoComponent: React.FC = () => {
 							<TokenSelector />
 						</div>
 					</div>
-					<div className="lg:flex grid grid-cols-2 gap-2 lg:items-center items-start space-x-8 w-full">
+					<div className="lg:flex lg:flex-row grid grid-cols-2 gap-2 lg:items-center items-start lg:gap-x-8 lg:w-auto w-full">
 						<div className="flex flex-col items-start col-span-1">
 							<span
 								className={`text-sm font-bold ${priceColorClass}`}

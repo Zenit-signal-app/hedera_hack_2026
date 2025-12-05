@@ -3,7 +3,7 @@
 import TabsWrapper from "@/components/common/tabs";
 import TopTraderIcon from "@/components/icon/Icon_TopTraders";
 import TransactionIcon from "@/components/icon/Icon_Transactions";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import TransactionTable from "./TableTransaction";
 import TableTopTrader from "./TableTopTraders";
 import { useIsMobile } from "@/src/components/hooks/useIsMobile";
@@ -19,8 +19,15 @@ const AdvancedRealTimeChart = dynamic(
 );
 const TableStatistic = () => {
 	const isMobile = useIsMobile();
-	const defaultTab = isMobile ? "charts" : "transactions"
-	const [tab, setTab] = useState(defaultTab);
+	const [tab, setTab] = useState("transactions");
+	useEffect(() => {
+		if (isMobile) {
+			setTab("charts");
+		} else {
+			setTab("transactions");
+		}
+	}, [isMobile]);
+
 	const tabs = useMemo(() => {
 		if (isMobile) {
 			return [
@@ -92,9 +99,10 @@ const TableStatistic = () => {
 		<div className="bg-black rounded-4xl border border-dark-gray-700">
 			<TabsWrapper
 				tabs={tabs}
-				defaultValue={tab}
+				defaultValue={isMobile ? "charts" : "transactions"}
 				onValueChange={(value) => setTab(value)}
 				variant="underline"
+				value={tab}
 			/>
 			{renderView}
 		</div>

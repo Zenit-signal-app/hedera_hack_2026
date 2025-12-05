@@ -4,7 +4,12 @@ import { cn } from "@/lib/utils"; // Hàm merge class của shadcn
 // Import Sheet
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/src/components/hooks/useIsMobile";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import Drawer from "../drawer";
 
 interface PopoverWrapperProps {
 	trigger: React.ReactNode;
@@ -18,7 +23,7 @@ interface PopoverWrapperProps {
 export function PopoverWrapper({
 	trigger,
 	children,
-	open,
+	open = false,
 	onOpenChange,
 	className,
 	align = "center",
@@ -27,15 +32,14 @@ export function PopoverWrapper({
 
 	if (isMobile) {
 		return (
-			<Sheet open={open} onOpenChange={onOpenChange}>
-				<SheetTrigger asChild>{trigger}</SheetTrigger>
-				<SheetContent
-					side="bottom"
-					className={cn("rounded-t-lg", className)}
-				>
-					<div className="mt-4">{children}</div>
-				</SheetContent>
-			</Sheet>
+			<Drawer
+				trigger={trigger}
+				open={open}
+				onOpenChange={onOpenChange}
+				side="bottom"
+			>
+				{children}
+			</Drawer>
 		);
 	}
 

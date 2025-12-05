@@ -1,5 +1,6 @@
 import api from "@/axios/axiosInstance";
 import { TrendAnalysisParams, TrendAnalysisResponse } from "@/types";
+import { TokenPriceData } from "@/types/token";
 import { ApiResponse, PaginationParams, TopTrader } from "@/types/transaction";
 
 const BASE_ANALYSIS_API = "/analysis/tokens";
@@ -9,16 +10,11 @@ interface TokensParams {
 	limit: number;
 	offset: number;
 }
-export type Token = {
-	id: string;
-	name: string;
-	symbol: string;
-	logo_url: string;
-};
+
 
 export const getListToken = async (
 	params: TokensParams
-): Promise<{ page: number; tokens: Token[]; total: number }> => {
+): Promise<{ page: number; tokens: TokenPriceData[]; total: number }> => {
 	try {
 		const response = await api.get(BASE_ANALYSIS_API, { params });
 		return response.data;

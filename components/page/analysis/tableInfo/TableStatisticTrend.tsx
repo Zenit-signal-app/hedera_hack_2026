@@ -9,18 +9,17 @@ import GrowUpIcon from "@/components/icon/Icon_GrowUp";
 import { formatNumber } from "@/lib/format";
 import GrowDownIcon from "@/components/icon/Icon_GrowDown";
 import { TableWrapper } from "@/components/common/table";
-import { TradingPairTrend } from "@/types";
-
+import { TradingPairTrend, TrendPair } from "@/types";
 
 type TProps = {
-	data: TradingPairTrend[];
+	data: TrendPair[];
 	type: "UP" | "DOWN";
 };
 
 const TableStatisticTrend = ({ data, type }: TProps) => {
 	const [page, setPage] = useState(0);
 	const [isLoading, setIsLoading] = useState(false);
-	const columns: ColumnDef<TradingPairTrend, any>[] = useMemo(
+	const columns: ColumnDef<TrendPair, any>[] = useMemo(
 		() => [
 			{
 				accessorKey: "token",
@@ -32,12 +31,12 @@ const TableStatisticTrend = ({ data, type }: TProps) => {
 				cell: ({ row }) => {
 					return (
 						<div className="flex items-center text-sm text-white gap-x-1">
-							{/* <Image
-								src={row.original.pair}
+							<Image
+								src={row.original.logo_url}
 								width={18}
 								height={18}
 								alt="Top Trader Icon"
-							/>{" "} */}
+							/>{" "}
 							<span className="flex items-center">
 								{row.original.pair}
 							</span>
@@ -48,17 +47,17 @@ const TableStatisticTrend = ({ data, type }: TProps) => {
 				enableColumnFilter: true,
 			},
 			{
-				accessorKey: "confidence",
+				accessorKey: "market_cap",
 				header: () => {
 					return (
 						<div className="flex items-center justify-between text-dark-gray-200 capitalize">
-							confidence
+							Market Cap
 						</div>
 					);
 				},
 				cell: ({ row }) => (
 					<div className="text-white text-sm font-semibold">
-						${formatNumber(row.original.confidence)}
+						${formatNumber(row.original.market_cap)}
 					</div>
 				),
 				enableSorting: true,
@@ -92,16 +91,15 @@ const TableStatisticTrend = ({ data, type }: TProps) => {
 				},
 				cell: ({ row }) => (
 					<div className="text-white text-sm">
-						{row.original.change_24h > 0 ? (
+						{type === "UP" ? (
 							<div className="text-green-500 flex items-center gap-x-1">
-								<GrowUpIcon />{" "}
-								{formatNumber(row.original.change_24h)}
-								%
+								<GrowUpIcon />
+								{formatNumber(row.original.change_24h, 0)}%
 							</div>
 						) : (
 							<div className="text-red-600  flex items-center gap-x-1">
 								<GrowDownIcon />
-								{formatNumber(row.original.change_24h)}
+								{formatNumber(row.original.change_24h, 2)}%
 							</div>
 						)}
 					</div>

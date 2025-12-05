@@ -2,14 +2,14 @@ import React, { useCallback, useState } from "react";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { useTokenLoadMore } from "@/hooks/useTokenLoadMore";
 import { Loader2, Search } from "lucide-react";
-import { Token } from "@/services/analysisServices";
-import {PopoverWrapper} from "@/components/common/popover";
+import { PopoverWrapper } from "@/components/common/popover";
 import ChevronDownMini from "@/components/icon/Icon_ChevronDownMini";
 import Image from "next/image";
 import Input from "@/components/common/input";
 import SearchIcon from "@/components/icon/Icon_ Search";
 import TabsWrapper from "@/components/common/tabs";
-import { useTokenStore } from "@/store/tokenStore";
+import { INITIAL_ADA, INITIAL_USDM, useTokenStore } from "@/store/tokenStore";
+import { TokenPriceData } from "@/types/token";
 
 const SCROLL_CONTAINER_ID = "token-list-scroll-container";
 
@@ -17,14 +17,21 @@ export const TokenSelector: React.FC = () => {
 	const [isOpen, setIsOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const { tokens, isLoading } = useTokenLoadMore(searchQuery);
-	const { handleSelectToken, handleSelectQuoteAsset, quoteAsset } =
-		useTokenStore();
+	const {
+		handleSelectToken,
+		handleSelectQuoteAsset,
+		quoteAsset,
+		handleSelectQuoteToken,
+	} = useTokenStore();
 	const [tab, setTabs] = useState(quoteAsset);
 	const handleToken = useCallback(
-		(token: Token) => {
+		(token: TokenPriceData) => {
 			setIsOpen(false);
 			handleSelectToken(token);
 			handleSelectQuoteAsset(tab);
+			tab === "USDM"
+				? handleSelectQuoteToken(INITIAL_USDM)
+				: handleSelectQuoteToken(INITIAL_ADA);
 		},
 		[tab]
 	);
@@ -52,7 +59,8 @@ export const TokenSelector: React.FC = () => {
 					{ value: "USDM", label: "USDM" },
 					{ value: "ADA", label: "ADA" },
 				]}
-				defaultValue={tab}
+				defaultValue={"USDM"}
+				value={tab}
 				variant="underline"
 				className="text-sm py-1 px-0"
 				onValueChange={(tab) => setTabs(tab as "USDM" | "ADA")}
