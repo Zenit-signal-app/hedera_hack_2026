@@ -20,7 +20,10 @@ export async function POST(req: Request) {
 		const contextMessages: Message[] = messages
 			.slice(-MAX_CONTEXT_MESSAGES)
 			.map((message: Message) => {
-				if (message?.toolInvocations !== undefined && message.toolInvocations.length > 0) {
+				if (
+					message?.toolInvocations !== undefined &&
+					message.toolInvocations.length > 0
+				) {
 					return {
 						...message,
 						toolInvocations: message.toolInvocations.map(
@@ -33,7 +36,6 @@ export async function POST(req: Request) {
 				}
 				return message;
 			});
-		console.log("walletAddress", walletAddress);
 
 		const latestMessage = messages[messages.length - 1];
 		if (latestMessage.role === "user") {
@@ -98,7 +100,7 @@ export async function POST(req: Request) {
 							if (!walletAddress) return;
 							try {
 								const updatedMessages = appendResponseMessages({
-									messages: [],
+									messages,
 									responseMessages: event.response.messages,
 								});
 								await saveChatHistory(
@@ -125,7 +127,6 @@ export async function POST(req: Request) {
 			},
 		});
 	} catch (error) {
-		console.error("Fatal error in chat API:", error);
 		return new Response(
 			JSON.stringify({
 				error: "Internal server error",

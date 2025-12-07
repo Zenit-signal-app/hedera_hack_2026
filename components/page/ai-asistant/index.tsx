@@ -5,17 +5,16 @@ import { PromptSuggestions } from "./PromptSuggest";
 import ChatInput from "./ChatInput";
 import LoadingAI from "@/components/common/loading/loading_ai";
 import { useChat } from "@ai-sdk/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { getChatHistory, saveChatHistory } from "@/services/aiServices";
+import { getChatHistory } from "@/services/aiServices";
 import { useWalletStore } from "@/store/walletStore";
 import Loader from "@/components/common/loading/loader";
 
 export default function AIChatPage() {
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
-	const [visibleMessagesCount] = useState(30);
 	const [loading, setLoading] = useState(false);
 	const scrollToBottom = useCallback(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

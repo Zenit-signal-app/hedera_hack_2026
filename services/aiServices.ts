@@ -1,5 +1,6 @@
 import api from "@/axios/axiosInstance";
 import { Message } from "ai";
+import dayjs from "dayjs";
 
 export const getChatHistory = async (
 	walletAddress: string
@@ -23,27 +24,34 @@ export const saveChatHistory = async (
 ) => {
 	try {
 		const formattedMessages = messages.map((msg) => {
-			let finalCreatedAt = new Date().toISOString();
-			if (msg.createdAt) {
-				finalCreatedAt =
-					msg.createdAt instanceof Date
-						? msg.createdAt.toISOString()
-						: msg.createdAt;
+			let finalTools = {};
+			if (msg.toolInvocations) {
+				if (Array.isArray(msg.toolInvocations)) {
+					if (msg.toolInvocations.length === 0) {
+						finalTools = {};
+					} else {
+						finalTools = {};
+					}
+				} else {
+					finalTools = msg.toolInvocations;
+				}
 			}
 			return {
 				id: msg.id,
 				content: msg.content || "",
 				role: msg.role,
-				created_at: finalCreatedAt,
-				toolInvocations: msg.toolInvocations || null,
+				toolInvocations: finalTools,
+				createdAt: dayjs(msg.createdAt).toISOString(),
 			};
 		});
-		const response = await api.post("/ai-assistant/chat", {
+
+		const bodyRequest = {
 			walletAddress,
 			messages: formattedMessages,
-		});
+		};
+		const response = await api.post("/ai-assistant/chat", bodyRequest);
 		return await response.data;
 	} catch (error) {
-		console.log(error)
+		console.log(error);
 	}
 };
