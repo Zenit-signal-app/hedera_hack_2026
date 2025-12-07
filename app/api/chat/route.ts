@@ -20,7 +20,7 @@ export async function POST(req: Request) {
 		const contextMessages: Message[] = messages
 			.slice(-MAX_CONTEXT_MESSAGES)
 			.map((message: Message) => {
-				if (message.toolInvocations) {
+				if (message?.toolInvocations !== undefined && message.toolInvocations.length > 0) {
 					return {
 						...message,
 						toolInvocations: message.toolInvocations.map(
@@ -33,6 +33,7 @@ export async function POST(req: Request) {
 				}
 				return message;
 			});
+		console.log("walletAddress", walletAddress);
 
 		const latestMessage = messages[messages.length - 1];
 		if (latestMessage.role === "user") {
@@ -60,15 +61,8 @@ export async function POST(req: Request) {
 							size: 32,
 						}),
 						onStepFinish: async (event) => {
-							console.log("Step finished:", {
-								type: event.stepType,
-								hasToolCalls: !!event.toolCalls?.length,
-								hasToolResults: !!event.toolResults?.length,
-							});
-
 							if (event.toolResults?.length) {
 								for (const result of event.toolResults) {
-									// Check if the result has a shouldAbort property and it's true
 									if (result) {
 										try {
 											const existingMessages =
