@@ -9,8 +9,8 @@ export const listNavigators = [
 		url: "/asset-vault",
 	},
 	{
-		text: "AI Asistant",
-		url: "/ai-asistant",
+		text: "AI Assistant",
+		url: "/ai-assistant",
 	},
 	{
 		text: "PortFolio",

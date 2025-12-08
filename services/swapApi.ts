@@ -1,8 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import api from "@/axios/axiosInstance";
 import { SwapQuote } from "@/hooks/useSwapLogic";
 import { Utxo } from "@/types";
-import { BuildTxBody, MinswapBalanceItem, MinswapEstimate, MinswapTokensInfoResponse, MinswapWalletBalanceResponse } from "@/types/minswap";
-import { Cardano } from '@cardano-sdk/core';
+import { BuildTxBody, MinswapBalanceItem, MinswapTokensInfoResponse, MinswapWalletBalanceResponse } from "@/types/minswap";
 
 const MINSWAP_API_BASE = "https://agg-api.minswap.org/aggregator";
 
