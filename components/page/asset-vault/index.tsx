@@ -9,7 +9,7 @@ import { useState, useMemo } from "react";
 
 const AssetVaultPage = () => {
 	const [searchTerm, setSearchTerm] = useState("");
-
+	const [tab, setTab] = useState("current");
 	const filteredStrategies = useMemo(() => {
 		if (!searchTerm.trim()) {
 			return mockStrategies;
@@ -33,6 +33,8 @@ const AssetVaultPage = () => {
 					]}
 					variant="pill"
 					defaultValue="current"
+					value={tab}
+					onValueChange={setTab}
 				/>
 				<Input
 					className="max-w-80 text-sm"

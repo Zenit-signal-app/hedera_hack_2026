@@ -24,7 +24,7 @@ export const INITIAL_ADA = {
 	id: "lovelace",
 	name: "Cardano",
 	symbol: "ADA",
-	logo_url: "https://minswap.org/images/assets/cardano.png",
+	logo_url: "/images/ada.png",
 	price: 2.275426,
 	change_24h: 0.038026,
 	low_24h: 2.236817,

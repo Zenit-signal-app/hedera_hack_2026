@@ -73,6 +73,7 @@ const DetailPage = () => {
 						variant="underline"
 						defaultValue="overview"
 						onValueChange={setActiveTab}
+						value={activeTab}
 					/>
 				</div>
 

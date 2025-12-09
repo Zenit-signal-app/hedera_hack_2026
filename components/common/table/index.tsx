@@ -92,7 +92,7 @@ export function TableWrapper<TData>({
 		: "!border-none hover:bg-gray-100/50";
 	const tableCellClass = isDefaultVariant
 		? "py-3 border-r border-dark-gray-700 border-b"
-		: "py-3 !border-none first:rounded-l-lg last:rounded-r-lg";
+		: "py-3 !border-none";
 	const tableHeadClass = isDefaultVariant
 		? "text-white/80 border-r border-dark-gray-700"
 		: "border-none";

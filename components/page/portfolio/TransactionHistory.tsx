@@ -344,8 +344,9 @@ export const TransactionHistory = () => {
           <TabsWrapper
             tabs={tabs}
             variant="underline"
-            defaultValue={activeTab}
+            defaultValue={"swap"}
             onValueChange={setActiveTab}
+            value={activeTab}
           />
         </div>
         

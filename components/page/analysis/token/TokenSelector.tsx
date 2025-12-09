@@ -91,6 +91,7 @@ export const TokenSelector: React.FC = () => {
 								height={32}
 								alt={token.name}
 								className="rounded-full"
+								unoptimized
 							/>{" "}
 							<div className="flex items-center flex-wrap justify-end gap-x-1">
 								<p>{token.name}</p>{" "}

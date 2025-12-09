@@ -26,7 +26,7 @@ const listNavigators = [
 	{
 		logo: <AIAsistantIcon size={32} />,
 		text: "AI Assistant",
-		url: "/ai-asistant",
+		url: "/ai-assistant",
 	},
 	{
 		logo: <PortfolioIcon size={32} />,

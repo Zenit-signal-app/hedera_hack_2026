@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useSwapLogic } from "@/hooks/useSwapLogic";
 import { useTokenStore } from "@/store/tokenStore";
 import { useWalletStore } from "@/store/walletStore";
@@ -20,6 +21,7 @@ export const SwapInterface: React.FC = () => {
 		setInputAmount,
 		signAndSubmitSwap,
 		handleChangeTokenIn,
+		handleChangeTokenOut,
 	} = useSwapLogic();
 	const isInsufficientBalance = useMemo(() => {
 		const balanceToken = balance.find(
@@ -71,7 +73,6 @@ export const SwapInterface: React.FC = () => {
 	return (
 		<div className="w-full relative mx-auto rounded-2xl shadow-2xl flex flex-col gap-y-5">
 			<div className="flex flex-col space-y-2">
-				{/* Card Sell */}
 				<TokenInputCard
 					{...topCardData}
 					onAmountChange={setInputAmount}
@@ -80,7 +81,6 @@ export const SwapInterface: React.FC = () => {
 					type="sell"
 				/>
 
-				{/* Nút Swap Direction */}
 				<div className="relative z-10">
 					<button
 						onClick={handleSwapDirection}
@@ -91,12 +91,13 @@ export const SwapInterface: React.FC = () => {
 						<SwapIcon className="w-5 h-5" />
 					</button>
 				</div>
-
-				{/* Card Buy */}
 				<TokenInputCard
 					{...bottomCardData}
 					onAmountChange={() => {}}
 					isLoading={isQuoteLoading}
+					onSelect={(token) =>
+						handleChangeTokenOut && handleChangeTokenOut(token)
+					}
 					type="buy"
 				/>
 			</div>

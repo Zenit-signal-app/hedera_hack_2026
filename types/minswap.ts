@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { SwapQuote } from "@/hooks/useSwapLogic";
 import { Utxo } from ".";
 

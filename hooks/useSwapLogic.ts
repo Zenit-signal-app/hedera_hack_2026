@@ -5,16 +5,13 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import { useMarketStore } from "@/store/marketStore";
 import { useWalletStore } from "@/store/walletStore";
 import {
-	fetchQuote,
 	buildTransaction,
 	fetchEstimate,
 	finalizeAndSubmitTransaction,
 	fetchMinswapTokenInfo,
-	submitTransaction,
 } from "@/services/swapApi";
 import { formatNumber } from "@/lib/format";
-import { TokenData } from "@/types";
-import { convertUtxosToHex, formatTokenAmount } from "@/lib/ultils";
+import { formatTokenAmount } from "@/lib/ultils";
 import { MinswapBalanceItem } from "@/types/minswap";
 import { Cardano } from "@cardano-sdk/core";
 import { useTokenStore } from "@/store/tokenStore";
@@ -39,12 +36,12 @@ export interface SwapQuote {
 	token_out: string;
 	amount_in: string;
 	amount_out: string;
-	min_amount_out: string; // ✨ Rất quan trọng cho Build-Tx Body
+	min_amount_out: string;
 	total_lp_fee: string;
 	total_dex_fee: string;
 	deposits: string;
 	avg_price_impact: number;
-	paths: SwapPathDetail[][]; // Có thể có multi-hop
+	paths: SwapPathDetail[][];
 	aggregator_fee: string;
 	aggregator_fee_percent: number;
 	amount_in_decimal: boolean;
@@ -180,43 +177,81 @@ export const useSwapLogic = () => {
 		sellToken.asset.ticker,
 		walletBalance
 	);
+	const buyTokenActualBalance = getBalanceByTicker(
+		buyToken.asset.ticker,
+		walletBalance
+	);
+
 	const calculateUsdValue = (amount: number, price: number) => {
 		return formatNumber(amount * price, 2);
 	};
 
 	useEffect(() => {
 		const handleGetTokenInfo = async () => {
+			if (!token || !quoteToken) return;
 			try {
-				const res = await fetchMinswapTokenInfo({
-					query:
-						direction === "sell" ? quoteToken.symbol : token.symbol,
-					only_verified: true,
-					assets: [direction === "sell" ? quoteToken.id : token.id],
-				});
+				let mainAsset;
+				if (token.id === "lovelace" || token.symbol === "ADA") {
+					mainAsset = FALLBACK_ADA.asset;
+				} else {
+					const resMain = await fetchMinswapTokenInfo({
+						query: token.symbol,
+						only_verified: true,
+						assets: [token.id],
+					});
+					mainAsset = resMain?.tokens[0];
+				}
 
-				if (res) {
-					const amount = walletBalance.find(
-						(item) =>
-							item.asset.token_id === res?.tokens[0]?.token_id
-					)?.amount;
-					const tokenInfo = {
-						amount: amount
+				let quoteAsset;
+				if (
+					quoteToken.id === "lovelace" ||
+					quoteToken.symbol === "ADA"
+				) {
+					quoteAsset = FALLBACK_ADA.asset;
+				} else {
+					const resQuote = await fetchMinswapTokenInfo({
+						query: quoteToken.symbol,
+						only_verified: true,
+						assets: [quoteToken.id],
+					});
+					quoteAsset = resQuote?.tokens[0];
+				}
+
+				if (mainAsset && quoteAsset) {
+					const getAmount = (assetId: string) =>
+						walletBalance.find(
+							(item) => item.asset.token_id === assetId
+						)?.amount;
+
+					const mainInfo = {
+						amount: getAmount(mainAsset.token_id)
 							? formatTokenAmount(
-									amount,
-									res.tokens[0].decimals || 6
+									parseFloat(getAmount(mainAsset.token_id)!),
+									mainAsset.decimals || 6
 							  )
 							: "0",
-						asset: res.tokens[0],
+						asset: mainAsset,
 					};
 
-					setTokenOut(tokenInfo);
+					const quoteInfo = {
+						amount: getAmount(quoteAsset.token_id)
+							? formatTokenAmount(
+									parseFloat(getAmount(quoteAsset.token_id)!),
+									quoteAsset.decimals || 6
+							  )
+							: "0",
+						asset: quoteAsset,
+					};
+
+					setTokenIn(mainInfo);
+					setTokenOut(quoteInfo);
 				}
 			} catch (err: any) {
-				throw new Error(err);
+				console.error(err);
 			}
 		};
 		handleGetTokenInfo();
-	}, [token, walletBalance]);
+	}, [token, quoteToken, walletBalance]);
 
 	const handleChangeTokenIn = useCallback((token: MinswapBalanceItem) => {
 		setTokenIn(token);
@@ -306,9 +341,7 @@ export const useSwapLogic = () => {
 				sellToken.asset.price_by_ada
 			)}`,
 			token: sellToken.asset?.ticker,
-			balance: `${formatNumber(sellTokenActualBalance)} ${
-				sellToken.asset.ticker
-			}`,
+			balance: `${sellTokenActualBalance} ${sellToken.asset.ticker}`,
 			iconUrl: sellToken.asset.logo,
 		}),
 		[swapState.inputAmount, sellToken, sellTokenActualBalance]
@@ -322,10 +355,10 @@ export const useSwapLogic = () => {
 				buyToken.asset?.price_by_ada
 			)}`,
 			token: buyToken.asset?.ticker,
-			balance: `${buyToken.amount} ${buyToken.asset?.ticker}`,
+			balance: `${buyTokenActualBalance} ${buyToken.asset?.ticker}`,
 			iconUrl: buyToken.asset?.logo,
 		}),
-		[amountOut, buyToken]
+		[amountOut, buyToken, buyTokenActualBalance]
 	);
 
 	useEffect(() => {
