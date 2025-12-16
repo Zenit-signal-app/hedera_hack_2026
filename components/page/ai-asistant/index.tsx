@@ -11,6 +11,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getChatHistory } from "@/services/aiServices";
 import { useWalletStore } from "@/store/walletStore";
+import { createIdGenerator } from "ai";
 
 export default function AIChatPage() {
 	const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -30,6 +31,10 @@ export default function AIChatPage() {
 	} = useChat({
 		api: "/api/chat",
 		sendExtraMessageFields: true,
+		generateId: createIdGenerator({
+			prefix: "user",
+			size: 32,
+		}),
 		body: {
 			walletAddress,
 		},

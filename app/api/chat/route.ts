@@ -7,8 +7,9 @@ import {
 	streamText,
 } from "ai";
 import type { Message } from "ai";
-import { DEFI_ASSISTANT_PROMPT } from "@/lib/system-prompts";
-import { getChatHistory, saveChatHistory } from "@/services/aiServices";
+import { SYSTEM_PROMPT } from "@/lib/system-prompts";
+import { saveChatHistory } from "@/services/aiServices";
+import { marketAnalysisTool, getSupportedTokensTool } from "@/ai-tools/market-analysis";
 
 const MAX_CONTEXT_MESSAGES = 8;
 
@@ -57,30 +58,28 @@ export async function POST(req: Request) {
 						messages: contextMessages,
 						maxSteps: 5,
 						abortSignal: signal,
-						system: DEFI_ASSISTANT_PROMPT,
+						tools: {
+							marketAnalysis: marketAnalysisTool,
+							getSupportedTokens: getSupportedTokensTool,
+						},
+						system: SYSTEM_PROMPT,
 						experimental_generateMessageId: createIdGenerator({
 							prefix: "assistant",
 							size: 32,
 						}),
 						onStepFinish: async (event) => {
+							// Check if any tool result has shouldAbort flag
 							if (event.toolResults?.length) {
 								for (const result of event.toolResults) {
-									if (result) {
+									if (result && 'shouldAbort' in result.result && result.result.shouldAbort === true) {
 										try {
-											const existingMessages =
-												await getChatHistory(
-													walletAddress
-												);
-											const updatedMessages =
-												appendResponseMessages({
-													messages: existingMessages,
-													responseMessages:
-														event.response.messages,
-												});
-
+											const responseMessages = appendResponseMessages({
+												messages: [],
+												responseMessages: event.response.messages,
+											});
 											await saveChatHistory(
 												walletAddress,
-												updatedMessages
+												responseMessages
 											);
 
 											// Abort after saving

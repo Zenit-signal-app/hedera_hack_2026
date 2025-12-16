@@ -22,6 +22,8 @@ export const saveChatHistory = async (
 	walletAddress: string,
 	messages: Message[]
 ) => {
+	// console.log('[saveChatHistory] messages:', messages);
+	// console.log('--------------------------------');
 	try {
 		const formattedMessages = messages.map((msg) => {
 			let finalTools = {};
