@@ -9,9 +9,15 @@ import {
 import type { Message } from "ai";
 import { SYSTEM_PROMPT } from "@/lib/system-prompts";
 import { saveChatHistory } from "@/services/aiServices";
-import { marketAnalysisTool, getSupportedTokensTool } from "@/ai-tools/market-analysis";
+import { marketAnalysisTool, getSupportedTokensTool, adaAnalysisTool } from "@/ai-tools/market-analysis";
 
 const MAX_CONTEXT_MESSAGES = 8;
+
+const TOOLS = {
+	marketAnalysis: marketAnalysisTool,
+	getSupportedTokens: getSupportedTokensTool,
+	adaAnalysis: adaAnalysisTool,
+};
 
 export async function POST(req: Request) {
 	const { messages, walletAddress } = await req.json();
@@ -59,10 +65,7 @@ export async function POST(req: Request) {
 						messages: contextMessages,
 						maxSteps: 5,
 						abortSignal: signal,
-						tools: {
-							marketAnalysis: marketAnalysisTool,
-							getSupportedTokens: getSupportedTokensTool,
-						},
+						tools: TOOLS,
 						system: SYSTEM_PROMPT,
 						experimental_generateMessageId: createIdGenerator({
 							prefix: "assistant",
