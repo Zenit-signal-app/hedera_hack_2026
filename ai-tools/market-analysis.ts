@@ -24,13 +24,13 @@ export const marketAnalysisTool = tool({
             const data = await response.data;
             
             // Create a human-readable content message for the AI
-            const content = `Market data for ${symbol} has been retrieved. Use this data to provide price analysis, identify trends, and suggest trading strategies.`;
+            const content = `Market data for ${symbol} has been retrieved. Use this data and follow system prompt to provide analysis and insights.`;
             
-            console.log('marketAnalysisTool return: ', {
-                success: true,
-                content,
-                dataPoints: Array.isArray(data) ? data.length : 'N/A',
-            });
+            // console.log('marketAnalysisTool return: ', {
+            //     success: true,
+            //     content,
+            //     dataPoints: Array.isArray(data) ? data.length : 'N/A',
+            // });
             
             return {
                 success: true,
@@ -85,15 +85,15 @@ export const getSupportedTokensTool = tool({
                 content += ` matching "${query}"`;
             }
             content += `. Showing ${tokensCount} token${tokensCount !== 1 ? 's' : ''} on page ${currentPage}.`;
-            content += ` Use this data to inform users about available tokens on the platform.`;
+            content += ` Use this data and follow system prompt to inform users about available tokens on the platform.`;
             
-            console.log('getSupportedTokensTool return: ', {
-                success: true,
-                content,
-                totalTokens,
-                tokensCount,
-                page: currentPage,
-            });
+            // console.log('getSupportedTokensTool return: ', {
+            //     success: true,
+            //     content,
+            //     totalTokens,
+            //     tokensCount,
+            //     page: currentPage,
+            // });
             
             return {
                 success: true,

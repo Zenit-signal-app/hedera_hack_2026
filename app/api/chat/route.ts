@@ -38,12 +38,13 @@ export async function POST(req: Request) {
 				return message;
 			});
 
-		const latestMessage = messages[messages.length - 1];
-		if (latestMessage.role === "user") {
-			try {
-				await saveChatHistory(walletAddress, [latestMessage]);
-			} catch (error) {}
-		}
+		// deprecated: saveChatHistory is called in createDataStreamResponse
+		// const latestMessage = messages[messages.length - 1];
+		// if (latestMessage.role === "user") {
+		// 	try {
+		// 		await saveChatHistory(walletAddress, [latestMessage]);
+		// 	} catch (error) {}
+		// }
 		return createDataStreamResponse({
 			execute: async (dataStream) => {
 				try {
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
 									if (result && 'shouldAbort' in result.result && result.result.shouldAbort === true) {
 										try {
 											const responseMessages = appendResponseMessages({
-												messages: [],
+												messages: [latestMessage],
 												responseMessages: event.response.messages,
 											});
 											await saveChatHistory(
@@ -99,7 +100,7 @@ export async function POST(req: Request) {
 							if (!walletAddress) return;
 							try {
 								const updatedMessages = appendResponseMessages({
-									messages: [],
+									messages: [latestMessage],
 									responseMessages: event.response.messages,
 								});
 								await saveChatHistory(
@@ -110,14 +111,19 @@ export async function POST(req: Request) {
 									saved: true,
 								});
 							} catch (error) {
+								console.error('Error in onFinish:', error);
 								dataStream.writeMessageAnnotation({
 									saved: false,
 									error: String(error),
 								});
-								throw error;
+								// Don't re-throw - let the stream complete
 							}
 						},
-						onError: (error) => {},
+						onError: (error) => {
+							console.log('----- onError -----');
+							console.log('error:', error);
+							console.log('--------------------------------');
+						},
 					});
 					result.mergeIntoDataStream(dataStream);
 				} catch (error) {
