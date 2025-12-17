@@ -99,7 +99,7 @@ export async function POST(req: Request) {
 							if (!walletAddress) return;
 							try {
 								const updatedMessages = appendResponseMessages({
-									messages,
+									messages: [],
 									responseMessages: event.response.messages,
 								});
 								await saveChatHistory(
