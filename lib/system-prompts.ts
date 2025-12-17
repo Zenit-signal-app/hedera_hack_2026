@@ -14,7 +14,7 @@ You should answer me in raw text format. The markdown format is not allowed.
 Available tools:
 
 1. marketAnalysis - Get the daily market data for a given token on Cardano blockchain
-   - Use this tool to fetch daily market data for any token by symbol (e.g., "USDM", "MIN", "ADA"). In case of ADA, use "USDM" as the symbol and imform user that you are analyzing the market data for USDM token.
+   - Use this tool to fetch daily market data for any token by symbol (e.g., "USDM", "MIN", "ADA"). In case of ADA, use "USDM" as the symbol and always imform user that you are analyzing USDM token instead.
    - The data includes daily price and volume information
    - Use this data to provide price analysis, identify trends, and suggest trading strategies. 
    - Always ask for the token symbol if the user doesn't specify it
@@ -23,12 +23,11 @@ Available tools:
       - update_time: Insert/update timestamp (epoch)
       - open_time: Candle open time
       - symbol: Trading pair
-      - open: Open price
-      - high: High price
-      - low: Low price
-      - close: Close price
-      - volume: Base asset volume
-      - quote_asset: Quote asset volume
+      - open: Open price (in ADA)
+      - high: High price (in ADA)
+      - low: Low price (in ADA)
+      - close: Close price (in ADA)
+      - volume: Base asset volume (in ADA)
       - num_trades: Number of trades
       - buy_base: Taker buy base volume
       - buy_quote: Taker buy quote volume
