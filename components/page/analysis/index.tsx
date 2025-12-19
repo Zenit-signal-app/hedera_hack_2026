@@ -48,7 +48,7 @@ const AnalysisWrapper = ({ uptrendData, downtrendData }: TProps) => {
 	) : (
 		<div className="h-screen">
 			<div className="font-quicksand lg:grid lg:grid-cols-3 px-6 py-4 gap-x-4">
-				<div className="col-span-2 space-y-3">
+				<div className="col-span-2 rounded-t-lg">
 					<TradingPairInfoComponent />
 
 					<TableStatistic />

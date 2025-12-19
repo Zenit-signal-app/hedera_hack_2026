@@ -164,7 +164,7 @@ export function TableTopTrader() {
 		[]
 	);
 	return (
-		<div className="bg-dark-gray-950">
+		<div className="bg-dark-gray-950 rounded-b-lg">
 			<TableWrapper<TopTrader>
 				columns={columns}
 				data={data}

@@ -8,10 +8,11 @@ import TransactionTable from "./TableTransaction";
 import TableTopTrader from "./TableTopTraders";
 import { useIsMobile } from "@/src/components/hooks/useIsMobile";
 import dynamic from "next/dynamic";
-const AdvancedRealTimeChart = dynamic(
+import { useTokenStore } from "@/store/tokenStore";
+const TVChartContainer = dynamic(
 	() =>
-		import("react-ts-tradingview-widgets").then(
-			(w) => w.AdvancedRealTimeChart
+		import("@/components/common/tvChart").then(
+			(mod) => mod.TVChartContainer
 		),
 	{
 		ssr: false,
@@ -19,14 +20,11 @@ const AdvancedRealTimeChart = dynamic(
 );
 const TableStatistic = () => {
 	const isMobile = useIsMobile();
-	const [tab, setTab] = useState("transactions");
-	useEffect(() => {
-		if (isMobile) {
-			setTab("charts");
-		} else {
-			setTab("transactions");
-		}
-	}, [isMobile]);
+	const [tab, setTab] = useState(() =>
+		isMobile ? "charts" : "transactions"
+	);
+
+	const { token, quoteToken } = useTokenStore((state) => state);
 
 	const tabs = useMemo(() => {
 		if (isMobile) {
@@ -68,12 +66,11 @@ const TableStatistic = () => {
 		switch (tab) {
 			case "charts": {
 				return (
-					<AdvancedRealTimeChart
-						theme="dark"
-						height={470}
-						width={"100%"}
-						symbol="BITGET:SNEKUSDT"
-					></AdvancedRealTimeChart>
+					<TVChartContainer
+						symbol={`${token.symbol}_${quoteToken.symbol}`}
+						className="w-full h-80 rounded-lg mb-4"
+						interval="5"
+					/>
 				);
 			}
 			case "transactions": {
@@ -84,19 +81,17 @@ const TableStatistic = () => {
 			}
 			default: {
 				return (
-					<AdvancedRealTimeChart
-						theme="dark"
-						height={470}
-						width={"100%"}
-						symbol="BITGET:SNEKUSDT"
-						hide_side_toolbar
-					></AdvancedRealTimeChart>
+					<TVChartContainer
+						symbol={`${token.symbol}_${quoteToken.symbol}`}
+						className="w-full h-80 rounded-lg mb-4"
+						interval="5"
+					/>
 				);
 			}
 		}
 	}, [tab]);
 	return (
-		<div className="bg-black rounded-4xl border border-dark-gray-700">
+		<div className="bg-black border border-dark-gray-700">
 			<TabsWrapper
 				tabs={tabs}
 				defaultValue={isMobile ? "charts" : "transactions"}

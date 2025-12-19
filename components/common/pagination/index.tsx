@@ -32,7 +32,6 @@ export function ServerPagination({
 	setPageIndex,
 	setPageSize,
 }: TProps) {
-	const pageOptions = [10, 20, 30, 50, 100];
 
 	return (
 		<div className="flex items-center justify-end px-2 py-3 bg-card rounded-b-lg">

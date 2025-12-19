@@ -13,15 +13,8 @@ import { formatNumber } from "@/lib/format";
 import dynamic from "next/dynamic";
 import { useSwapLogic } from "@/hooks/useSwapLogic";
 import { useIsMobile } from "@/src/components/hooks/useIsMobile";
-const AdvancedRealTimeChart = dynamic(
-	() =>
-		import("react-ts-tradingview-widgets").then(
-			(w) => w.AdvancedRealTimeChart
-		),
-	{
-		ssr: false,
-	}
-);
+import { TVChartContainer } from "@/components/common/tvChart";
+
 interface TradingPairInfo {
 	pair: string;
 	baseAsset: string;
@@ -110,14 +103,14 @@ export const TradingPairInfoComponent: React.FC = () => {
 			<div className="w-full lg:p-3 flex gap-x-4 gap-y-3 items-start text-white lg:flex-row flex-col  font-sans">
 				<div className="flex lg:items-center items-start lg:flex-row flex-col gap-y-3 gap-x-4 w-full">
 					<div className="flex items-center gap-x-2 flex-1">
-							<Image
-								src={tokenInfo?.logo_url || "/images/snek.png"}
-								alt={tokenInfo?.name || "Snek"}
-								className="w-10 h-10 rounded-full"
-								width={40}
-								height={40}
-								unoptimized
-							/>
+						<Image
+							src={tokenInfo?.logo_url || "/images/snek.png"}
+							alt={tokenInfo?.name || "Snek"}
+							className="w-10 h-10 rounded-full"
+							width={40}
+							height={40}
+							unoptimized
+						/>
 
 						<div className="flex items-start space-x-2 cursor-pointer">
 							<div className="flex flex-col">
@@ -174,12 +167,11 @@ export const TradingPairInfoComponent: React.FC = () => {
 				</div>
 			</div>
 			{isMobile ? null : (
-				<AdvancedRealTimeChart
-					theme="dark"
-					height={470}
-					width={"100%"}
-					symbol="BITGET:SNEKUSDT"
-				></AdvancedRealTimeChart>
+				<TVChartContainer
+					symbol={`${token.symbol}_${quoteToken.symbol}`}
+					className="w-full h-80 rounded-lg"
+					interval="5"
+				/>
 			)}
 		</div>
 	);
