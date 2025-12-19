@@ -99,7 +99,7 @@ export default function AIChatPage() {
 								</div>
 							) : (
 								<div
-									className="font-museomoderno text-sm"
+									className="font-montserrat text-sm"
 									key={msg.id}
 								>
 									<ReactMarkdown
@@ -131,7 +131,7 @@ export default function AIChatPage() {
 											),
 											li: ({ ...props }) => (
 												<li
-													className="mb-1"
+													className="mb-1 [&>p]:inline [&>p]:m-0"
 													{...props}
 												/>
 											),

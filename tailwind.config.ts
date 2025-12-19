@@ -14,6 +14,8 @@ export default {
 				exo: "var(--font-exo)",
 				museomoderno: "var(--font-museomoderno)",
 				quickSan: "var(--font-quicksand)",
+				montserrat: "var(--font-montserrat)",
+				valeraRound: "var(--font-valeraRound)",
 			},
 			fontSize: {
 				// Heading
