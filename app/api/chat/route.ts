@@ -7,10 +7,17 @@ import {
 	streamText,
 } from "ai";
 import type { Message } from "ai";
-import { DEFI_ASSISTANT_PROMPT } from "@/lib/system-prompts";
-import { getChatHistory, saveChatHistory } from "@/services/aiServices";
+import { SYSTEM_PROMPT } from "@/lib/system-prompts";
+import { saveChatHistory } from "@/services/aiServices";
+import { marketAnalysisTool, getSupportedTokensTool, adaAnalysisTool } from "@/ai-tools/market-analysis";
 
 const MAX_CONTEXT_MESSAGES = 8;
+
+const TOOLS = {
+	marketAnalysis: marketAnalysisTool,
+	getSupportedTokens: getSupportedTokensTool,
+	adaAnalysis: adaAnalysisTool,
+};
 
 export async function POST(req: Request) {
 	const { messages, walletAddress } = await req.json();
@@ -37,12 +44,13 @@ export async function POST(req: Request) {
 				return message;
 			});
 
-		const latestMessage = messages[messages.length - 1];
-		if (latestMessage.role === "user") {
-			try {
-				await saveChatHistory(walletAddress, [latestMessage]);
-			} catch (error) {}
-		}
+		// deprecated: saveChatHistory is called in createDataStreamResponse
+		// const latestMessage = messages[messages.length - 1];
+		// if (latestMessage.role === "user") {
+		// 	try {
+		// 		await saveChatHistory(walletAddress, [latestMessage]);
+		// 	} catch (error) {}
+		// }
 		return createDataStreamResponse({
 			execute: async (dataStream) => {
 				try {
@@ -57,30 +65,25 @@ export async function POST(req: Request) {
 						messages: contextMessages,
 						maxSteps: 5,
 						abortSignal: signal,
-						system: DEFI_ASSISTANT_PROMPT,
+						tools: TOOLS,
+						system: SYSTEM_PROMPT,
 						experimental_generateMessageId: createIdGenerator({
 							prefix: "assistant",
 							size: 32,
 						}),
 						onStepFinish: async (event) => {
+							// Check if any tool result has shouldAbort flag
 							if (event.toolResults?.length) {
 								for (const result of event.toolResults) {
-									if (result) {
+									if (result && 'shouldAbort' in result.result && result.result.shouldAbort === true) {
 										try {
-											const existingMessages =
-												await getChatHistory(
-													walletAddress
-												);
-											const updatedMessages =
-												appendResponseMessages({
-													messages: existingMessages,
-													responseMessages:
-														event.response.messages,
-												});
-
+											const responseMessages = appendResponseMessages({
+												messages: [latestMessage],
+												responseMessages: event.response.messages,
+											});
 											await saveChatHistory(
 												walletAddress,
-												updatedMessages
+												responseMessages
 											);
 
 											// Abort after saving
@@ -100,7 +103,7 @@ export async function POST(req: Request) {
 							if (!walletAddress) return;
 							try {
 								const updatedMessages = appendResponseMessages({
-									messages,
+									messages: [latestMessage],
 									responseMessages: event.response.messages,
 								});
 								await saveChatHistory(
@@ -111,14 +114,19 @@ export async function POST(req: Request) {
 									saved: true,
 								});
 							} catch (error) {
+								console.error('Error in onFinish:', error);
 								dataStream.writeMessageAnnotation({
 									saved: false,
 									error: String(error),
 								});
-								throw error;
+								// Don't re-throw - let the stream complete
 							}
 						},
-						onError: (error) => {},
+						onError: (error) => {
+							console.log('----- onError -----');
+							console.log('error:', error);
+							console.log('--------------------------------');
+						},
 					});
 					result.mergeIntoDataStream(dataStream);
 				} catch (error) {

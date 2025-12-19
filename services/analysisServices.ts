@@ -5,7 +5,7 @@ import { ApiResponse, PaginationParams, TopTrader } from "@/types/transaction";
 
 const BASE_ANALYSIS_API = "/analysis/tokens";
 
-interface TokensParams {
+export interface TokensParams {
 	query?: string;
 	limit: number;
 	offset: number;

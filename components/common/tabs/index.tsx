@@ -16,7 +16,7 @@ interface TabsWrapperProps {
 	defaultValue?: string;
 	onValueChange?: (value: string) => void;
 	className?: string;
-	value: string;
+	value?: string;
 }
 
 const TabsWrapper: React.FC<TabsWrapperProps> = ({
@@ -54,7 +54,7 @@ const TabsWrapper: React.FC<TabsWrapperProps> = ({
 			defaultValue={defaultValue}
 			onValueChange={onValueChange}
 			className={cn("w-full", className)}
-			value={value}
+			{...(value !== undefined && { value })}
 		>
 			<TabsList
 				className={cn(tabsListBaseClasses, tabsListVariantClasses)}
