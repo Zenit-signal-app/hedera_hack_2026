@@ -1,0 +1,134 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+  <title>TradingView Chart</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0">
+  <script type="text/javascript" src="./charting_library/charting_library.standalone.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    #tv_chart_container {
+      width: 100vw;
+      height: 100vh;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="tv_chart_container"></div>
+
+  <script type="text/javascript">
+    // 1. Lấy tham số từ URL (Do React Native truyền lên)
+    const urlParams = new URLSearchParams( window.location.search );
+    const symbolParam = urlParams.get( 'symbol' ) || 'USDM/ADA';
+    const themeParam = urlParams.get( 'theme' ) || 'Dark';
+    const apiUrlParam = urlParams.get( 'apiUrl' ) || 'https://api.seerbot.io';
+    const indicatorsParam = urlParams.get( 'indicators' ) || '';
+    // 2. Cấu hình Datafeed (Gọi về API Backend của bạn)
+    const Datafeed = {
+      onReady: ( cb ) => {
+        setTimeout( () => cb( {
+          supported_resolutions: [ "1", "5", "15", "30", "60", "240", "1D" ],
+          supports_time: true
+        } ), 0 );
+      },
+      searchSymbols: ( userInput, exchange, symbolType, onResultReadyCallback ) => {
+        onResultReadyCallback( [] );
+      },
+      resolveSymbol: ( symbolName, onSymbolResolvedCallback, onResolveErrorCallback ) => {
+        setTimeout( () => onSymbolResolvedCallback( {
+          name: symbolName,
+          full_name: symbolName,
+          description: symbolName,
+          type: 'crypto',
+          session: '24x7',
+          timezone: 'Etc/UTC',
+          exchange: 'Minswap',
+          minmov: 1,
+          pricescale: 10000,
+          has_intraday: true,
+          supported_resolutions: [ "1", "5", "15", "30", "60", "240", "1D" ],
+          data_status: 'streaming',
+        } ), 0 );
+      },
+      getBars: async ( symbolInfo, resolution, periodParams, onHistoryCallback, onErrorCallback ) => {
+        const { from, to, countBack } = periodParams;
+        // Map resolution nếu cần
+        const resMap = { '1': '1m', '5': '5m', '30': '30m', '60': '1h', '240': '4h', '1D': '1d' };
+        const apiRes = resMap[ resolution ] || resolution;
+
+        try {
+          // Gọi API Backend của bạn
+          const url = `${ apiUrlParam }/analysis/charting/history/${ symbolInfo.name }?resolution=${ apiRes }&from_=${ from }&to=${ to }&count_back=${ countBack }`;
+          const response = await fetch( url );
+          const data = await response.json();
+
+          if ( !data || data.length === 0 ) {
+            onHistoryCallback( [], { noData: true } );
+            return;
+          }
+
+          const bars = data.map( bar => ( {
+            time: bar.time * 1000,
+            open: Number( bar.open ),
+            high: Number( bar.high ),
+            low: Number( bar.low ),
+            close: Number( bar.close ),
+            volume: Number( bar.volume ),
+          } ) );
+          onHistoryCallback( bars, { noData: false } );
+        } catch ( err ) {
+          console.error( err );
+          onErrorCallback( err );
+        }
+      }
+    };
+
+    // 3. Khởi tạo Widget
+    window.tvWidget = new TradingView.widget( {
+      symbol: symbolParam,
+      interval: '60',
+      container: 'tv_chart_container',
+      datafeed: Datafeed,
+      library_path: './charting_library/',
+      locale: 'vi',
+      disabled_features: [ 'use_localstorage_for_settings', 'header_widget', 'left_toolbar' ],
+      enabled_features: [ 'hide_left_toolbar_by_default' ],
+      fullscreen: false,
+      autosize: true,
+      theme: themeParam,
+      overrides: {
+        "paneProperties.background": themeParam === 'Dark' ? '#131722' : '#ffffff',
+        "paneProperties.vertGridProperties.color": themeParam === 'Dark' ? '#363c4e' : '#e1e3eb',
+        "paneProperties.horzGridProperties.color": themeParam === 'Dark' ? '#363c4e' : '#e1e3eb',
+      },
+
+    } );
+    window.addEventListener( "message", ( event ) => {
+      try {
+        const data = JSON.parse( event.data );
+        if ( data.type === 'ADD_INDICATOR' && window.tvWidget ) {
+          window.tvWidget.activeChart().createStudy( data.value, false, false );
+        }
+
+        if ( data.type === 'REMOVE_ALL_STUDIES' && window.tvWidget ) {
+          window.tvWidget.activeChart().removeAllStudies();
+        }
+
+        if ( data.type === 'SET_TIMEFRAME' && window.tvWidget ) {
+          window.tvWidget.activeChart().setResolution( data.value );
+        }
+
+      } catch ( e ) {
+        console.error( "Lỗi xử lý message:", e );
+      }
+    } );
+  </script>
+</body>
+
+</html>

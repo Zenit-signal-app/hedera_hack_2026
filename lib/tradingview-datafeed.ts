@@ -9,7 +9,6 @@ import {
 } from "@/public/static/charting_library";
 import api from "@/axios/axiosInstance";
 
-// Map TradingView resolution to API resolution format
 const resolutionMap: Record<string, string> = {
   "1": "1m",
   "3": "3m",
@@ -55,11 +54,6 @@ export class CustomDatafeed implements IBasicDataFeed {
     onError: (reason: string) => void
   ): Promise<void> {
     try {
-      // Normalize symbol format (convert / to _)
-      const normalizedSymbol = symbolName.replace(/\//g, "_");
-
-      console.log("🔍 Resolving symbol:", { symbolName, normalizedSymbol });
-
       const symbolInfo: LibrarySymbolInfo = {
         ticker: symbolName,
         name: symbolName,
@@ -80,11 +74,9 @@ export class CustomDatafeed implements IBasicDataFeed {
       };
 
       setTimeout(() => {
-        console.log("✅ Symbol resolved:", symbolInfo);
         onResolve(symbolInfo);
       }, 0);
     } catch (error) {
-      console.error("❌ Symbol resolve error:", error);
       onError("Symbol resolve error: " + error);
     }
   }
@@ -98,18 +90,14 @@ export class CustomDatafeed implements IBasicDataFeed {
   ): Promise<void> {
     try {
       const { from, to, countBack } = periodParams;
-
       const pair = symbolInfo.name.replace(/\//g, "_");
-
       const apiResolution = resolutionMap[resolution as string] || resolution;
-
-      // Use TradingView's from/to if provided, otherwise default to last 30 days
       let fromTime = from;
       let toTime = to;
       
       if (!fromTime || !toTime) {
         const now = Math.floor(Date.now() / 1000);
-        const oneMonthAgo = now - (30 * 24 * 60 * 60); // 30 days in seconds
+        const oneMonthAgo = now - (30 * 24 * 60 * 60);
         fromTime = oneMonthAgo;
         toTime = now;
       }
