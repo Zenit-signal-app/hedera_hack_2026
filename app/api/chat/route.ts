@@ -9,14 +9,13 @@ import {
 import type { Message } from "ai";
 import { SYSTEM_PROMPT } from "@/lib/system-prompts";
 import { saveChatHistory } from "@/services/aiServices";
-import { marketAnalysisTool, getSupportedTokensTool, adaAnalysisTool } from "@/ai-tools/market-analysis";
+import { marketAnalysisTool, getSupportedTokensTool } from "@/ai-tools/market-analysis";
 
 const MAX_CONTEXT_MESSAGES = 8;
 
 const TOOLS = {
 	marketAnalysis: marketAnalysisTool,
 	getSupportedTokens: getSupportedTokensTool,
-	adaAnalysis: adaAnalysisTool,
 };
 
 export async function POST(req: Request) {
