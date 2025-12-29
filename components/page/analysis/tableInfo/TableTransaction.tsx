@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/preserve-manual-memoization */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 "use client";
@@ -10,14 +11,33 @@ import DirectIcon from "@/components/icon/IconDirect";
 import { formatNumber, formatTime } from "@/lib/format";
 import { useFetchTransactions } from "@/hooks/useFetchTransactions";
 import { Transaction } from "@/types/transaction";
+import { useTokenStore } from "@/store/tokenStore";
+import Link from "next/link";
 
 export function TransactionTable() {
 	const { data, isLoading, pagination, setPageIndex, setPageSize } =
 		useFetchTransactions();
+	const selectedToken = useTokenStore((state) => state.token);
+	const quoteToken = useTokenStore((state) => state.quoteToken);
+
+	const getTransactionType = (transaction: Transaction): "BUY" | "SELL" => {
+		const isFromQuote =
+			transaction.from_token === quoteToken.symbol ||
+			transaction.from_token === quoteToken.id;
+		return isFromQuote ? "BUY" : "SELL";
+	};
+
+	const getTypeColor = (type: "BUY" | "SELL") => {
+		return type === "BUY" ? "text-green-500" : "text-red-500";
+	};
+
+	const baseAssetSymbol = selectedToken.symbol;
+	const quoteAssetSymbol = quoteToken.symbol;
+
 	const columns: ColumnDef<Transaction, any>[] = useMemo(
 		() => [
 			{
-				accessorKey: "createdAt",
+				accessorKey: "timestamp",
 				header: () => (
 					<div className="flex items-center justify-between text-dark-gray-200">
 						Time
@@ -39,11 +59,8 @@ export function TransactionTable() {
 					</div>
 				),
 				cell: ({ row }) => {
-					const type = row.original.status;
-					const colorClass =
-						type === "completed"
-							? "text-green-500 font-bold"
-							: "text-red-500 font-bold";
+					const type = getTransactionType(row.original);
+					const colorClass = `${getTypeColor(type)} font-bold`;
 					return (
 						<div className="flex items-center text-sm">
 							<span className={colorClass}>{type}</span>
@@ -54,117 +71,83 @@ export function TransactionTable() {
 				enableColumnFilter: true,
 			},
 			{
+				accessorKey: "from_amount",
+				header: () => (
+					<div className="flex items-center justify-between text-dark-gray-200">
+						Total {baseAssetSymbol}
+					</div>
+				),
+				cell: ({ row }) => {
+					const type = getTransactionType(row.original);
+					const colorClass = getTypeColor(type);
+					return (
+						<div className={`text-sm font-semibold ${colorClass}`}>
+							{formatNumber(row.original.from_amount)}
+						</div>
+					);
+				},
+				enableSorting: false,
+				enableColumnFilter: true,
+			},
+			{
+				accessorKey: "to_amount",
+				header: () => (
+					<div className="flex items-center justify-between text-dark-gray-200">
+						Total {quoteAssetSymbol}
+					</div>
+				),
+				cell: ({ row }) => {
+					const type = getTransactionType(row.original);
+					const colorClass = getTypeColor(type);
+					return (
+						<div className={`text-sm font-semibold ${colorClass}`}>
+							{formatNumber(row.original.to_amount)}
+						</div>
+					);
+				},
+				enableSorting: false,
+				enableColumnFilter: true,
+			},
+			{
 				accessorKey: "price",
-				header: () => {
+				header: () => (
+					<div className="flex items-center justify-between text-dark-gray-200">
+						Price
+					</div>
+				),
+				cell: ({ row }) => {
+					const type = getTransactionType(row.original);
+					const colorClass = getTypeColor(type);
 					return (
-						<div className="flex items-center justify-between text-dark-gray-200">
-							USD
+						<div className={`text-sm font-semibold ${colorClass}`}>
+							${formatNumber(row.original.price)}
 						</div>
 					);
 				},
-				cell: ({ row }) => (
-					<div className="text-white text-sm font-semibold">
-						${formatNumber(row.original.price)}
-					</div>
-				),
 				enableSorting: true,
 				enableColumnFilter: true,
 			},
 			{
-				accessorKey: "from.assetName",
-				header: (header) => {
-					return (
-						<div className="flex items-center justify-between text-dark-gray-200">
-							SNEK
-						</div>
-					);
-				},
-				cell: ({ row }) => (
-					<div className="text-white text-sm">
-						{formatNumber(row.original.from_amount)}
+				id: "txn",
+				header: () => (
+					<div className="flex items-center justify-between text-dark-gray-200">
+						Txn
 					</div>
 				),
-				enableSorting: false,
-				enableColumnFilter: true,
-			},
-			{
-				accessorKey: "to.assetName",
-				header: () => {
-					return (
-						<div className="flex items-center justify-between text-dark-gray-200">
-							ADA
-						</div>
-					);
-				},
 				cell: ({ row }) => (
-					<div className="text-white text-sm">
-						{formatNumber(row.original.to_amount)}
-					</div>
-				),
-				enableSorting: false,
-				enableColumnFilter: true,
-			},
-
-			{
-				accessorKey: "priceSwap",
-				header: () => {
-					return (
-						<div className="flex items-center justify-between text-dark-gray-200">
-							Price
-						</div>
-					);
-				},
-				cell: ({ row }) => (
-					<div className="text-white/90 text-sm">
-						${formatNumber(row.original.price)}
-					</div>
-				),
-				enableSorting: true,
-				enableColumnFilter: true,
-			},
-			{
-				accessorKey: "txh",
-				header: () => {
-					return (
-						<div className="flex items-center justify-between text-dark-gray-200">
-							Maker
-						</div>
-					);
-				},
-				cell: ({ row }) => (
-					<button
-						className="text-gray-200 text-xs truncate max-w-[100px]"
-						onClick={() =>
-							navigator.clipboard.writeText(
-								row.original.transaction_id
-							)
-						}
+					<Link
+						href={`https://cardanoscan.io/transaction/${row.original.transaction_id}`}
+						className="text-dark-gray-200 hover:underline text-sm"
+						target="_blank"
 					>
-						{row.original.transaction_id}
-					</button>
-				),
-				enableSorting: false,
-				enableColumnFilter: false,
-			},
-			{
-				id: "actions",
-				header: () => {
-					return (
-						<div className="flex items-center justify-between text-dark-gray-200">
-							TXN
-						</div>
-					);
-				},
-				cell: () => (
-					<button className="text-dark-gray-200 hover:underline text-sm">
 						<DirectIcon size={24} />
-					</button>
+					</Link>
 				),
 				enableSorting: false,
 				enableColumnFilter: false,
 			},
 		],
-		[]
+		[baseAssetSymbol, quoteAssetSymbol]
 	);
 	return (
 		<div className="bg-dark-gray-950 rounded-b-lg">
