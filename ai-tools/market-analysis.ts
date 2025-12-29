@@ -4,44 +4,94 @@ import axios from 'axios';
 import { z } from 'zod';
 
 const marketAnalysisSchema = z.object({
-    symbol: z.string().describe('The symbol of token on Cardano blockchain (e.g., "USDM", "MIN" or any other token symbol)'),
+    baseAsset: z.string().describe('The symbol of base asset token on Cardano blockchain (e.g., "USDM", "MIN" or any other token symbol). Usually the first token symbol in the pair. If there is one symbol acquired, use the symbol as the base asset.'),
+    quoteAsset: z.string().describe('The symbol of quote asset token on Cardano blockchain (e.g., "USDT", "ADA" or any other token symbol). Usually the second token symbol in the pair. If there is one symbol acquired, use ADA as the quote asset. If the base asset is ADA, use USDT as the quote asset.'),
+    limit: z.number().optional().default(10).describe('Number of data points to retrieve (default: 10)'),
 });
 
 export const marketAnalysisTool = tool({
     description: 'Get the daily market data for a given token',
     parameters: marketAnalysisSchema,
-    execute: async function ({ symbol }) {
+    execute: async function ({ baseAsset, quoteAsset, limit = 10 }) {
         console.log('----- Trigger market analysis -----');
-        console.log({ symbol });
+        console.log({ baseAsset, quoteAsset, limit });
+
+        if (baseAsset === 'ADA') {
+            const args = { limit };
+            return adaAnalysis(args);
+        }
         
         try {
-            const response = await api.get(`/market/daily?symbol=${symbol}&limit=10`);
+            const response = await api.get(`/market/daily?symbol=${baseAsset}&limit=${limit}`);
             const data = await response.data;
             
-            // Create a human-readable content message for the AI
-            const content = `Market data for ${symbol} has been retrieved. Use this data and follow system prompt to provide analysis and insights.`;
+            // Transform data: rename volumn to quote_asset in each object
+            const transformedData = Array.isArray(data) 
+                ? data.map((item: any) => {
+                    if ('volumn' in item) {
+                        const { volumn, ...rest } = item;
+                        return { ...rest, quote_asset: volumn };
+                    }
+                    return item;
+                })
+                : data;
             
-            // console.log('marketAnalysisTool return: ', {
-            //     success: true,
-            //     content,
-            //     dataPoints: Array.isArray(data) ? data.length : 'N/A',
-            // });
+            // Create a human-readable content message for the AI
+            const content = `Market data for ${baseAsset}/${quoteAsset} has been retrieved. Use this data and follow system prompt to provide analysis and insights.`;
             
             return {
                 success: true,
                 content,
-                data,
+                data: transformedData,
+                baseAsset,
+                quoteAsset,
             };
         } catch (error) {
-            const content = `Unexpected error fetching market data for ${symbol}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+            const content = `Unexpected error fetching market data for ${baseAsset}/${quoteAsset}: ${error instanceof Error ? error.message : 'Unknown error'}`;
             console.log(content);
             return { 
                 success: false, 
-                content 
+                content,
+                baseAsset,
+                quoteAsset,
             };
         }
     },
 });
+
+const adaAnalysis = async ({ limit = 10 }) => {
+    const baseURL = process.env.NEXT_VISTIA_API;
+    const baseAsset = 'ADA';
+    const quoteAsset = 'USDT';
+    if (!baseURL) {
+        throw new Error('NEXT_VISTIA_API environment variable is not configured');
+    }
+    try {
+        const url = `${baseURL}api/v2_2/market/daily?symbol=${baseAsset}${quoteAsset}&limit=${limit}`;
+        const response = await axios.get(url);
+        const data = await response.data;
+            
+        // Create a human-readable content message for the AI
+        const content = `Market data for ${baseAsset}/${quoteAsset} has been retrieved. Use this data and follow system prompt to provide analysis and insights.`;
+            
+        return {
+            success: true,
+            content,
+            data,
+            baseAsset,
+            quoteAsset,
+        };
+    } catch (error) {
+        const content = `Unexpected error fetching market data for ${baseAsset}/${quoteAsset}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        console.log(content);
+        return { 
+            success: false, 
+            content,
+            baseAsset,
+            quoteAsset,
+        };
+    }
+}
 
 const getSupportedTokensSchema = z.object({
     query: z.string().optional().describe('Optional search query to filter tokens by name or symbol'),
@@ -88,14 +138,6 @@ export const getSupportedTokensTool = tool({
             content += `. Showing ${tokensCount} token${tokensCount !== 1 ? 's' : ''} on page ${currentPage}.`;
             content += ` Use this data and follow system prompt to inform users about available tokens on the platform.`;
             
-            // console.log('getSupportedTokensTool return: ', {
-            //     success: true,
-            //     content,
-            //     totalTokens,
-            //     tokensCount,
-            //     page: currentPage,
-            // });
-            
             return {
                 success: true,
                 content,
@@ -107,49 +149,6 @@ export const getSupportedTokensTool = tool({
             };
         } catch (error) {
             const content = `Unexpected error fetching supported tokens: ${error instanceof Error ? error.message : 'Unknown error'}`;
-            console.log(content);
-            return { 
-                success: false, 
-                content 
-            };
-        }
-    },
-});
-
-const adaAnalysisSchema = z.object({
-    symbol: z.literal('ADA').describe('Analyze ADA token'),
-    limit: z.number().optional().default(10).describe('Number of data points to retrieve (default: 10)'),
-});
-
-export const adaAnalysisTool = tool({
-    description: 'Get the daily market data for ADA token from the Vistia API',
-    parameters: adaAnalysisSchema,
-    execute: async function ({ symbol, limit = 10 }) {
-        console.log('----- Trigger ADA analysis -----');
-        console.log({ symbol, limit });
-        
-        try {
-            const baseURL = process.env.NEXT_VISTIA_API;
-            
-            if (!baseURL) {
-                throw new Error('NEXT_VISTIA_API environment variable is not configured');
-            }
-
-            const url = `${baseURL}api/v2_2/market/daily?symbol=${symbol}&limit=${limit}`;
-            
-            const response = await axios.get(url);
-            const data = await response.data;
-            
-            // Create a human-readable content message for the AI
-            const content = `Market data for ${symbol} has been retrieved. Use this data and follow system prompt to provide analysis and insights.`;
-            
-            return {
-                success: true,
-                content,
-                data,
-            };
-        } catch (error) {
-            const content = `Unexpected error fetching market data for ${symbol}: ${error instanceof Error ? error.message : 'Unknown error'}`;
             console.log(content);
             return { 
                 success: false, 
