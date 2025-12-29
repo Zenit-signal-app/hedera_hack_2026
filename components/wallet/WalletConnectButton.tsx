@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 // components/Wallet/WalletConnectButton.tsx
 
 import React, { useCallback, useMemo, useState } from "react";
@@ -16,9 +17,11 @@ const WalletConnectButton: React.FC = () => {
 		useWalletStore();
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [open, setOpen] = useState(false);
-	const isMobile = useIsMobile()
+	const isMobile = useIsMobile();
 	const buttonText = useMemo(() => {
-		return isMobile ? null : isConnected
+		return isMobile
+			? null
+			: isConnected
 			? isWalletInfoLoading
 				? "Đang tải thông tin..."
 				: `${usedAddress?.slice(0, 6)}...${usedAddress?.slice(-4)}`
@@ -43,12 +46,8 @@ const WalletConnectButton: React.FC = () => {
 					<WalletIcon className="text-dark-gray-200 fill-dark-gray-200" />
 				) : null}
 			</button>
-			<Drawer
-				side="right"
-				open={open}
-				onOpenChange={(e) => setOpen(e)}
-			>
-				<WalletPortfolio handleClose={(o) => setOpen(o)}/>
+			<Drawer side="right" open={open} onOpenChange={(e) => setOpen(e)}>
+				<WalletPortfolio handleClose={(o) => setOpen(o)} />
 			</Drawer>
 			<ModalConnectWallet
 				isOpen={isModalOpen}

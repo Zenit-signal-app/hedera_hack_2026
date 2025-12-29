@@ -3,12 +3,13 @@ import { useSwapLogic } from "@/hooks/useSwapLogic";
 import { useTokenStore } from "@/store/tokenStore";
 import { useWalletStore } from "@/store/walletStore";
 import { MinswapBalanceItem } from "@/types/minswap";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import TokenInputCard from "./TokenInputCard";
 import SwapIcon from "@/components/icon/Icon_Swap";
 import { Transition } from "@headlessui/react";
 import { TransactionDetails } from "./TransactionDetail";
 import Loader from "@/components/common/loading/loader";
+import SwapModals from "./SwapModals";
 
 export const SwapInterface: React.FC = () => {
 	const { balance } = useWalletStore();
@@ -19,9 +20,15 @@ export const SwapInterface: React.FC = () => {
 		swapState,
 		handleSwapDirection,
 		setInputAmount,
-		signAndSubmitSwap,
 		handleChangeTokenIn,
 		handleChangeTokenOut,
+		modalStep,
+		miniStep,
+		reviewData,
+		openReviewModal,
+		closeModal,
+		handleSwapFlow,
+		txHash,
 	} = useSwapLogic();
 	const isInsufficientBalance = useMemo(() => {
 		const balanceToken = balance.find(
@@ -41,35 +48,21 @@ export const SwapInterface: React.FC = () => {
 		);
 	}, [topCardData.value, topCardData.token, balance]);
 	const { usedAddress } = useWalletStore();
-	const [isSubmitting, setIsSubmitting] = useState(false);
 	const isQuoteLoading = swapState.isQuoteLoading;
 	const isReadyToSwap =
 		parseFloat(topCardData.value) > 0 && !!swapState.quote;
 
 	const handleSwapSubmit = async () => {
-		if (!isReadyToSwap || isSubmitting) return;
+		if (!isReadyToSwap || swapState.isSubmitting) return;
 		if (!usedAddress || !swapState.quote) return;
-
-		setIsSubmitting(true);
-
-		try {
-			await signAndSubmitSwap();
-		} catch (error: any) {
-			console.error("Giao dịch Swap thất bại:", error);
-			alert(
-				error.message ||
-					"Giao dịch thất bại. Vui lòng kiểm tra lại phí hoặc lỗi từ ví."
-			);
-		} finally {
-			setIsSubmitting(false);
-		}
+		openReviewModal();
 	};
 	const handleTokenSelect = (token: MinswapBalanceItem) => {
 		handleChangeTokenIn(token);
 	};
 
 	const isButtonDisabled =
-		!isReadyToSwap || isSubmitting || isInsufficientBalance;
+		!isReadyToSwap || swapState.isSubmitting || isInsufficientBalance;
 	return (
 		<div className="w-full relative mx-auto rounded-2xl shadow-2xl flex flex-col gap-y-5">
 			<div className="flex flex-col space-y-2">
@@ -132,7 +125,7 @@ export const SwapInterface: React.FC = () => {
 						: "bg-primary-700 hover:shadow-md hover:shadow-primary-800"
 				}`}
 			>
-				{isSubmitting ? (
+				{swapState.isSubmitting ? (
 					<Loader className="w-6 h-6 mx-auto animate-spin" />
 				) : isInsufficientBalance ? (
 					`${topCardData?.token?.toUpperCase()}`
@@ -140,6 +133,19 @@ export const SwapInterface: React.FC = () => {
 					"Swap"
 				)}
 			</button>
+
+			<SwapModals
+				step={modalStep}
+				reviewData={reviewData}
+				onClose={closeModal}
+				onConfirm={handleSwapFlow}
+				miniStep={miniStep}
+				txHash={txHash || undefined}
+				onViewExplorer={(hash) => {
+					const url = `https://cardanoscan.io/transaction/${hash}`;
+					window.open(url, "_blank");
+				}}
+			/>
 		</div>
 	);
 };

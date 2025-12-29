@@ -7,7 +7,7 @@ import { listNavigators } from "@/lib/constant";
 import { useIsMobile } from "@/src/components/hooks/useIsMobile";
 import { AIAssistantGradient } from "@/src/components/icon/AIAssistantIcon";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import Navigator from "../navigator";
 import Link from "next/link";
@@ -15,6 +15,7 @@ import CommonModal from "@/components/common/modal";
 
 const Header = () => {
 	const pathName = usePathname();
+	const router = useRouter();
 	const title = useMemo(() => {
 		const t = listNavigators.find((item) => pathName.includes(item.url));
 		return t?.text || "Analysis";
@@ -55,10 +56,13 @@ const Header = () => {
 
 			<div className="flex items-center gap-x-2">
 				<div className="gradient-border-wrapper">
-					<div className=" flex items-center px-2 py-1.5 border border-dark-gray-900 rounded-full">
+					<Link
+						href="/ai-assistant"
+						className=" flex items-center px-3 py-2 border gap-x-2 border-dark-gray-900 rounded-full"
+					>
 						<p className="lg:text-white lg:block hidden">Ask AI</p>
 						<AIAssistantGradient />
-					</div>
+					</Link>
 				</div>
 				<div className="flex items-center lg:px-3 lg:py-2 px-2 py-1.5 rounded-full  border border-dark-gray-700 bg-dark-gray-900">
 					<Image

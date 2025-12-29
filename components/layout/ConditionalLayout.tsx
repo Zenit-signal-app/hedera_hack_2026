@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import Navigator from "@/page/layout/navigator";
 import Header from "@/page/layout/header";
 import { ReactNode } from "react";
+import { Toaster } from "../ui/toast";
 
 interface ConditionalLayoutProps {
 	children: ReactNode;
@@ -30,7 +31,7 @@ export default async function ConditionalLayout({
 					</div>
 				</div>
 			</div>
+			<Toaster />
 		</div>
 	);
 }
- 

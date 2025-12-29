@@ -2,14 +2,15 @@ import React, { useMemo } from "react";
 import { useWalletStore } from "@/store/walletStore";
 import { useWalletConnect } from "@/hooks/useWalletConnect";
 import Image from "next/image";
-import { LogOut, Copy } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { formatWallet } from "@/lib/format";
-import { formatNumber } from "@/lib/format";
 import { formatTokenAmount } from "@/lib/ultils";
+import { SUPPORTED_WALLETS } from "@/lib/constant";
+import Copy from "../common/Copy";
 
-
-
-export const WalletPortfolio: React.FC< {handleClose: (o: boolean) =>void }> = ({handleClose}) => {
+export const WalletPortfolio: React.FC<{
+	handleClose: (o: boolean) => void;
+}> = ({ handleClose }) => {
 	const {
 		isConnected,
 		currentWalletId,
@@ -22,6 +23,9 @@ export const WalletPortfolio: React.FC< {handleClose: (o: boolean) =>void }> = (
 		? formatWallet(usedAddress, 6, 4)
 		: "Chưa kết nối";
 
+	const currentWallet = useMemo(() => {
+		return SUPPORTED_WALLETS.find((w) => w.id === currentWalletId);
+	}, [currentWalletId]);
 	if (!isConnected) {
 		return (
 			<div className="p-6 bg-gray-900 text-white rounded-xl text-center">
@@ -35,29 +39,20 @@ export const WalletPortfolio: React.FC< {handleClose: (o: boolean) =>void }> = (
 			<div className="flex justify-between items-center pb-4">
 				<div className="flex items-center space-x-3">
 					<Image
-						src="/images/eternl.png" // Thay bằng icon ví Eternl
-						alt="Eternl"
+						src={currentWallet?.icon || "/images/eternl.png"}
+						alt={currentWallet?.name || "Wallet"}
 						width={32}
 						height={32}
 						className="rounded-full"
 					/>
 					<div className="flex flex-col">
-						<span className="text-white font-bold text-lg">
+						<span className="text-white font-bold text-lg capitalize">
 							{currentWalletId}
 						</span>
-						<div className="flex items-center text-gray-400 text-sm">
+
+						<Copy value={usedAddress || ""} className="flex items-center text-gray-400 text-sm">
 							<span>{displayAddress}</span>
-							<button
-								className="ml-1 text-gray-500 hover:text-white"
-								onClick={() =>
-									navigator.clipboard.writeText(
-										usedAddress || ""
-									)
-								}
-							>
-								<Copy className="w-3 h-3" />
-							</button>
-						</div>
+						</Copy>
 					</div>
 				</div>
 
@@ -112,7 +107,10 @@ export const WalletPortfolio: React.FC< {handleClose: (o: boolean) =>void }> = (
 
 							<div className="flex flex-col items-end">
 								<span className="text-white font-bold">
-									{formatTokenAmount(asset.amount, asset.asset.decimals)}
+									{formatTokenAmount(
+										asset.amount,
+										asset.asset.decimals
+									)}
 								</span>
 							</div>
 						</div>

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useMarketStore } from "@/store/marketStore";
 import { useWalletStore } from "@/store/walletStore";
 import {
@@ -16,6 +16,7 @@ import { MinswapBalanceItem } from "@/types/minswap";
 import { Cardano } from "@cardano-sdk/core";
 import { useTokenStore } from "@/store/tokenStore";
 import api from "@/axios/axiosInstance";
+import { toast } from "sonner";
 
 export interface SwapPathDetail {
 	pool_id: string;
@@ -56,10 +57,9 @@ interface SwapState {
 	isSubmitting: boolean;
 }
 
-interface UseSwapLogicProps {
-	initialTokenIn?: MinswapBalanceItem;
-	initialTokenOut?: MinswapBalanceItem;
-}
+type SwapModalStep = "none" | "review" | "wallet" | "inprogress" | "success";
+type SwapMiniStep = "none" | "submitting" | "submitted";
+
 const FALLBACK_ADA: MinswapBalanceItem = {
 	amount: "0",
 	asset: {
@@ -114,6 +114,11 @@ export const useSwapLogic = () => {
 		error: null,
 		isSubmitting: false,
 	});
+
+	const [modalStep, setModalStep] = useState<SwapModalStep>("none");
+	const [miniStep, setMiniStep] = useState<SwapMiniStep>("none");
+	const [txHash, setTxHash] = useState<string | null>(null);
+	const miniTimer = useRef<NodeJS.Timeout | null>(null);
 	const [tokenIn, setTokenIn] = useState<MinswapBalanceItem>(FALLBACK_ADA);
 	const [tokenOut, setTokenOut] = useState<MinswapBalanceItem>(FALLBACK_USDM);
 	const handleSetEstimateDetail = useTokenStore(
@@ -278,7 +283,7 @@ export const useSwapLogic = () => {
 
 	const SLIPPAGE_RATE = 0.005;
 
-	const signAndSubmitSwap = useCallback(async () => {
+	const signAndSubmitSwap = useCallback(async (): Promise<string | null> => {
 		const currentQuote = swapState.quote;
 		if (
 			!activeWallet ||
@@ -291,12 +296,11 @@ export const useSwapLogic = () => {
 				...prev,
 				error: "Ví chưa sẵn sàng hoặc thiếu quote.",
 			}));
-			return;
+			return null;
 		}
 		try {
 			const utxos: Cardano.Utxo[] = await activeWallet.getUtxos();
 			const inputsToChoose = utxos ? utxos : [];
-
 			const buildData = await buildTransaction({
 				sender: usedAddress,
 				estimate: {
@@ -305,8 +309,12 @@ export const useSwapLogic = () => {
 					slippage: 0.005,
 				},
 				inputsToChoose,
-			});
-			const unsignedTxCbor = buildData.cbor;
+			})
+				.then((data) => data)
+				.catch((error) => {
+					toast.error(error.message);
+				});
+			const unsignedTxCbor = buildData?.cbor || "";
 			const txWitnessSetHex = await activeWallet.signTx(unsignedTxCbor);
 			const submitData = await finalizeAndSubmitTransaction(
 				unsignedTxCbor,
@@ -314,13 +322,12 @@ export const useSwapLogic = () => {
 			);
 
 			if (submitData.tx_id) {
-				await api.post("/analysis/swaps", {
-					order_tx_id: submitData.tx_id,
-					from_token: tokenIn.asset.token_id,
-					to_token: tokenOut.asset.token_id,
-				});
+				return submitData.tx_id as string;
 			}
-		} catch (error: any) {}
+			return null;
+		} catch (error: any) {
+			throw error;
+		}
 	}, [
 		activeWallet,
 		usedAddress,
@@ -376,6 +383,128 @@ export const useSwapLogic = () => {
 		buyToken.asset?.token_id,
 	]);
 
+	const clearMiniTimer = () => {
+		if (miniTimer.current) {
+			clearTimeout(miniTimer.current);
+			miniTimer.current = null;
+		}
+	};
+
+	const startMiniCountdown = (durationMs = 5000) => {
+		clearMiniTimer();
+		setMiniStep("submitting");
+		miniTimer.current = setTimeout(() => {
+			setMiniStep((prev) => (prev === "submitting" ? "none" : prev));
+		}, durationMs);
+	};
+
+	const handleSwapFlow = useCallback(async () => {
+		setSwapState((prev) => ({ ...prev, isSubmitting: true }));
+		try {
+			setModalStep("inprogress");
+
+			if (!activeWallet || !usedAddress || !swapState.quote) {
+				throw new Error("Ví chưa sẵn sàng hoặc thiếu quote.");
+			}
+
+			const utxos: Cardano.Utxo[] = await activeWallet.getUtxos();
+			const inputsToChoose = utxos ? utxos : [];
+
+			const buildData = await buildTransaction({
+				sender: usedAddress,
+				estimate: {
+					...swapState.quote,
+					amount: Number(swapState.inputAmount),
+					slippage: 0.005,
+				},
+				inputsToChoose,
+			});
+
+			setModalStep("wallet");
+
+			const unsignedTxCbor = buildData.cbor;
+			const txWitnessSetHex = await activeWallet.signTx(unsignedTxCbor);
+			const submitData = await finalizeAndSubmitTransaction(
+				unsignedTxCbor,
+				txWitnessSetHex
+			);
+			if (submitData.tx_id) {
+				setTxHash(submitData.tx_id);
+			}
+			setModalStep("success");
+
+			// 4) Mini notification: tiến trình POST /analysis/swaps có progress giảm dần, và sau khi xong hiển thị nút explorer
+			startMiniCountdown();
+			try {
+				if (submitData.tx_id) {
+					await api.post("/analysis/swaps", {
+						order_tx_id: submitData.tx_id,
+						from_token: tokenIn.asset.token_id,
+						to_token: tokenOut.asset.token_id,
+					});
+				}
+				setMiniStep("submitted");
+			} finally {
+				clearMiniTimer();
+			}
+		} catch (err: any) {
+			setModalStep("none");
+			setMiniStep("none");
+			toast.error(err?.message || "Swap transaction failed");
+			throw err;
+		} finally {
+			setSwapState((prev) => ({ ...prev, isSubmitting: false }));
+		}
+	}, [
+		activeWallet,
+		usedAddress,
+		swapState.quote,
+		swapState.inputAmount,
+		tokenIn.asset.token_id,
+		tokenOut.asset.token_id,
+	]);
+
+	const openReviewModal = useCallback(() => {
+		setModalStep("review");
+	}, []);
+
+	const closeModal = useCallback(() => {
+		setModalStep("none");
+		setMiniStep("none");
+		clearMiniTimer();
+	}, []);
+
+	const reviewData = useMemo(() => {
+		const q = swapState.quote;
+		const formatAdaFee = (val?: string | number) => {
+			const num = parseFloat(String(val ?? ""));
+			if (!isFinite(num) || num <= 0) return null;
+			return `${formatNumber(num, 6)} ADA`;
+		};
+
+		const feeFromQuote =
+			formatAdaFee(q?.total_dex_fee) ||
+			formatAdaFee(q?.total_lp_fee) ||
+			formatAdaFee(q?.deposits) ||
+			"—";
+
+		return {
+			sell: {
+				amount: topCardData.value,
+				token: topCardData.token,
+				usd: topCardData.usdValue,
+				iconUrl: topCardData.iconUrl,
+			},
+			buy: {
+				amount: bottomCardData.value,
+				token: bottomCardData.token,
+				usd: bottomCardData.usdValue,
+				iconUrl: bottomCardData.iconUrl,
+			},
+			feeAda: feeFromQuote,
+		};
+	}, [topCardData, bottomCardData, swapState.quote]);
+
 	return {
 		topCardData,
 		bottomCardData,
@@ -389,5 +518,12 @@ export const useSwapLogic = () => {
 		tokenOut: buyToken,
 		handleChangeTokenIn,
 		handleChangeTokenOut,
+		modalStep,
+		miniStep,
+		reviewData,
+		txHash,
+		openReviewModal,
+		closeModal,
+		handleSwapFlow,
 	};
 };

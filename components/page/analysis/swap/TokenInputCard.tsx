@@ -80,7 +80,7 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
 						<div className="flex items-center space-x-2 p-1 bg-white/5 border-dark-gray-500 border rounded-full cursor-pointer">
 							<Image
 								src={iconUrl}
-								alt={token}
+								alt={token || "Token"}
 								className="w-6 h-6 rounded-full"
 								width={24}
 								height={24}
