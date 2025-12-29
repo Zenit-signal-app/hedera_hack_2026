@@ -13,7 +13,7 @@ const Input = ({
 	endIcon,
 	textColorClass = "",
 	highlightColorClass = "",
-	placeholder = "Nhập vào...",
+	placeholder = "Search...",
 	className = "",
 	...otherProps
 }: CommonInputProps) => {

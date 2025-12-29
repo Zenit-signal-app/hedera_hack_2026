@@ -128,7 +128,7 @@ export const SwapInterface: React.FC = () => {
 				{swapState.isSubmitting ? (
 					<Loader className="w-6 h-6 mx-auto animate-spin" />
 				) : isInsufficientBalance ? (
-					`${topCardData?.token?.toUpperCase()}`
+					`Insufficient ${topCardData.token} Balance`
 				) : (
 					"Swap"
 				)}

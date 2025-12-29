@@ -12,8 +12,6 @@ import Image from "next/image";
 import { useFetchTopTraders } from "@/hooks/useFetchTopTrader";
 import { TopTrader } from "@/types/transaction";
 
-
-
 export function TableTopTrader() {
 	const { data, isLoading, pagination, setPageIndex, setPageSize } =
 		useFetchTopTraders();
@@ -29,7 +27,7 @@ export function TableTopTrader() {
 				),
 				cell: ({ row }) => (
 					<div className="font-medium text-dark-gray-200">
-						{formatTime(row.original.rank)}
+						{row.original.rank}
 					</div>
 				),
 				enableSorting: true,

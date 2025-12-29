@@ -20,13 +20,12 @@ export function TransactionTable() {
 				accessorKey: "createdAt",
 				header: () => (
 					<div className="flex items-center justify-between text-dark-gray-200">
-						ID
-						<Filter1Icon size={20} />
+						Time
 					</div>
 				),
 				cell: ({ row }) => (
 					<div className="font-medium text-white">
-						{formatTime(row.original.timestamp)}
+						{formatTime(row.original.timestamp * 1000)}
 					</div>
 				),
 				enableSorting: true,
@@ -37,7 +36,6 @@ export function TransactionTable() {
 				header: () => (
 					<div className="flex items-center justify-between text-dark-gray-200">
 						Type
-						<Filter1Icon size={20} />
 					</div>
 				),
 				cell: ({ row }) => {
@@ -60,7 +58,7 @@ export function TransactionTable() {
 				header: () => {
 					return (
 						<div className="flex items-center justify-between text-dark-gray-200">
-							USD <Filter1Icon />
+							USD
 						</div>
 					);
 				},
@@ -78,7 +76,6 @@ export function TransactionTable() {
 					return (
 						<div className="flex items-center justify-between text-dark-gray-200">
 							SNEK
-							<Filter1Icon size={20} />
 						</div>
 					);
 				},
@@ -96,7 +93,6 @@ export function TransactionTable() {
 					return (
 						<div className="flex items-center justify-between text-dark-gray-200">
 							ADA
-							<Filter1Icon size={20} />
 						</div>
 					);
 				},
@@ -115,7 +111,6 @@ export function TransactionTable() {
 					return (
 						<div className="flex items-center justify-between text-dark-gray-200">
 							Price
-							<Filter1Icon size={20} />
 						</div>
 					);
 				},
@@ -133,7 +128,6 @@ export function TransactionTable() {
 					return (
 						<div className="flex items-center justify-between text-dark-gray-200">
 							Maker
-							<Filter1Icon size={20} />
 						</div>
 					);
 				},
@@ -144,7 +138,7 @@ export function TransactionTable() {
 							navigator.clipboard.writeText(
 								row.original.transaction_id
 							)
-						} // Ví dụ: Copy hash
+						}
 					>
 						{row.original.transaction_id}
 					</button>

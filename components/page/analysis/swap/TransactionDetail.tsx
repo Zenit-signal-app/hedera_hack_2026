@@ -7,21 +7,21 @@ import { MinswapEstimate } from "@/types/minswap";
 interface DetailItem {
 	label: string;
 	value: (
-		data: MinswapEstimate | null,
+		data: MinswapEstimate,
 		tokens: { in: string; out: string }
 	) => React.ReactNode;
 	tooltipContent: string;
 }
 
 interface TransactionDetailsProps {
-  tokenIn: string;
-  tokenOut: string;
+	tokenIn: string;
+	tokenOut: string;
 }
 
 const getTransactionDetailsConfig = (): DetailItem[] => [
 	{
 		label: "Pricing",
-		tooltipContent: "Tỷ giá hối đoái hiện tại giữa hai token.",
+		tooltipContent: "Current exchange rate between the two tokens.",
 		value: (data, tokens) => {
 			if (!data) return <span className="animate-pulse">Loading...</span>;
 			const rate = Number(data.amount_out) / Number(data.amount_in);
@@ -34,7 +34,7 @@ const getTransactionDetailsConfig = (): DetailItem[] => [
 	},
 	{
 		label: "Slippage",
-		tooltipContent: "Độ trượt giá tối đa được chấp nhận cho giao dịch này.",
+		tooltipContent: "Maximum price slippage tolerated for this trade.",
 		value: () => (
 			<span>
 				Auto • <span className="text-white">1.1%</span>
@@ -43,7 +43,7 @@ const getTransactionDetailsConfig = (): DetailItem[] => [
 	},
 	{
 		label: "Price Impact",
-		tooltipContent: "Mức độ ảnh hưởng của giao dịch đến giá thị trường.",
+		tooltipContent: "Degree of impact this trade has on market price.",
 		value: (data) => {
 			if (!data) return "-";
 			const impact = data.avg_price_impact;
@@ -61,21 +61,23 @@ const getTransactionDetailsConfig = (): DetailItem[] => [
 	{
 		label: "Network fee",
 		tooltipContent:
-			"Phí mạng lưới (gas fee) để thực hiện giao dịch trên blockchain.",
-		value: () => "0.17 ADA", // Phí mạng Cardano tiêu chuẩn (thường ko có trong API estimate swap)
+			"Network (gas) fee required to process the transaction on-chain.",
+		value: (data: MinswapEstimate) =>
+			data.total_dex_fee
+				? `${formatNumber(data.total_dex_fee)} ADA`
+				: "-",
 	},
 	{
 		label: "Refundable deposit",
-		tooltipContent: "Khoản tiền gửi có thể hoàn lại (ADA đi kèm UTXO).",
+		tooltipContent: "Refundable deposit (ADA attached to the UTXO).",
 		value: (data) => {
 			if (!data) return "-";
-			// API trả về deposits là string "2" (theo mẫu json bạn đưa)
 			return `${formatNumber(data.deposits)} ADA`;
 		},
 	},
 	{
 		label: "Trading Fee",
-		tooltipContent: "Phí sàn giao dịch (DEX) + LP Fee.",
+		tooltipContent: "Exchange fee (DEX) plus LP fee.",
 		value: (data) => {
 			if (!data) return "-";
 			const totalFee =
@@ -85,10 +87,13 @@ const getTransactionDetailsConfig = (): DetailItem[] => [
 	},
 ];
 
-export const TransactionDetails: React.FC<TransactionDetailsProps> = ({ tokenIn, tokenOut }) => {
+export const TransactionDetails: React.FC<TransactionDetailsProps> = ({
+	tokenIn,
+	tokenOut,
+}) => {
 	const estimateDetail = useTokenStore((state) => state.estimateDetail);
 	const configData = getTransactionDetailsConfig();
-	
+
 	return !!estimateDetail ? (
 		<div className="w-full rounded-xl bg-white/10 text-sm font-sans mt-4">
 			<div className="flex flex-col [&>div:not(:last-child)]:border-b [&>div:not(:last-child)]:border-white/10">
@@ -101,11 +106,17 @@ export const TransactionDetails: React.FC<TransactionDetailsProps> = ({ tokenIn,
 							<span className="text-[14px] opacity-80">
 								{item.label}
 							</span>
-              <TooltipWrapper trigger={<QuestionInfoIcon/>} content={item.tooltipContent}/>
+							<TooltipWrapper
+								trigger={<QuestionInfoIcon />}
+								content={item.tooltipContent}
+							/>
 						</div>
 
 						<div className="text-white text-[14px] font-semibold">
-							{item.value(estimateDetail as MinswapEstimate, {in: tokenIn, out: tokenOut})}
+							{item.value(estimateDetail as MinswapEstimate, {
+								in: tokenIn,
+								out: tokenOut,
+							})}
 						</div>
 					</div>
 				))}

@@ -53,6 +53,7 @@ const Navigator = () => {
 					<Input
 						startIcon={<SearchIcon size={20} />}
 						className="w-full h-10"
+						placeholder="Search..."
 					/>
 				</>
 			)}
