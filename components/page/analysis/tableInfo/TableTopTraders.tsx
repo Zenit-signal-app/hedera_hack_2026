@@ -11,10 +11,17 @@ import UpdownIcon from "@/components/icon/UpDownIcon";
 import Image from "next/image";
 import { useFetchTopTraders } from "@/hooks/useFetchTopTrader";
 import { TopTrader } from "@/types/transaction";
+import { useTokenStore } from "@/store/tokenStore";
 
 export function TableTopTrader() {
+	const selectedToken = useTokenStore((state) => state.token);
+	const quoteToken = useTokenStore((state) => state.quoteToken);
+	
+	// Tạo pair từ token và quoteToken đang chọn
+	const pair = `${selectedToken.symbol}_${quoteToken.symbol}`;
+	
 	const { data, isLoading, pagination, setPageIndex, setPageSize } =
-		useFetchTopTraders();
+		useFetchTopTraders(pair);
 
 	const columns: ColumnDef<TopTrader, any>[] = useMemo(
 		() => [

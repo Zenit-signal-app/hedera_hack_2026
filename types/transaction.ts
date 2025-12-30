@@ -18,6 +18,7 @@ export interface ApiResponse {
 export interface PaginationParams {
     page: number;
     limit: number;
+    pair?: string;
 }
 
 export interface TopTrader {

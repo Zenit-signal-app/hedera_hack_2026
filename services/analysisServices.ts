@@ -57,6 +57,27 @@ export const fetchTopTraders = async (
 	}
 };
 
+// API lấy danh sách pairs từ /analysis/charting/pairs
+const BASE_CHARTING_PAIRS_URL = "/analysis/charting/pairs";
+
+export interface ChartingPairsParams {
+	query?: string;
+	limit?: number;
+	offset?: number;
+}
+
+export const getChartingPairs = async (
+	params?: ChartingPairsParams
+): Promise<{ page: number; tokens: TokenPriceData[]; total: number }> => {
+	try {
+		const response = await api.get(BASE_CHARTING_PAIRS_URL, { params });
+		return response.data;
+	} catch (error) {
+		console.error(error);
+		throw error;
+	}
+};
+
 export const getTrendAnalysisServer = async (timeframe: string = '1d'): Promise<TrendAnalysisResponse> => {
   const res = await fetch(`https://api.seerbot.io/analysis/trend?timeframe=${timeframe}`, {
     method: 'GET',

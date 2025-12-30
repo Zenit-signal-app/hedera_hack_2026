@@ -119,8 +119,8 @@ export const useSwapLogic = () => {
 	const [miniStep, setMiniStep] = useState<SwapMiniStep>("none");
 	const [txHash, setTxHash] = useState<string | null>(null);
 	const miniTimer = useRef<NodeJS.Timeout | null>(null);
-	const [tokenIn, setTokenIn] = useState<MinswapBalanceItem>(FALLBACK_ADA);
-	const [tokenOut, setTokenOut] = useState<MinswapBalanceItem>(FALLBACK_USDM);
+	const [tokenIn, setTokenIn] = useState<MinswapBalanceItem>(FALLBACK_USDM);
+	const [tokenOut, setTokenOut] = useState<MinswapBalanceItem>(FALLBACK_ADA);
 	const handleSetEstimateDetail = useTokenStore(
 		(state) => state.handleSetEstimateDetail
 	);

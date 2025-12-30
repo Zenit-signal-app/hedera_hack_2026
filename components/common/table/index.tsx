@@ -38,6 +38,7 @@ type TProps<TData> = {
 	rowClassName?: string | ((row: TData, index: number) => string);
 	showHeaderBorder?: boolean;
 	showPagination?: boolean;
+	onRowClick?: (row: TData) => void;
 };
 
 export function TableWrapper<TData>({
@@ -52,6 +53,7 @@ export function TableWrapper<TData>({
 	showHeaderBorder = true, // Mặc định hiển thị border
 	variant = "default",
 	showPagination = true, // Giá trị mặc định là "default"
+	onRowClick,
 }: TProps<TData>) {
 	const { pageIndex, pageSize, totalPages, totalRecords } = pagination;
 	const tableData = useMemo(() => data || ([] as TData[]), [data]);
@@ -175,8 +177,10 @@ export function TableWrapper<TData>({
 												variant === "minimal"
 												? "bg-dark-gray-900"
 												: "bg-transparent",
-											customRowClass
+											customRowClass,
+											onRowClick && "cursor-pointer"
 										)}
+										onClick={() => onRowClick?.(row.original)}
 									>
 										{row.getVisibleCells().map((cell) => (
 											<TableCell
