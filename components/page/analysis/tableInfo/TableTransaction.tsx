@@ -15,10 +15,14 @@ import { useTokenStore } from "@/store/tokenStore";
 import Link from "next/link";
 
 export function TransactionTable() {
-	const { data, isLoading, pagination, setPageIndex, setPageSize } =
-		useFetchTransactions();
 	const selectedToken = useTokenStore((state) => state.token);
 	const quoteToken = useTokenStore((state) => state.quoteToken);
+	
+	// Tạo pair từ token và quoteToken đang chọn
+	const pair = `${selectedToken.symbol}_${quoteToken.symbol}`;
+	
+	const { data, isLoading, pagination, setPageIndex, setPageSize } =
+		useFetchTransactions(pair);
 
 	const getTransactionType = (transaction: Transaction): "BUY" | "SELL" => {
 		const isFromQuote =

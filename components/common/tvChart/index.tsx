@@ -21,16 +21,14 @@ interface TVChartContainerProps {
 	onIntervalChange?: (interval: string) => void;
 }
 
-const TIME_INTERVALS = ["1", "5", "15", "60", "240", "D", "W", "M"] as const;
+// BE chỉ support: 5m, 30m, 1h, 4h, 1D
+const TIME_INTERVALS = ["5", "30", "60", "240", "1D"] as const;
 const INTERVAL_LABELS: Record<string, string> = {
-	"1": "1M",
 	"5": "5M",
-	"15": "15M",
+	"30": "30M",
 	"60": "1H",
 	"240": "4H",
-	D: "1D",
-	W: "1W",
-	M: "1M",
+	"1D": "1D",
 };
 
 const AVAILABLE_INDICATORS = [

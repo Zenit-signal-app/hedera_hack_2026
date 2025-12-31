@@ -1,15 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import React, { useCallback, useMemo, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { StarIcon } from "lucide-react";
-import { useMemo, useState } from "react";
 import Image from "next/image";
 import GrowUpIcon from "@/components/icon/Icon_GrowUp";
 import { formatNumber } from "@/lib/format";
 import GrowDownIcon from "@/components/icon/Icon_GrowDown";
 import { TableWrapper } from "@/components/common/table";
 import { TradingPairTrend, TrendPair } from "@/types";
+import { INITIAL_ADA, useTokenStore } from "@/store/tokenStore";
 
 type TProps = {
 	data: TrendPair[];
@@ -19,6 +20,31 @@ type TProps = {
 const TableStatisticTrend = ({ data, type }: TProps) => {
 	const [page, setPage] = useState(0);
 	const [isLoading, setIsLoading] = useState(false);
+	
+	const { handleSelectToken, handleSelectQuoteToken, handleSelectQuoteAsset } = useTokenStore();
+	
+	const handleRowClick = useCallback((trendPair: TrendPair) => {
+		const pairParts = trendPair.pair.split(/[/_]/);
+		const tokenSymbol = pairParts[0];
+		
+		const tokenData = {
+			id: tokenSymbol,
+			name: tokenSymbol,
+			symbol: tokenSymbol,
+			logo_url: trendPair.logo_url,
+			price: trendPair.price,
+			change_24h: trendPair.change_24h,
+			low_24h: 0,
+			high_24h: 0,
+			volume_24h: trendPair.volume_24h,
+			market_cap: trendPair.market_cap,
+		};
+		
+		// Cập nhật token vào store
+		handleSelectToken(tokenData);
+		handleSelectQuoteToken(INITIAL_ADA);
+		handleSelectQuoteAsset("ADA");
+	}, [handleSelectToken, handleSelectQuoteToken, handleSelectQuoteAsset]);
 	const columns: ColumnDef<TrendPair, any>[] = useMemo(
 		() => [
 			{
@@ -130,6 +156,7 @@ const TableStatisticTrend = ({ data, type }: TProps) => {
 				setPageSize={(page) => {}}
 				className="bg-[url(/images/image.png)] bg-cover bg-center bg-no-repeat rounded-md"
 				showPagination={false}
+				onRowClick={handleRowClick}
 			/>
 		</div>
 	);

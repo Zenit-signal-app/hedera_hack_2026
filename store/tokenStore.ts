@@ -48,10 +48,10 @@ export const INITIAL_USDM = {
 };
 export const useTokenStore = create<MarketState & MarketActions>((set) => ({
 	listToken: [],
-	token: INITIAL_ADA,
-	quoteToken: INITIAL_USDM,
+	token: INITIAL_USDM,
+	quoteToken: INITIAL_ADA,
 	estimateDetail: null,
-	quoteAsset: "USDM",
+	quoteAsset: "ADA",
 	updateListToken: (updates) => {
 		set((state) => ({
 			listToken: [...state.listToken, ...updates],

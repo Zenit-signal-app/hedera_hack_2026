@@ -21,7 +21,7 @@ interface HookResult {
   refetch: () => void;
 }
 
-export const useFetchTopTraders = (): HookResult => {
+export const useFetchTopTraders = (pair?: string): HookResult => {
   const [data, setData] = useState<TopTrader[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [pageIndex, setPageIndex] = useState(0);
@@ -30,12 +30,13 @@ export const useFetchTopTraders = (): HookResult => {
   const [totalPages, setTotalPages] = useState(0);
 
   const fetchData = useCallback(
-    async (currentPage: number, currentLimit: number) => {
+    async (currentPage: number, currentLimit: number, currentPair?: string) => {
       setIsLoading(true);
       try {
         const params: PaginationParams = {
           page: currentPage + 1,
           limit: currentLimit,
+          pair: currentPair,
         };
 
         const result = await fetchTopTraders(params);
@@ -53,12 +54,17 @@ export const useFetchTopTraders = (): HookResult => {
   );
 
   useEffect(() => {
-    fetchData(pageIndex, pageSize);
+    setPageIndex(0); // Reset về trang đầu khi đổi pair
+    fetchData(0, pageSize, pair);
+  }, [pair, fetchData]);
+
+  useEffect(() => {
+    fetchData(pageIndex, pageSize, pair);
   }, [pageIndex, pageSize, fetchData]);
 
   const refetch = useCallback(() => {
-    fetchData(pageIndex, pageSize);
-  }, [pageIndex, pageSize, fetchData]);
+    fetchData(pageIndex, pageSize, pair);
+  }, [pageIndex, pageSize, pair, fetchData]);
 
   const handleSetPageIndex = useCallback((page: number) => {
     setPageIndex(page);
