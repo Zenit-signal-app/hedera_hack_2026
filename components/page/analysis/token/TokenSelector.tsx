@@ -55,7 +55,7 @@ export const TokenSelector: React.FC = () => {
 				/>
 			</div>
 
-			<TabsWrapper
+			{/* <TabsWrapper
 				tabs={[
 					{ value: "USDM", label: "USDM" },
 					{ value: "ADA", label: "ADA" },
@@ -65,9 +65,9 @@ export const TokenSelector: React.FC = () => {
 				variant="underline"
 				className="text-sm py-1 px-0"
 				onValueChange={(tab) => setTabs(tab as "USDM" | "ADA")}
-			/>
+			/> */}
 
-			<div id={SCROLL_CONTAINER_ID} className="max-h-60 overflow-y-auto">
+			<div id={SCROLL_CONTAINER_ID} className="max-h-60 lg:mt-4 overflow-y-auto">
 				<InfiniteScroll
 					dataLength={tokens.length}
 					next={() => {}}

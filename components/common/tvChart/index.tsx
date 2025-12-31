@@ -7,11 +7,12 @@ import {
 	widget,
 	IChartingLibraryWidget,
 } from "@/public/static/charting_library";
-import { CustomDatafeed } from "@/lib/tradingview-datafeed";
+import { CustomDatafeed, setPairsCache } from "@/lib/tradingview-datafeed";
 import Icon_ChevronDownMini from "@/components/icon/Icon_ChevronDownMini";
 import IconCamera from "@/components/icon/IconCamera";
 import IconDirect from "@/components/icon/IconDirect";
 import { PopoverWrapper } from "@/components/common/popover";
+import { useFetchChartPairs } from "@/hooks/useFetchChartPairs";
 
 interface TVChartContainerProps {
 	symbol?: string;
@@ -22,7 +23,7 @@ interface TVChartContainerProps {
 }
 
 // BE chỉ support: 5m, 30m, 1h, 4h, 1D
-const TIME_INTERVALS = ["5", "30", "60", "240", "1D"] as const;
+export const TIME_INTERVALS = ["5", "30", "60", "240", "1D"] as const;
 const INTERVAL_LABELS: Record<string, string> = {
 	"5": "5M",
 	"30": "30M",
@@ -51,8 +52,29 @@ export const TVChartContainer = ({
 	const tvWidgetRef = useRef<IChartingLibraryWidget | null>(null);
 	const [selectedInterval, setSelectedInterval] = useState(interval);
 	const [selectedIndicators, setSelectedIndicators] = useState<string[]>(indicators);
+	const [displaySymbol, setDisplaySymbol] = useState(symbol);
 	const [isLoading, setIsLoading] = useState(true);
 	const [popoverOpen, setPopoverOpen] = useState(false);
+
+	// Fetch chart pairs data on component mount
+	const { fetchPairs, pairs } = useFetchChartPairs();
+
+	useEffect(() => {
+		// Load initial pairs data from API
+		fetchPairs({ limit: 100 });
+	}, [fetchPairs]);
+
+	useEffect(() => {
+		// Update display symbol when symbol prop changes
+		setDisplaySymbol(symbol);
+	}, [symbol]);
+
+	useEffect(() => {
+		// Update pairs cache whenever pairs data changes
+		if (pairs.length > 0) {
+			setPairsCache(pairs);
+		}
+	}, [pairs]);
 
 	useEffect(() => {
 		if (!chartContainerRef.current) return;
@@ -66,8 +88,8 @@ export const TVChartContainer = ({
 				"header_widget",
 				"timeframes_toolbar",
 				"left_toolbar",
-        "header_compare",
-        "header_symbol_search",
+				"header_compare",
+				"header_symbol_search",
 			],
 			enabled_features: ["study_templates"],
 			library_path: "/static/charting_library/",
@@ -86,6 +108,8 @@ export const TVChartContainer = ({
 
 		tvWidget.onChartReady(() => {
 			setIsLoading(false);
+			setDisplaySymbol(symbol);
+			
 			if (selectedIndicators.length > 0) {
 				const activeChart = tvWidget.activeChart();
 				selectedIndicators.forEach((indicator) => {
@@ -199,7 +223,7 @@ export const TVChartContainer = ({
 		<div
 			className={`flex flex-col gap-2 lg:gap-0 overflow-hidden bg-dark-gray-950 rounded-t-lg h-full ${className}`}
 		>
-			<div className="flex gap-4 items-center pt-3 pb-2 px-3 shrink-0">
+			<div className="flex gap-4 items-center pt-2 pb-2 px-3 shrink-0">
 				<div className="flex gap-1 items-center">
 					{TIME_INTERVALS.map((timeInterval) => (
 						<button
@@ -283,12 +307,14 @@ export const TVChartContainer = ({
 					</PopoverWrapper>
 				</div>
 
-			<div className="flex gap-3 items-center justify-end ml-auto">
-				<button className="w-6 h-6" onClick={handleTakeSnapshot}>
-					<IconCamera className="w-full h-full" />
-				</button>
+				<div className="flex gap-3 items-center justify-end ml-auto">
+					<button className="w-6 h-6" onClick={handleTakeSnapshot}>
+						<IconCamera className="w-full h-full" />
+					</button>
+				</div>
 			</div>
-		</div>			{/* Chart Container */}
+
+			{/* Chart Container */}
 			<div className="flex-1 min-h-0">
 				{isLoading && (
 					<div className="absolute inset-0 flex items-center justify-center bg-dark-gray-950 z-10">

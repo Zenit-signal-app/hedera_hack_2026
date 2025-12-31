@@ -1,4 +1,4 @@
-import { getChartingPairs } from "@/services/analysisServices";
+import { getChartingPairs, getListToken } from "@/services/analysisServices";
 import { useTokenStore } from "@/store/tokenStore";
 import { TokenPriceData } from "@/types/token";
 import { useState, useEffect, useCallback } from "react";
@@ -26,7 +26,7 @@ export const useTokenLoadMore = (query?: string): TokenHookResult => {
 			setIsLoading(true);
 
 			try {
-				const data = await getChartingPairs({
+				const data = await getListToken({
 					query,
 					limit: INITIAL_LIMIT,
 					offset: currentOffset,
