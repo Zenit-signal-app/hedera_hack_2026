@@ -38,7 +38,22 @@ const AVAILABLE_INDICATORS = [
 	{ value: "MACD", label: "MACD" },
 	{ value: "PSAR", label: "PSAR" },
 	{ value: "EMA20", label: "EMA20" },
+	{ value: "ADX14", label: "ADX14" },
 	{ value: "BB", label: "Bollinger Bands" },
+] as const;
+
+const AVAILABLE_TIMEZONES = [
+	{ value: "UTC", label: "UTC" },
+	{ value: "Asia/Ho_Chi_Minh", label: "Ho Chi Minh (UTC+7)" },
+	{ value: "Asia/Bangkok", label: "Bangkok (UTC+7)" },
+	{ value: "Asia/Singapore", label: "Singapore (UTC+8)" },
+	{ value: "Asia/Hong_Kong", label: "Hong Kong (UTC+8)" },
+	{ value: "Asia/Tokyo", label: "Tokyo (UTC+9)" },
+	{ value: "America/New_York", label: "New York (UTC-5)" },
+	{ value: "America/Chicago", label: "Chicago (UTC-6)" },
+	{ value: "America/Los_Angeles", label: "Los Angeles (UTC-8)" },
+	{ value: "Europe/London", label: "London (UTC+0)" },
+	{ value: "Europe/Paris", label: "Paris (UTC+1)" },
 ] as const;
 
 export const TVChartContainer = ({
@@ -51,10 +66,13 @@ export const TVChartContainer = ({
 	const chartContainerRef = useRef<HTMLDivElement>(null);
 	const tvWidgetRef = useRef<IChartingLibraryWidget | null>(null);
 	const [selectedInterval, setSelectedInterval] = useState(interval);
-	const [selectedIndicators, setSelectedIndicators] = useState<string[]>(indicators);
+	const [selectedIndicators, setSelectedIndicators] =
+		useState<string[]>(indicators);
 	const [displaySymbol, setDisplaySymbol] = useState(symbol);
 	const [isLoading, setIsLoading] = useState(true);
 	const [popoverOpen, setPopoverOpen] = useState(false);
+	const [timezonePopoverOpen, setTimezonePopoverOpen] = useState(false);
+	const [selectedTimezone, setSelectedTimezone] = useState("UTC");
 
 	// Fetch chart pairs data on component mount
 	const { fetchPairs, pairs } = useFetchChartPairs();
@@ -83,6 +101,7 @@ export const TVChartContainer = ({
 			datafeed: new CustomDatafeed(),
 			interval: selectedInterval as ResolutionString,
 			container: chartContainerRef.current,
+			timezone: selectedTimezone as any,
 			disabled_features: [
 				"use_localstorage_for_settings",
 				"header_widget",
@@ -109,7 +128,7 @@ export const TVChartContainer = ({
 		tvWidget.onChartReady(() => {
 			setIsLoading(false);
 			setDisplaySymbol(symbol);
-			
+
 			if (selectedIndicators.length > 0) {
 				const activeChart = tvWidget.activeChart();
 				selectedIndicators.forEach((indicator) => {
@@ -149,6 +168,16 @@ export const TVChartContainer = ({
 									}
 								);
 								break;
+							case "ADX":
+								activeChart.createStudy(
+									"Average Directional Index",
+									false,
+									false,
+									{
+										length: param || 14,
+									}
+								);
+								break;
 							case "BB":
 								activeChart.createStudy(
 									"Bollinger Bands",
@@ -175,6 +204,19 @@ export const TVChartContainer = ({
 		};
 	}, [symbol, selectedInterval, selectedIndicators]);
 
+	// Handle timezone change without reloading chart
+	useEffect(() => {
+		if (!tvWidgetRef.current) return;
+
+		try {
+			tvWidgetRef.current.applyOverrides({
+				timezone: selectedTimezone as any,
+			});
+		} catch (error) {
+			console.error("Failed to apply timezone override:", error);
+		}
+	}, [selectedTimezone]);
+
 	const handleIntervalChange = (newInterval: string) => {
 		setSelectedInterval(newInterval);
 		onIntervalChange?.(newInterval);
@@ -196,24 +238,27 @@ export const TVChartContainer = ({
 
 		try {
 			// Use widget's takeClientScreenshot method
-			tvWidgetRef.current.takeClientScreenshot().then((canvas: HTMLCanvasElement) => {
-				// Convert canvas to blob
-				canvas.toBlob((blob: Blob | null) => {
-					if (!blob) return;
+			tvWidgetRef.current
+				.takeClientScreenshot()
+				.then((canvas: HTMLCanvasElement) => {
+					// Convert canvas to blob
+					canvas.toBlob((blob: Blob | null) => {
+						if (!blob) return;
 
-					// Create download link
-					const url = URL.createObjectURL(blob);
-					const link = document.createElement("a");
-					link.href = url;
-					link.download = `chart-${symbol}-${new Date().getTime()}.png`;
-					document.body.appendChild(link);
-					link.click();
-					document.body.removeChild(link);
-					URL.revokeObjectURL(url);
+						// Create download link
+						const url = URL.createObjectURL(blob);
+						const link = document.createElement("a");
+						link.href = url;
+						link.download = `chart-${symbol}-${new Date().getTime()}.png`;
+						document.body.appendChild(link);
+						link.click();
+						document.body.removeChild(link);
+						URL.revokeObjectURL(url);
+					});
+				})
+				.catch((error: Error) => {
+					console.error("Failed to take screenshot:", error);
 				});
-			}).catch((error: Error) => {
-				console.error("Failed to take screenshot:", error);
-			});
 		} catch (error) {
 			console.error("Failed to take screenshot:", error);
 		}
@@ -245,7 +290,10 @@ export const TVChartContainer = ({
 
 				{/* Divider */}
 				<div className="bg-dark-gray-700 w-px h-full self-stretch" />
+				{/* Timezone Selector */}
 
+				{/* Divider */}
+				<div className="bg-dark-gray-700 w-px h-full self-stretch" />
 				{/* Indicators */}
 				<div className="flex gap-2 items-center">
 					<PopoverWrapper
@@ -273,7 +321,9 @@ export const TVChartContainer = ({
 									<button
 										key={indicator.value}
 										onClick={() =>
-											handleIndicatorToggle(indicator.value)
+											handleIndicatorToggle(
+												indicator.value
+											)
 										}
 										className={`flex items-center justify-between px-2 py-2 rounded-lg text-sm font-bold transition-colors ${
 											isSelected
@@ -308,21 +358,66 @@ export const TVChartContainer = ({
 				</div>
 
 				<div className="flex gap-3 items-center justify-end ml-auto">
+					<div className="flex gap-2 items-center">
+						<PopoverWrapper
+							open={timezonePopoverOpen}
+							onOpenChange={setTimezonePopoverOpen}
+							align="start"
+							className="w-[220px] p-2 bg-dark-gray-950 border border-dark-gray-700 rounded-lg"
+							trigger={
+								<button className="bg-dark-gray-950 flex gap-2 items-center justify-center px-3 py-1 rounded-lg cursor-pointer">
+									<span className="text-sm font-bold text-white">
+										{selectedTimezone}
+									</span>
+								</button>
+							}
+						>
+							<div className="flex flex-col gap-1">
+								{AVAILABLE_TIMEZONES.map((timezone) => (
+									<button
+										key={timezone.value}
+										onClick={() => {
+											setSelectedTimezone(timezone.value);
+											setTimezonePopoverOpen(false);
+										}}
+										className={`flex items-center justify-between px-2 py-2 rounded-lg text-sm font-bold transition-colors text-left ${
+											selectedTimezone === timezone.value
+												? "text-white bg-dark-gray-800"
+												: "text-dark-gray-200 hover:bg-dark-gray-800/50"
+										}`}
+									>
+										<span>{timezone.label}</span>
+										{selectedTimezone ===
+											timezone.value && (
+											<div className="w-5 h-5 rounded-full bg-primary-700 flex items-center justify-center">
+												<svg
+													width="12"
+													height="12"
+													viewBox="0 0 12 12"
+													fill="none"
+												>
+													<path
+														d="M10 3L4.5 8.5L2 6"
+														stroke="white"
+														strokeWidth="2"
+														strokeLinecap="round"
+														strokeLinejoin="round"
+													/>
+												</svg>
+											</div>
+										)}
+									</button>
+								))}
+							</div>
+						</PopoverWrapper>
+					</div>
 					<button className="w-6 h-6" onClick={handleTakeSnapshot}>
 						<IconCamera className="w-full h-full" />
 					</button>
 				</div>
 			</div>
 
-			{/* Chart Container */}
 			<div className="flex-1 min-h-0">
-				{isLoading && (
-					<div className="absolute inset-0 flex items-center justify-center bg-dark-gray-950 z-10">
-						<div className="text-white text-sm">
-							Loading chart...
-						</div>
-					</div>
-				)}
 				<div ref={chartContainerRef} className="lg:h-[470px] inset-0" />
 			</div>
 		</div>

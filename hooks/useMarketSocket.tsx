@@ -15,31 +15,14 @@ export const useMarketSocket = (
 ) => {
 	const { updatePrices } = useMarketStore();
 	const wsRef = useRef<WebSocket | null>(null);
+	const previousSymbolsRef = useRef<string[]>([]);
 
 	const symbols = Array.isArray(tokenSymbols) ? tokenSymbols : [tokenSymbols];
 
+	// Initialize WebSocket connection once
 	useEffect(() => {
 		const ws = new WebSocket(SOCKET_URL);
 		wsRef.current = ws;
-
-		ws.onopen = () => {
-			symbols.forEach((symbol) => {
-				const { baseToken } = parseTokenPair(symbol);
-				const channelName =
-					type === "ohlc"
-						? `${type}:${symbol}|5m`
-						: `${type}:${baseToken}`;
-
-				const subscribeMessage = JSON.stringify({
-					action: "subscribe",
-					channel: channelName,
-				});
-
-				if (ws.readyState === WebSocket.OPEN) {
-					ws.send(subscribeMessage);
-				}
-			});
-		};
 
 		ws.onmessage = (event) => {
 			try {
@@ -73,7 +56,50 @@ export const useMarketSocket = (
 			ws.close();
 			wsRef.current = null;
 		};
-	}, [symbols.join(","), updatePrices]);
+	}, [updatePrices]);
+
+	// Handle subscription/unsubscription when symbols change
+	useEffect(() => {
+		const ws = wsRef.current;
+		if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+		const previousSymbols = previousSymbolsRef.current;
+
+		// Unsubscribe from old symbols
+		previousSymbols.forEach((symbol) => {
+			const { baseToken } = parseTokenPair(symbol);
+			const channelName =
+				type === "ohlc"
+					? `${type}:${symbol}|5m`
+					: `${type}:${baseToken}`;
+
+			const unsubscribeMessage = JSON.stringify({
+				action: "unsubscribe",
+				channel: channelName,
+			});
+
+			ws.send(unsubscribeMessage);
+		});
+
+		// Subscribe to new symbols
+		symbols.forEach((symbol) => {
+			const { baseToken } = parseTokenPair(symbol);
+			const channelName =
+				type === "ohlc"
+					? `${type}:${symbol}|5m`
+					: `${type}:${baseToken}`;
+
+			const subscribeMessage = JSON.stringify({
+				action: "subscribe",
+				channel: channelName,
+			});
+
+			ws.send(subscribeMessage);
+		});
+
+		// Update reference
+		previousSymbolsRef.current = symbols;
+	}, [symbols, type]);
 
 	const [status, setStatus] = useState<number | null>(null);
 

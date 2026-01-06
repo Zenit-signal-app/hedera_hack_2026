@@ -78,25 +78,64 @@ export const TradingPairInfoComponent: React.FC = () => {
 	const priceColorClass = data.isPriceUp ? "text-green-500" : "text-red-500";
 	const { token, listToken, quoteToken } = useTokenStore();
 	const isMobile = useIsMobile();
-	useMarketSocket(`${token.symbol}_${quoteToken.symbol}`, "token_info");
-	useMarketSocket(`${token.symbol}_${quoteToken.symbol}`, "ohlc");
+	const [apiTokenInfo, setApiTokenInfo] = useState<>(null);
+	const [isLoadingTokenInfo, setIsLoadingTokenInfo] = useState(false);
+
+	const pairSymbol = `${token.symbol}_${quoteToken.symbol}`;
+	useMarketSocket(pairSymbol, "token_info");
+	useMarketSocket(pairSymbol, "ohlc");
+
+	const tokenInfoSocket = useMarketStore(
+		(state) => state.prices.token_info?.[pairSymbol]
+	);
+
+	
+	useEffect(() => {
+		if (tokenInfoSocket) {
+			setApiTokenInfo(null);
+			return;
+		}
+
+		const fetchTokenInfo = async () => {
+			try {
+				setIsLoadingTokenInfo(true);
+				const response = await getListToken({
+					query: token.symbol,
+					limit: 1,
+					offset: 0,
+				});
+				if (response.tokens && response.tokens.length > 0) {
+					setApiTokenInfo(response.tokens[0]);
+				}
+			} catch (error) {
+				console.error("Failed to fetch token info from API:", error);
+			} finally {
+				setIsLoadingTokenInfo(false);
+			}
+		};
+
+		fetchTokenInfo();
+	}, [token.symbol, tokenInfoSocket]);
+	console.log(apiTokenInfo);
+
 	const tokenInfo = useMemo(() => {
 		const foundToken = listToken.find(
 			(item) => item?.symbol === token.symbol
 		);
 		return foundToken ?? INITIAL_ADA;
 	}, [token.symbol, listToken]);
+
 	const ohlcToken = useMarketStore(
-		(state) => state.prices?.ohlc?.[token.symbol]
+		(state) => state.prices?.ohlc?.[pairSymbol]
 	);
-	const tokenInfoSocket = useMarketStore(
-		(state) => state.prices.token_info?.[token.symbol]
-	);
+
+	const effectiveTokenInfo = apiTokenInfo;
+
 	const priceChangeDisplay = `${
-		tokenInfoSocket?.change_24h > 0 ? "+" : ""
-	}${tokenInfoSocket?.change_24h?.toFixed(
+		effectiveTokenInfo?.change_24h > 0 ? "+" : ""
+	}${effectiveTokenInfo?.change_24h?.toFixed(
 		5
-	)} (${tokenInfoSocket?.change_24h?.toFixed(2)}%)`;
+	)} (${effectiveTokenInfo?.change_24h?.toFixed(2)}%)`;
 
 	return (
 		<div>
@@ -129,12 +168,12 @@ export const TradingPairInfoComponent: React.FC = () => {
 							<span
 								className={`text-sm font-bold ${priceColorClass}`}
 							>
-								{formatNumber(tokenInfoSocket?.price || 0)}
+								{formatNumber(effectiveTokenInfo?.price || 0)}
 							</span>
 							<span className="text-dark-gray-200 text-xs font-medium">
 								$
 								{formatNumber(
-									tokenInfoSocket?.price_change_percentage_24h ||
+									effectiveTokenInfo?.price_change_percentage_24h ||
 										0
 								)}
 							</span>
@@ -149,7 +188,7 @@ export const TradingPairInfoComponent: React.FC = () => {
 							value={formatNumber(ohlcToken?.low)}
 						/>
 						<StatColumn
-							label={`24H Vol(USDT)`}
+							label={`24H Vol(USD)`}
 							value={formatNumber(ohlcToken?.volume)}
 						/>
 					</div>

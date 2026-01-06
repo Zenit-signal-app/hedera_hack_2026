@@ -59,6 +59,7 @@ const loadWalletInfo = async (walletApi: WalletApi) => {
 
 export const useWalletConnect = (): WalletHook => {
 	const activeWallet = useWalletStore((state) => state.activeWallet);
+	const availableWallets = useWalletStore((state) => state.availableWallets);
 	const { setWallets, setConnected, setDisconnected, setError } =
 		useWalletStore.getState();
 
@@ -71,13 +72,13 @@ export const useWalletConnect = (): WalletHook => {
 			);
 			setWallets(installedWallets);
 		}
-	}, [setWallets]);
+	}, []);
 
 	const disconnect = useCallback(() => {
 		localStorage.removeItem("connectedWalletId");
 		setDisconnected();
 		console.log("Đã ngắt kết nối.");
-	}, [setDisconnected]);
+	}, []);
 
 	// 3. Hàm kết nối ví
 	const connect = useCallback(
@@ -133,9 +134,9 @@ export const useWalletConnect = (): WalletHook => {
 
 	useEffect(() => {
 		const storedWalletId = localStorage.getItem("connectedWalletId");
-		const { availableWallets } = useWalletStore.getState();
 		if (
 			storedWalletId &&
+			availableWallets.length > 0 &&
 			availableWallets.some((w) => w.id === storedWalletId)
 		) {
 			setTimeout(() => {
@@ -145,7 +146,7 @@ export const useWalletConnect = (): WalletHook => {
 				});
 			}, 0);
 		}
-	}, [connect, disconnect]);
+	}, [connect, disconnect, availableWallets]);
 	return {
 		connect,
 		disconnect,

@@ -103,6 +103,7 @@ export const useSwapLogic = () => {
 		activeWallet,
 		usedAddress,
 		balance: walletBalance,
+		updateBalanceAfterSwap,
 	} = useWalletStore();
 	const ohlcData = useMarketStore((state) => state.prices?.ohlc);
 	const [direction, setDirection] = useState<SwapDirection>("sell");
@@ -430,10 +431,19 @@ export const useSwapLogic = () => {
 			);
 			if (submitData.tx_id) {
 				setTxHash(submitData.tx_id);
+
+				// Update wallet balance after successful swap
+				updateBalanceAfterSwap({
+					fromTokenId: tokenIn.asset.token_id,
+					toTokenId: tokenOut.asset.token_id,
+					fromAmount: swapState.inputAmount,
+					toAmount: (swapState.quote?.amount_out || "0").toString(),
+					fromTokenDecimals: tokenIn.asset.decimals || 6,
+					toTokenDecimals: tokenOut.asset.decimals || 6,
+				});
 			}
 			setModalStep("success");
 
-			// 4) Mini notification: tiến trình POST /analysis/swaps có progress giảm dần, và sau khi xong hiển thị nút explorer
 			startMiniCountdown();
 			try {
 				if (submitData.tx_id) {

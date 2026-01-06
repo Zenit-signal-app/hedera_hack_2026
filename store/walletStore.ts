@@ -27,6 +27,14 @@ interface WalletActions {
 		usedAddress: string | null;
 		balance: MinswapBalanceItem[];
 	}) => void;
+	updateBalanceAfterSwap: (params: {
+		fromTokenId: string;
+		toTokenId: string;
+		fromAmount: string;
+		toAmount: string;
+		fromTokenDecimals: number;
+		toTokenDecimals: number;
+	}) => void;
 	accessToken: string;
 	setAccessToken: (key: string) => void;
 }
@@ -75,6 +83,56 @@ export const useWalletStore = create<WalletState & WalletActions>()(
 
 			setWalletInfo: ({ networkId, usedAddress, balance }) => {
 				set({ networkId, usedAddress, balance });
+			},
+
+			updateBalanceAfterSwap: ({
+				fromTokenId,
+				toTokenId,
+				fromAmount,
+				toAmount,
+				fromTokenDecimals,
+				toTokenDecimals,
+			}) => {
+				set((state) => {
+					const updatedBalance = [...state.balance];
+
+					const fromTokenIndex = updatedBalance.findIndex(
+						(item) => item.asset.token_id === fromTokenId
+					);
+
+					if (fromTokenIndex !== -1) {
+						const currentAmount = parseFloat(
+							updatedBalance[fromTokenIndex].amount
+						);
+						const subtractAmount = parseFloat(fromAmount);
+						const newAmount = Math.max(
+							0,
+							currentAmount - subtractAmount
+						);
+						updatedBalance[fromTokenIndex] = {
+							...updatedBalance[fromTokenIndex],
+							amount: newAmount.toString(),
+						};
+					}
+
+					const toTokenIndex = updatedBalance.findIndex(
+						(item) => item.asset.token_id === toTokenId
+					);
+
+					if (toTokenIndex !== -1) {
+						const currentAmount = parseFloat(
+							updatedBalance[toTokenIndex].amount
+						);
+						const addAmount = parseFloat(toAmount);
+						const newAmount = currentAmount + addAmount;
+						updatedBalance[toTokenIndex] = {
+							...updatedBalance[toTokenIndex],
+							amount: newAmount.toString(),
+						};
+					}
+
+					return { balance: updatedBalance };
+				});
 			},
 		}),
 		{
