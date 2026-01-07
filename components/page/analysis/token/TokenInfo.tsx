@@ -210,7 +210,7 @@ export const TradingPairInfoComponent: React.FC = () => {
 				<TVChartContainer
 					symbol={`${token.symbol}_${quoteToken.symbol}`}
 					className="w-full h-80 rounded-lg"
-					interval="5"
+					interval="1D"
 				/>
 			)}
 		</div>

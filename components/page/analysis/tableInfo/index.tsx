@@ -69,7 +69,7 @@ const TableStatistic = () => {
 					<TVChartContainer
 						symbol={`${token.symbol}_${quoteToken.symbol}`}
 						className="w-full h-80 rounded-lg mb-4"
-						interval="5"
+						interval="1D"
 					/>
 				);
 			}
@@ -84,7 +84,7 @@ const TableStatistic = () => {
 					<TVChartContainer
 						symbol={`${token.symbol}_${quoteToken.symbol}`}
 						className="w-full h-80 rounded-lg mb-4"
-						interval="5"
+						interval="1D"
 					/>
 				);
 			}
