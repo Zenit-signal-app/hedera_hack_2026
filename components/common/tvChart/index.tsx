@@ -2,6 +2,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import {
 	ChartingLibraryWidgetOptions,
 	ResolutionString,
@@ -14,6 +17,9 @@ import IconCamera from "@/components/icon/IconCamera";
 import IconDirect from "@/components/icon/IconDirect";
 import { PopoverWrapper } from "@/components/common/popover";
 import { useFetchChartPairs } from "@/hooks/useFetchChartPairs";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface TVChartContainerProps {
 	symbol?: string;
@@ -74,6 +80,7 @@ export const TVChartContainer = ({
 	const [popoverOpen, setPopoverOpen] = useState(false);
 	const [timezonePopoverOpen, setTimezonePopoverOpen] = useState(false);
 	const [selectedTimezone, setSelectedTimezone] = useState("UTC");
+	const [currentTime, setCurrentTime] = useState("");
 
 	// Fetch chart pairs data on component mount
 	const { fetchPairs, pairs } = useFetchChartPairs();
@@ -216,6 +223,20 @@ export const TVChartContainer = ({
 		} catch (error) {
 			console.error("Failed to apply timezone override:", error);
 		}
+	}, [selectedTimezone]);
+
+	useEffect(() => {
+		const updateTime = () => {
+			const formatted = dayjs()
+				.tz(selectedTimezone)
+				.format("YYYY-MM-DD HH:mm:ss");
+			setCurrentTime(formatted);
+		};
+
+		updateTime();
+
+		const intervalId = setInterval(updateTime, 1000);
+		return () => clearInterval(intervalId);
 	}, [selectedTimezone]);
 
 	const handleIntervalChange = (newInterval: string) => {
@@ -368,7 +389,9 @@ export const TVChartContainer = ({
 							trigger={
 								<button className="bg-dark-gray-950 flex gap-2 items-center justify-center px-3 py-1 rounded-lg cursor-pointer">
 									<span className="text-sm font-bold text-white">
-										{selectedTimezone}
+										{currentTime
+											? `${currentTime} (${selectedTimezone})`
+											: selectedTimezone}
 									</span>
 								</button>
 							}
