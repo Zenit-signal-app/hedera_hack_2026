@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import GuildeIcon from "@/components/icon/Icon_GuildeBook";
 import PlayIcon from "@/components/icon/Icon_Play";
@@ -78,7 +79,7 @@ export const TradingPairInfoComponent: React.FC = () => {
 	const priceColorClass = data.isPriceUp ? "text-green-500" : "text-red-500";
 	const { token, listToken, quoteToken } = useTokenStore();
 	const isMobile = useIsMobile();
-	const [apiTokenInfo, setApiTokenInfo] = useState<>(null);
+	const [apiTokenInfo, setApiTokenInfo] = useState<any>(null);
 	const [isLoadingTokenInfo, setIsLoadingTokenInfo] = useState(false);
 
 	const pairSymbol = `${token.symbol}_${quoteToken.symbol}`;

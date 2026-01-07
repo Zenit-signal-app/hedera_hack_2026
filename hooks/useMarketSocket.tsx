@@ -19,7 +19,6 @@ export const useMarketSocket = (
 
 	const symbols = Array.isArray(tokenSymbols) ? tokenSymbols : [tokenSymbols];
 
-	// Initialize WebSocket connection once
 	useEffect(() => {
 		const ws = new WebSocket(SOCKET_URL);
 		wsRef.current = ws;
@@ -58,14 +57,16 @@ export const useMarketSocket = (
 		};
 	}, [updatePrices]);
 
-	// Handle subscription/unsubscription when symbols change
 	useEffect(() => {
 		const ws = wsRef.current;
 		if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
 		const previousSymbols = previousSymbolsRef.current;
+		const symbolsStr = JSON.stringify(symbols.sort());
+		const previousSymbolsStr = JSON.stringify(previousSymbols.sort());
 
-		// Unsubscribe from old symbols
+		if (symbolsStr === previousSymbolsStr) return;
+
 		previousSymbols.forEach((symbol) => {
 			const { baseToken } = parseTokenPair(symbol);
 			const channelName =
@@ -81,7 +82,6 @@ export const useMarketSocket = (
 			ws.send(unsubscribeMessage);
 		});
 
-		// Subscribe to new symbols
 		symbols.forEach((symbol) => {
 			const { baseToken } = parseTokenPair(symbol);
 			const channelName =
@@ -97,7 +97,6 @@ export const useMarketSocket = (
 			ws.send(subscribeMessage);
 		});
 
-		// Update reference
 		previousSymbolsRef.current = symbols;
 	}, [symbols, type]);
 

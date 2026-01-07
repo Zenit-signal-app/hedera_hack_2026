@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/preserve-manual-memoization */
 "use client";
 
@@ -103,7 +104,7 @@ export const useMarketSocket = (
 		}
 	}, [subscribeToSymbols, status]);
 
-	const sendMessage = useCallback((message: any) => {
+	const sendMessage = useCallback((message : any) => {
 		if (wsRef.current?.readyState === WebSocket.OPEN) {
 			wsRef.current.send(JSON.stringify(message));
 		}

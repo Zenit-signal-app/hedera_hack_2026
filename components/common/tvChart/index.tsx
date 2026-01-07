@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -58,7 +59,7 @@ const AVAILABLE_TIMEZONES = [
 
 export const TVChartContainer = ({
 	symbol = "USDM_ADA",
-	interval = "60",
+	interval = "1D",
 	indicators = [],
 	className = "",
 	onIntervalChange,

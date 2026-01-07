@@ -95,16 +95,41 @@ export const useWalletConnect = (): WalletHook => {
 				return;
 			}
 
+			let retries = 0;
+			const maxRetries = 3;
+			const retryDelay = 1000; // 1 second
+
+			const attemptConnection = async (): Promise<void> => {
+				try {
+					const walletApi = window.cardano[walletId];
+					
+					// Check if wallet is available and has enable method
+					if (!walletApi || typeof walletApi.enable !== "function") {
+						throw new Error(`Ví ${walletId} không được tìm thấy hoặc không hỗ trợ.`);
+					}
+
+					const api: WalletApi = await walletApi.enable();
+					setConnected(api, walletId);
+					localStorage.setItem("connectedWalletId", walletId);
+				} catch (err: any) {
+					if (retries < maxRetries - 1) {
+						retries++;
+						console.warn(`Lỗi kết nối, thử lại (${retries}/${maxRetries})...`);
+						await new Promise(resolve => setTimeout(resolve, retryDelay));
+						await attemptConnection();
+					} else {
+						const errorMsg = err.message || "Người dùng từ chối.";
+						setError(
+							`Lỗi kết nối: ${errorMsg}`
+						);
+						setDisconnected();
+						throw err;
+					}
+				}
+			};
+
 			try {
-				const api: WalletApi = await window.cardano[walletId].enable();
-				setConnected(api, walletId);
-				localStorage.setItem("connectedWalletId", walletId);
-			} catch (err: any) {
-				setError(
-					`Lỗi kết nối: ${err.message || "Người dùng từ chối."}`
-				);
-				setDisconnected();
-				throw new Error("Connection Rejected");
+				await attemptConnection();
 			} finally {
 				setIsLoading(false);
 			}
