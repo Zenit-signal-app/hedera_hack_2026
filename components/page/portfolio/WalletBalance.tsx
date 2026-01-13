@@ -1,6 +1,13 @@
+"use client";
+
 import React from "react";
 import Image from "next/image";
 import CopyIcon from "@/components/icon/Icon_Copy";
+import { useWalletStore } from "@/store/walletStore";
+import { useState } from "react";
+import { formatTokenAmount } from "@/lib/ultils";
+import { formatWallet } from "@/lib/format";
+import Copy from "@/components/common/Copy";
 
 const Divider = ({
 	className,
@@ -56,6 +63,15 @@ const BgLiquidGlass = ({
 
 // Main WalletBalance Component
 const WalletBalance = () => {
+	const { isConnected, usedAddress, balance, isWalletInfoLoading } =
+		useWalletStore();
+	if (!isConnected) {
+		return (
+			<div className="p-6 bg-gray-900 text-white rounded-xl text-center">
+				<p>Please connect your wallet to view your balance.</p>
+			</div>
+		);
+	}
 	return (
 		<div
 			className="flex flex-col w-full lg:w-[371px] items-start gap-3 p-3 relative rounded-[24px] overflow-hidden"
@@ -76,111 +92,66 @@ const WalletBalance = () => {
 				/>
 
 				<div
-					className="inline-flex items-center gap-1.5 relative flex-[0_0_auto]"
+					className="inline-flex w-full items-center gap-1.5  justify-between"
 					style={{ zIndex: 1 }}
 				>
 					<div
-						className="relative w-fit font-bold text-white text-[14px] whitespace-nowrap"
+						className=" w-fit font-bold text-white text-[14px] whitespace-nowrap"
 						style={{ opacity: 0.9 }}
 					>
 						My wallet:
 					</div>
-					<div className="relative w-fit font-bold text-white text-[14px] whitespace-nowrap">
-						0x414f...4921
-					</div>
-					<CopyIcon className="!relative !w-[18px] !h-[18px] text-gray-400 cursor-pointer hover:text-white transition-colors ml-0.5" />
-				</div>
-				<Divider className="!self-stretch !w-full" type="horizontal" />
-
-				<div
-					className="flex items-center justify-between relative self-stretch w-full"
-					style={{ zIndex: 1 }}
-				>
-					<div
-						className="font-semibold text-[14px] relative w-fit whitespace-nowrap"
-						style={{ color: "rgba(255, 255, 255, 0.5)" }}
+					<Copy
+						value={usedAddress || ""}
+						className="flex items-center text-sm lg:text-base text-white font-semibold"
 					>
-						Total balance
-					</div>
-					<div className="font-bold text-white text-[22px] leading-[32px] relative w-fit whitespace-nowrap">
-						≈$1,250.00
-					</div>
+						<span>{formatWallet(usedAddress || "", 6, 4)}</span>
+					</Copy>
 				</div>
 			</div>
 			<div
 				className="flex-col items-start self-stretch w-full rounded-2xl flex relative overflow-hidden"
 				style={{ background: "rgba(255, 255, 255, 0.05)" }}
 			>
-				<div
-					className="flex items-center gap-3 py-3 px-4 relative self-stretch w-full"
-					style={{
-						borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
-					}}
-				>
-					<Image
-						src="/images/ada.png"
-						alt="Cardano"
-						width={32}
-						height={32}
-						className="relative w-[32px] h-[32px] rounded-full object-cover"
-					/>
-					<div className="items-center justify-between flex-1 flex relative">
-						<div
-							className="font-medium text-white text-[14px] relative w-fit whitespace-nowrap"
-							style={{ opacity: 0.95 }}
-						>
-							Cardano
-						</div>
-						<div className="relative w-fit font-bold text-white text-[14px] whitespace-nowrap">
-							≈$750.22
-						</div>
+				{isWalletInfoLoading ? (
+					<div className="text-center text-gray-400">
+						Loading balance...
 					</div>
-				</div>
-				<div
-					className="flex items-center gap-3 py-3 px-4 relative self-stretch w-full"
-					style={{
-						borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
-					}}
-				>
-					<Image
-						src="/images/bnb.png"
-						alt="BNB Chain"
-						width={32}
-						height={32}
-						className="relative w-[32px] h-[32px] rounded-full object-cover"
-					/>
-					<div className="items-center justify-between flex-1 flex relative">
+				) : (
+					balance.map((asset) => (
 						<div
-							className="font-medium text-white text-[14px] relative w-fit whitespace-nowrap"
-							style={{ opacity: 0.95 }}
+							key={asset.asset.token_id}
+							className="flex w-full px-4 py-2 justify-between items-center"
 						>
-							BNB Chain
+							<div className="flex items-center space-x-3">
+								<Image
+									src={asset.asset.logo}
+									alt={asset.asset.ticker}
+									width={30}
+									height={30}
+									className="rounded-full"
+								/>
+								<div className="flex flex-col">
+									<span className="text-white font-medium">
+										{asset.asset.ticker}
+									</span>
+									<span className="text-gray-500 text-xs">
+										{asset.asset.project_name}
+									</span>
+								</div>
+							</div>
+
+							<div className="flex flex-col items-end">
+								<span className="text-white font-bold">
+									{formatTokenAmount(
+										asset.amount,
+										asset.asset.decimals
+									)}
+								</span>
+							</div>
 						</div>
-						<div className="relative w-fit font-bold text-white text-[14px] whitespace-nowrap">
-							≈$24.03
-						</div>
-					</div>
-				</div>
-				<div className="flex items-center gap-3 py-3 px-4 relative self-stretch w-full">
-					<Image
-						src="/images/eth.png"
-						alt="Ethereum"
-						width={32}
-						height={32}
-						className="relative w-[32px] h-[32px] rounded-full object-cover"
-					/>
-					<div className="items-center justify-between flex-1 flex relative">
-						<div
-							className="font-medium text-white text-[14px] relative w-fit whitespace-nowrap"
-							style={{ opacity: 0.95 }}
-						>
-							Ethereum
-						</div>
-						<div className="relative w-fit font-bold text-white text-[14px] whitespace-nowrap">
-							≈$475.75
-						</div>
-					</div>
-				</div>
+					))
+				)}
 			</div>
 		</div>
 	);

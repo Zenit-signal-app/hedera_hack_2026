@@ -130,7 +130,16 @@ export const useWalletConnect = (): WalletHook => {
 				typeof window.cardano === "undefined" ||
 				!window.cardano[walletId]
 			) {
-				setError(`Ví ${walletId} chưa được cài đặt.`);
+				// Get wallet URL to redirect user
+				const wallet = SUPPORTED_WALLETS.find(w => w.id === walletId);
+				const extensionUrl = wallet?.url || '';
+				
+				if (extensionUrl) {
+					// Redirect to extension store
+					window.open(extensionUrl, '_blank');
+				}
+				
+				setError(`Ví ${walletId} chưa được cài đặt. Vui lòng cài đặt extension.`);
 				setIsLoading(false);
 				return;
 			}
