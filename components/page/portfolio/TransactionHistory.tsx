@@ -7,18 +7,14 @@ import TabsWrapper, { TabItem } from "@/components/common/tabs";
 import Filter1Icon from "@/components/icon/Icon_Filter1";
 import { useWalletStore } from "@/store/walletStore";
 import { useFetchUserSwaps, SwapTransaction } from "@/hooks/useFetchUserSwaps";
+import { vaultApi } from "@/services/vaultServices";
+import { VaultTransaction } from "@/types/vault";
 import Image from "next/image";
 import dayjs from "dayjs";
 import Link from "next/link";
 import DirectIcon from "@/components/icon/IconDirect";
 
-interface VaultTransactionData {
-	id: number;
-	dateTime: string;
-	type: "Deposit" | "Claim";
-	vault: string;
-	amount: string;
-	status: string;
+interface VaultTransactionData extends VaultTransaction {
 	statusColor: string;
 }
 
@@ -61,6 +57,10 @@ export const TransactionHistory = () => {
 	const [activeTab, setActiveTab] = useState("swap");
 	const [pageIndex, setPageIndex] = useState(0);
 	const [pageSize, setPageSize] = useState(10);
+	const [vaultTransactions, setVaultTransactions] = useState<VaultTransactionData[]>([]);
+	const [isLoadingVault, setIsLoadingVault] = useState(false);
+	const [vaultError, setVaultError] = useState<string | null>(null);
+	const [vaultTotal, setVaultTotal] = useState(0);
 
 	// Get wallet info from store
 	const usedAddress = useWalletStore((state) => state.usedAddress);
@@ -71,62 +71,54 @@ export const TransactionHistory = () => {
 		enabled: activeTab === "swap",
 	});
 
+	// Fetch vault transactions
+	React.useEffect(() => {
+		const fetchVaultTransactions = async () => {
+			if (!usedAddress) {
+				setVaultError("Wallet address not connected");
+				return;
+			}
+
+			try {
+				setIsLoadingVault(true);
+				setVaultError(null);
+
+				const response = await vaultApi.getUserVaultTransactions({
+					wallet_address: usedAddress,
+					page: pageIndex + 1,
+					limit: pageSize
+				});
+
+				// Transform API response to VaultTransactionData format
+				const transformedData: VaultTransactionData[] = response.transactions.map((txn) => ({
+					...txn,
+					statusColor: txn.status === 'completed' ? 'text-green-500' : txn.status === 'pending' ? 'text-yellow-500' : 'text-red-500'
+				}));
+
+				setVaultTransactions(transformedData);
+				setVaultTotal(response.total);
+			} catch (err) {
+				setVaultError(err instanceof Error ? err.message : 'Failed to fetch vault transactions');
+				console.error('Error fetching vault transactions:', err);
+			} finally {
+				setIsLoadingVault(false);
+			}
+		};
+
+		// Only fetch when vault tab is active
+		if (activeTab === 'vault' && usedAddress) {
+			fetchVaultTransactions();
+		}
+	}, [usedAddress, pageIndex, pageSize, activeTab]);
+
 	const tabs: TabItem[] = [
 		{ value: "swap", label: "Swap" },
 		{ value: "vault", label: "Vault" },
 	];
 
-	const vaultTransactionData: VaultTransactionData[] = [
-		{
-			id: 1,
-			dateTime: "09:50 Oct 31, 2025",
-			type: "Deposit",
-			vault: "ETH-BTC long swing",
-			amount: "$802.31",
-			status: "Completed",
-			statusColor: "text-green-500",
-		},
-		{
-			id: 2,
-			dateTime: "09:50 Oct 31, 2025",
-			type: "Claim",
-			vault: "ADA",
-			amount: "$50.00",
-			status: "Completed",
-			statusColor: "text-green-500",
-		},
-		{
-			id: 3,
-			dateTime: "09:50 Oct 31, 2025",
-			type: "Deposit",
-			vault: "SNEK",
-			amount: "$100.50",
-			status: "Completed",
-			statusColor: "text-green-500",
-		},
-		{
-			id: 4,
-			dateTime: "09:50 Oct 31, 2025",
-			type: "Claim",
-			vault: "WMTX",
-			amount: "$830.00",
-			status: "Completed",
-			statusColor: "text-green-500",
-		},
-		{
-			id: 5,
-			dateTime: "09:50 Oct 31, 2025",
-			type: "Deposit",
-			vault: "ADA",
-			amount: "$2,400.90",
-			status: "Completed",
-			statusColor: "text-green-500",
-		},
-	];
-
 	const vaultColumns: ColumnDef<VaultTransactionData>[] = [
 		{
-			accessorKey: "dateTime",
+			accessorKey: "timestamp",
 			header: () => (
 				<div className="flex items-center gap-1">
 					<span>Date & time</span>
@@ -135,25 +127,25 @@ export const TransactionHistory = () => {
 			),
 			cell: ({ row }) => (
 				<time className="font-semibold text-gray-400 text-sm leading-5 whitespace-nowrap">
-					{row.original.dateTime}
+					{dayjs(row.original.timestamp * 1000).format("hh:mm A MMM DD, YYYY")}
 				</time>
 			),
 		},
 		{
-			accessorKey: "type",
+			accessorKey: "action",
 			header: () => <div>Type</div>,
 			cell: ({ row }) => (
-				<div className="font-semibold text-white text-sm leading-5 whitespace-nowrap">
-					{row.original.type}
+				<div className="font-semibold text-white text-sm leading-5 whitespace-nowrap capitalize">
+					{row.original.action}
 				</div>
 			),
 		},
 		{
-			accessorKey: "vault",
+			accessorKey: "vault_name",
 			header: () => <div>Vault</div>,
 			cell: ({ row }) => (
 				<div className="font-semibold text-white text-sm leading-5 whitespace-nowrap">
-					{row.original.vault}
+					{row.original.vault_name}
 				</div>
 			),
 		},
@@ -162,7 +154,10 @@ export const TransactionHistory = () => {
 			header: () => <div>Amount</div>,
 			cell: ({ row }) => (
 				<div className="font-semibold text-white text-sm leading-5 whitespace-nowrap">
-					{row.original.amount}
+					{row.original.amount.toLocaleString(undefined, {
+						minimumFractionDigits: 0,
+						maximumFractionDigits: 8,
+					})} {row.original.token_symbol}
 				</div>
 			),
 		},
@@ -177,7 +172,7 @@ export const TransactionHistory = () => {
 			cell: ({ row }) => (
 				<div className="text-right">
 					<span
-						className={`font-semibold ${row.original.statusColor} text-sm leading-5 whitespace-nowrap`}
+						className={`font-semibold ${row.original.statusColor} text-sm leading-5 whitespace-nowrap capitalize`}
 					>
 						{row.original.status}
 					</span>
@@ -281,23 +276,42 @@ export const TransactionHistory = () => {
 						showHeaderBorder={false}
 					/>
 				) : (
-					<TableWrapper
-						columns={vaultColumns}
-						data={vaultTransactionData}
-						isLoading={false}
-						pagination={{
-							pageIndex,
-							pageSize,
-							totalPages: 1,
-							totalRecords: vaultTransactionData.length,
-						}}
-						setPageIndex={setPageIndex}
-						setPageSize={setPageSize}
-						variant="minimal"
-						className="border-none"
-						rowClassName="rounded-lg overflow-hidden"
-						showHeaderBorder={false}
-					/>
+					<>
+						{/* Loading State */}
+						{isLoadingVault && (
+							<div className="w-full text-center py-10 text-gray-400">
+								Loading vault transactions...
+							</div>
+						)}
+
+						{/* Error State */}
+						{vaultError && (
+							<div className="w-full text-center py-10 text-red-500">
+								{vaultError}
+							</div>
+						)}
+
+						{/* Table */}
+						{!isLoadingVault && !vaultError && (
+							<TableWrapper
+								columns={vaultColumns}
+								data={vaultTransactions}
+								isLoading={false}
+								pagination={{
+									pageIndex,
+									pageSize,
+									totalPages: Math.ceil(vaultTotal / pageSize),
+									totalRecords: vaultTotal,
+								}}
+								setPageIndex={setPageIndex}
+								setPageSize={setPageSize}
+								variant="minimal"
+								className="border-none"
+								rowClassName="rounded-lg overflow-hidden"
+								showHeaderBorder={false}
+							/>
+						)}
+					</>
 				)}
 			</div>
 		</section>

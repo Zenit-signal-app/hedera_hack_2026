@@ -6,7 +6,7 @@ import { PromptSuggestions } from "./PromptSuggest";
 import ChatInput from "./ChatInput";
 import LoadingAI from "@/components/common/loading/loading_ai";
 import { useChat } from "@ai-sdk/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getChatHistory } from "@/services/aiServices";
@@ -92,14 +92,14 @@ export default function AIChatPage() {
 							return msg.role === "user" ? (
 								<div key={msg.id}>
 									<div className="flex justify-end text-sm">
-										<p className="px-4 py-2.5 bg-white/20 rounded-xl font-quicksand">
+										<p className="px-4 py-2.5 bg-white/10 rounded-xl text-right font-quicksand w-11/12 sm:w-5/6 md:w-4/5 lg:w-3/4 xl:w-2/3 break-all">
 											{msg.content}
 										</p>
 									</div>
 								</div>
 							) : (
 								<div
-									className="font-montserrat text-sm"
+									className="font-montserrat text-sm w-11/12 sm:w-5/6 md:w-4/5 lg:w-3/4 xl:w-2/3"
 									key={msg.id}
 								>
 									<ReactMarkdown

@@ -1,17 +1,18 @@
-import { StrategyCardData } from "@/data/strategy";
-import { positionsData, Position } from "@/data/positions";
-import { useState } from "react";
+import { VaultInfo, Position } from "@/types/vault";
+import { useState, useEffect } from "react";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import GrowUpIcon from "@/components/icon/Icon_GrowUp";
 import TrendDownIcon from "@/components/icon/Icon_TrendDown";
+import { vaultApi } from "@/services/vaultServices";
 
 interface PositionsProps {
-	data: StrategyCardData;
+	data: VaultInfo;
 }
 
 interface PositionRowProps {
 	position: Position;
 	index: number;
+	status: "open" | "closed"; // Used for display context (Live vs Closed badge)
 }
 
 interface PaginationProps {
@@ -23,21 +24,76 @@ interface PaginationProps {
 }
 
 const Positions = ({ data }: PositionsProps) => {
+	const [openPositions, setOpenPositions] = useState<Position[]>([]);
+	const [closedPositions, setClosedPositions] = useState<Position[]>([]);
 	const [openSearch, setOpenSearch] = useState("");
 	const [closedSearch, setClosedSearch] = useState("");
 	const [openPage, setOpenPage] = useState(1);
 	const [closedPage, setClosedPage] = useState(1);
+	const [isLoadingOpen, setIsLoadingOpen] = useState(false);
+	const [isLoadingClosed, setIsLoadingClosed] = useState(false);
+	const [openError, setOpenError] = useState<string | null>(null);
+	const [closedError, setClosedError] = useState<string | null>(null);
 	const itemsPerPage = 10;
 
-	const filteredOpenPositions = positionsData.open_positions.filter((pos) =>
-		pos.position.toLowerCase().includes(openSearch.toLowerCase())
+	useEffect(() => {
+		const fetchOpenPositions = async () => {
+			setIsLoadingOpen(true);
+			setOpenError(null);
+			try {
+				const response = await vaultApi.getVaultPositions(data.id, {
+					status: "open",
+					page: openPage,
+					limit: itemsPerPage,
+				});
+				setOpenPositions(response.positions);
+			} catch (error) {
+				console.error("Error fetching open positions:", error);
+				setOpenError("Failed to load open positions");
+				setOpenPositions([]);
+			} finally {
+				setIsLoadingOpen(false);
+			}
+		};
+
+		if (data.id) {
+			fetchOpenPositions();
+		}
+	}, [data.id, openPage]);
+
+	useEffect(() => {
+		const fetchClosedPositions = async () => {
+			setIsLoadingClosed(true);
+			setClosedError(null);
+			try {
+				const response = await vaultApi.getVaultPositions(data.id, {
+					status: "closed",
+					page: closedPage,
+					limit: itemsPerPage,
+				});
+				setClosedPositions(response.positions);
+			} catch (error) {
+				console.error("Error fetching closed positions:", error);
+				setClosedError("Failed to load closed positions");
+				setClosedPositions([]);
+			} finally {
+				setIsLoadingClosed(false);
+			}
+		};
+
+		if (data.id) {
+			fetchClosedPositions();
+		}
+	}, [data.id, closedPage]);
+
+	const filteredOpenPositions = openPositions.filter((pos) =>
+		pos.pair.toLowerCase().includes(openSearch.toLowerCase())
 	);
 
-	const filteredClosedPositions = positionsData.closed_positions.filter(
-		(pos) => pos.position.toLowerCase().includes(closedSearch.toLowerCase())
+	const filteredClosedPositions = closedPositions.filter((pos) =>
+		pos.pair.toLowerCase().includes(closedSearch.toLowerCase())
 	);
 
-	// Pagination logic
 	const totalOpenPages = Math.ceil(
 		filteredOpenPositions.length / itemsPerPage
 	);
@@ -84,62 +140,85 @@ const Positions = ({ data }: PositionsProps) => {
 					</div>
 				</div>
 
-				{/* Table */}
-				<div className="positions-table">
-					{/* Header Row */}
-					<div className="positions-table-header-row">
-						<div
-							className="positions-header-cell-left"
-							style={{ width: "30%" }}
-						>
-							<span className="positions-header-cell">
-								Position
-							</span>
-						</div>
-						<div
-							className="positions-header-cell-center"
-							style={{ width: "16%" }}
-						>
-							<span className="positions-header-cell">
-								Remarks
-							</span>
-						</div>
-						<div
-							className="positions-header-cell-right"
-							style={{ width: "10%" }}
-						>
-							<span className="positions-header-cell">
-								Profitability
-							</span>
-						</div>
-						<div
-							className="positions-header-cell-right"
-							style={{ width: "14%" }}
-						>
-							<span className="positions-header-cell">Value</span>
-						</div>
-						<div
-							className="positions-header-cell-right-end"
-							style={{ width: "30%" }}
-						>
-							<span className="positions-header-cell">
-								Opened
-							</span>
-						</div>
+				{isLoadingOpen && (
+					<div className="text-center py-10 text-gray-400">
+						Loading open positions...
 					</div>
+				)}
 
-					{/* Data Rows */}
-					{paginatedOpenPositions.map((position, index) => (
-						<PositionRow
-							key={index}
-							position={position}
-							index={index}
-						/>
-					))}
-				</div>
+				{openError && (
+					<div className="text-center py-10 text-red-500">
+						{openError}
+					</div>
+				)}
 
-				{/* Pagination */}
-				{totalOpenPages > 1 && (
+				{!isLoadingOpen &&
+					!openError &&
+					filteredOpenPositions.length === 0 && (
+						<div className="text-center py-10 text-gray-400">
+							No open positions found
+						</div>
+					)}
+
+				{!isLoadingOpen &&
+					!openError &&
+					paginatedOpenPositions.length > 0 && (
+						<div className="positions-table">
+							<div className="positions-table-header-row">
+								<div
+									className="positions-header-cell-left"
+									style={{ width: "30%" }}
+								>
+									<span className="positions-header-cell">
+										Pair
+									</span>
+								</div>
+								<div
+									className="positions-header-cell-center"
+									style={{ width: "16%" }}
+								>
+									<span className="positions-header-cell">
+										Spend
+									</span>
+								</div>
+								<div
+									className="positions-header-cell-right"
+									style={{ width: "10%" }}
+								>
+									<span className="positions-header-cell">
+										Profit
+									</span>
+								</div>
+								<div
+									className="positions-header-cell-right"
+									style={{ width: "14%" }}
+								>
+									<span className="positions-header-cell">
+										Value
+									</span>
+								</div>
+								<div
+									className="positions-header-cell-right-end"
+									style={{ width: "30%" }}
+								>
+									<span className="positions-header-cell">
+										Opened
+									</span>
+								</div>
+							</div>
+
+							{/* Data Rows */}
+							{paginatedOpenPositions.map((position, index) => (
+								<PositionRow
+									key={index}
+									position={position}
+									index={index}
+									status="open"
+								/>
+							))}
+						</div>
+					)}
+				{!isLoadingOpen && !openError && totalOpenPages > 1 && (
 					<Pagination
 						currentPage={openPage}
 						totalPages={totalOpenPages}
@@ -150,9 +229,7 @@ const Positions = ({ data }: PositionsProps) => {
 				)}
 			</div>
 
-			{/* Closed Positions */}
 			<div className="positions-container">
-				{/* Title and Search */}
 				<div className="positions-header">
 					<h3 className="positions-title">
 						Closed positions ({filteredClosedPositions.length})
@@ -177,62 +254,87 @@ const Positions = ({ data }: PositionsProps) => {
 					</div>
 				</div>
 
-				{/* Table */}
-				<div className="positions-table">
-					{/* Header Row */}
-					<div className="positions-table-header-row">
-						<div
-							className="positions-header-cell-left"
-							style={{ width: "30%" }}
-						>
-							<span className="positions-header-cell">
-								Position
-							</span>
-						</div>
-						<div
-							className="positions-header-cell-center"
-							style={{ width: "16%" }}
-						>
-							<span className="positions-header-cell">
-								Remarks
-							</span>
-						</div>
-						<div
-							className="positions-header-cell-right"
-							style={{ width: "10%" }}
-						>
-							<span className="positions-header-cell">
-								Profitability
-							</span>
-						</div>
-						<div
-							className="positions-header-cell-right"
-							style={{ width: "14%" }}
-						>
-							<span className="positions-header-cell">Value</span>
-						</div>
-						<div
-							className="positions-header-cell-right-end"
-							style={{ width: "30%" }}
-						>
-							<span className="positions-header-cell">
-								Opened
-							</span>
-						</div>
+				{isLoadingClosed && (
+					<div className="text-center py-10 text-gray-400">
+						Loading closed positions...
 					</div>
+				)}
 
-					{/* Data Rows */}
-					{paginatedClosedPositions.map((position, index) => (
-						<PositionRow
-							key={index}
-							position={position}
-							index={index}
-						/>
-					))}
-				</div>
+				{closedError && (
+					<div className="text-center py-10 text-red-500">
+						{closedError}
+					</div>
+				)}
+
+				{!isLoadingClosed &&
+					!closedError &&
+					filteredClosedPositions.length === 0 && (
+						<div className="text-center py-10 text-gray-400">
+							No closed positions found
+						</div>
+					)}
+
+				{!isLoadingClosed &&
+					!closedError &&
+					paginatedClosedPositions.length > 0 && (
+						<div className="positions-table">
+							<div className="positions-table-header-row">
+								<div
+									className="positions-header-cell-left"
+									style={{ width: "30%" }}
+								>
+									<span className="positions-header-cell">
+										Pair
+									</span>
+								</div>
+								<div
+									className="positions-header-cell-center"
+									style={{ width: "16%" }}
+								>
+									<span className="positions-header-cell">
+										Spend
+									</span>
+								</div>
+								<div
+									className="positions-header-cell-right"
+									style={{ width: "10%" }}
+								>
+									<span className="positions-header-cell">
+										Profit
+									</span>
+								</div>
+								<div
+									className="positions-header-cell-right"
+									style={{ width: "14%" }}
+								>
+									<span className="positions-header-cell">
+										Value
+									</span>
+								</div>
+								<div
+									className="positions-header-cell-right-end"
+									style={{ width: "30%" }}
+								>
+									<span className="positions-header-cell">
+										Closed
+									</span>
+								</div>
+							</div>
+
+							{/* Data Rows */}
+							{paginatedClosedPositions.map((position, index) => (
+								<PositionRow
+									key={index}
+									position={position}
+									index={index}
+									status="closed"
+								/>
+							))}
+						</div>
+					)}
 
 				{/* Pagination */}
-				{totalClosedPages > 1 && (
+				{!isLoadingClosed && !closedError && totalClosedPages > 1 && (
 					<Pagination
 						currentPage={closedPage}
 						totalPages={totalClosedPages}
@@ -248,17 +350,38 @@ const Positions = ({ data }: PositionsProps) => {
 
 export default Positions;
 
-// ============================================================================
-// Child Components
-// ============================================================================
+const PositionRow = ({ position, index, status }: PositionRowProps) => {
+	const isNegative = position.profit < 0;
+	const isPositive = position.profit > 0;
 
-/**
- * PositionRow Component
- * Renders a single position row in the table
- */
-const PositionRow = ({ position, index }: PositionRowProps) => {
-	const isNegative = position.profitability.startsWith("-");
-	const isPositive = !isNegative && parseFloat(position.profitability) > 0;
+	const formatCurrency = (value: number): string => {
+		if (value >= 1_000_000) {
+			return `$${(value / 1_000_000).toFixed(1)}M`;
+		} else if (value >= 1_000) {
+			return `$${(value / 1_000).toFixed(1)}K`;
+		}
+		return `$${value.toFixed(2)}`;
+	};
+
+	const formatDate = (timestamp: string): string => {
+		try {
+			const date = new Date(Number(timestamp) * 1000);
+			return (
+				date.toLocaleDateString("en-US", {
+					year: "numeric",
+					month: "2-digit",
+					day: "2-digit",
+				}) +
+				", " +
+				date.toLocaleTimeString("en-US", {
+					hour: "2-digit",
+					minute: "2-digit",
+				})
+			);
+		} catch {
+			return timestamp;
+		}
+	};
 
 	return (
 		<div
@@ -266,28 +389,25 @@ const PositionRow = ({ position, index }: PositionRowProps) => {
 				index % 2 === 0 ? "positions-table-data-row-even" : ""
 			}`}
 		>
-			{/* Position Cell - 30% */}
 			<div
 				className="positions-data-cell-position"
 				style={{ width: "30%" }}
 			>
-				<span className="positions-position-name">
-					{position.position}
+				<span className="positions-position-name">{position.pair}</span>
+				<span className="positions-position-type">
+					{status === "open" ? "Live" : "Closed"}
 				</span>
-				<span className="positions-position-type">{position.type}</span>
 			</div>
 
-			{/* Remarks Cell - 16% */}
 			<div
 				className="positions-data-cell-remarks"
 				style={{ width: "16%" }}
 			>
-				{position.remarks === "issue" && (
-					<div className="positions-remarks-badge">Issue</div>
-				)}
+				<span className="text-gray-300">
+					{formatCurrency(position.spend)}
+				</span>
 			</div>
 
-			{/* Profitability Cell - 10% */}
 			<div
 				className="positions-data-cell-profitability"
 				style={{ width: "10%" }}
@@ -303,30 +423,29 @@ const PositionRow = ({ position, index }: PositionRowProps) => {
 							: "positions-profitability-neutral"
 					}
 				>
-					{position.profitability}
+					{isPositive ? "+" : ""}
+					{position.profit.toFixed(2)}%
 				</span>
 			</div>
 
-			{/* Value Cell - 14% */}
 			<div className="positions-data-cell-value" style={{ width: "14%" }}>
-				<span className="positions-value-text">{position.value}</span>
+				<span className="positions-value-text">
+					{formatCurrency(position.value)}
+				</span>
 			</div>
 
-			{/* Opened Cell - 30% */}
 			<div
 				className="positions-data-cell-opened"
 				style={{ width: "30%" }}
 			>
-				<span className="positions-opened-text">{position.opened}</span>
-				<button className="positions-details-button">Details</button>
+				<span className="positions-opened-text">
+					{formatDate(position.open_time)}
+				</span>
 			</div>
 		</div>
 	);
 };
 
-/**
- * Helper function to generate page numbers for pagination
- */
 const getPageNumbers = (currentPage: number, totalPages: number) => {
 	const pages: (number | string)[] = [];
 	if (totalPages <= 7) {
@@ -345,10 +464,6 @@ const getPageNumbers = (currentPage: number, totalPages: number) => {
 	return pages;
 };
 
-/**
- * Pagination Component
- * Renders pagination controls with page numbers and navigation buttons
- */
 const Pagination = ({
 	currentPage,
 	totalPages,
@@ -362,7 +477,6 @@ const Pagination = ({
 
 	return (
 		<>
-			{/* Divider */}
 			<div className="positions-pagination-divider"></div>
 			<div className="positions-pagination-container">
 				<div className="positions-pagination-info">

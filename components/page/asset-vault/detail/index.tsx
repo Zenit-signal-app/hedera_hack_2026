@@ -1,7 +1,6 @@
 "use client";
 import TabsWrapper from "@/components/common/tabs";
 import ChevronLeftMiniIcon from "@/components/icon/ChevronLeftMiniICon";
-import { mockStrategies } from "@/data/strategy";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -10,26 +9,60 @@ import { cn } from "@/lib/utils";
 import Overview from "./Overview";
 import Performance from "./Performance";
 import Positions from "./Positions";
-import Assets from "./Assets";
-import Technical from "./Technical";
 import MyDeposits from "./MyDeposits";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { vaultApi } from "@/services/vaultServices";
+import { VaultInfo } from "@/types/vault";
 
 const DetailPage = () => {
 	const params = useParams();
-	const assetId = params?.id;
-	const tokenDetail = mockStrategies.find((item) => item.id === assetId);
+	const assetId = params?.id as string;
+	const [vaultInfo, setVaultInfo] = useState<VaultInfo | null>(null);
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
 	const [activeTab, setActiveTab] = useState("overview");
 
-	if (!tokenDetail) {
+	useEffect(() => {
+		const fetchVaultInfo = async () => {
+			if (!assetId) return;
+
+			setIsLoading(true);
+			setError(null);
+			try {
+				const data = await vaultApi.getVaultInfo(assetId);
+				setVaultInfo(data);
+			} catch (err) {
+				setError("Failed to fetch vault information");
+				console.error("Error fetching vault info:", err);
+			} finally {
+				setIsLoading(false);
+			}
+		};
+
+		fetchVaultInfo();
+	}, [assetId]);
+
+	if (isLoading) {
 		return (
 			<div className="flex flex-col gap-y-5">
 				<div className="text-white text-center py-10">
-					Strategy not found
+					Loading vault information...
 				</div>
 			</div>
 		);
 	}
+
+	if (error || !vaultInfo) {
+		return (
+			<div className="flex flex-col gap-y-5">
+				<div className="text-white text-center py-10">
+					{error || "Vault not found"}
+				</div>
+			</div>
+		);
+	}
+
+	console.log(vaultInfo);
 
 	return (
 		<div className="flex flex-col gap-y-5">
@@ -47,18 +80,22 @@ const DetailPage = () => {
 				<div className="bg-[url(/images/bg_box.png)] bg-center mb-5 bg-cover bg-no-repeat pt-6 px-4 rounded-4xl  border border-dark-gray-700">
 					<div className="flex items-center w-full gap-x-4">
 						<Image
-							src={tokenDetail.iconUrl}
+							src={
+								vaultInfo.icon_url ||
+								"/images/ada.png"
+							}
 							width={56}
 							height={56}
-							alt="Token Image"
+							alt="Vault Image"
 							className="w-14 h-14 rounded-full"
 						/>
 						<div className="font-quicksand">
 							<p className="text-xl  font-bold">
-								{tokenDetail.title}
+								{vaultInfo.vault_name}
 							</p>
 							<p className="text-base text-dark-gray-100">
-								{tokenDetail.description}
+								{vaultInfo.summary ||
+									"No description available"}
 							</p>
 						</div>
 					</div>
@@ -67,8 +104,6 @@ const DetailPage = () => {
 							{ value: "overview", label: "Overview" },
 							{ value: "performance", label: "Performance" },
 							{ value: "positions", label: "Positions" },
-							{ value: "assets", label: "Assets" },
-							{ value: "technical", label: "Technical" },
 						]}
 						variant="underline"
 						defaultValue="overview"
@@ -80,7 +115,7 @@ const DetailPage = () => {
 				<TabsContent value="overview" className="mt-0">
 					<div className="grid lg:grid-cols-3 gap-x-4">
 						<div className="col-span-2">
-							<Overview data={tokenDetail} />
+							<Overview data={vaultInfo} />
 						</div>
 						<div className="col-span-1 hidden lg:block">
 							<MyDeposits />
@@ -88,16 +123,10 @@ const DetailPage = () => {
 					</div>
 				</TabsContent>
 				<TabsContent value="performance" className="mt-0">
-					<Performance data={tokenDetail} />
+					<Performance data={vaultInfo} />
 				</TabsContent>
 				<TabsContent value="positions" className="mt-0">
-					<Positions data={tokenDetail} />
-				</TabsContent>
-				<TabsContent value="assets" className="mt-0">
-					<Assets data={tokenDetail} />
-				</TabsContent>
-				<TabsContent value="technical" className="mt-0">
-					<Technical data={tokenDetail} />
+					<Positions data={vaultInfo} />
 				</TabsContent>
 			</Tabs>
 		</div>

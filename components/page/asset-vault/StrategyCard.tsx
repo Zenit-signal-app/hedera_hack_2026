@@ -1,19 +1,56 @@
 import ChevronDownMini from "@/components/icon/Icon_ChevronDownMini";
 import DoubleChevronDownIcon from "@/components/icon/Icon_DoubleChevronDown";
 import QuestionInfoIcon from "@/components/icon/Icon_QuestionInfo";
-import { StrategyCardData } from "@/data/strategy";
+import { Vault } from "@/types/vault";
+import Image from "next/image";
 import Link from "next/link";
 import React, { useState } from "react";
+
 interface StrategyCardProps {
-	data: StrategyCardData;
+	data: Vault;
 }
 
 const StrategyCard: React.FC<StrategyCardProps> = ({ data }) => {
 	const [isExpanded, setIsExpanded] = useState(false);
 
+	// Calculate gradient based on vault state
+	const getGradient = (state: string) => {
+		switch (state) {
+			case 'accepting_deposits':
+				return "linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(21, 128, 61, 0.05) 50%, rgba(0, 0, 0, 0.8) 100%)";
+			case 'trading':
+				return "linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(30, 58, 138, 0.05) 50%, rgba(0, 0, 0, 0.8) 100%)";
+			case 'settled':
+				return "linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(107, 33, 168, 0.05) 50%, rgba(0, 0, 0, 0.8) 100%)";
+			case 'closed':
+				return "linear-gradient(135deg, rgba(107, 114, 128, 0.15) 0%, rgba(55, 65, 81, 0.05) 50%, rgba(0, 0, 0, 0.8) 100%)";
+			default:
+				return "linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(30, 58, 138, 0.05) 50%, rgba(0, 0, 0, 0.8) 100%)";
+		}
+	};
+
+	// Format currency
+	const formatCurrency = (value: number) => {
+		if (value >= 1_000_000) {
+			return `$${(value / 1_000_000).toFixed(1)}M`;
+		} else if (value >= 1_000) {
+			return `$${(value / 1_000).toFixed(1)}K`;
+		}
+		return `$${value.toFixed(2)}`;
+	};
+
+	// Calculate days since start
+	const calculateAge = (startTime: string) => {
+		const start = new Date(startTime);
+		const now = new Date();
+		const diffTime = Math.abs(now.getTime() - start.getTime());
+		const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+		return `${diffDays} days`;
+	};
+
 	return (
 		<div
-			style={{ background: data.bgGradient }}
+			style={{ background: getGradient(data.state) }}
 			className=" 
       text-white 
       hover:border-primary-500 
@@ -31,20 +68,22 @@ const StrategyCard: React.FC<StrategyCardProps> = ({ data }) => {
     ">
 			<div className="flex items-start justify-between w-full">
 				<div className="flex items-center flex-col w-full gap-y-2">
-					<img
-						src={data.iconUrl}
-						alt={`${data.title} icon`}
+					<Image
+						src={data?.icon_url || "/images/ada.png"}
+						alt={`${data.vault_name} icon`}
 						className="w-11 h-11 rounded-full border border-gray-600"
+						width={44}
+						height={44}
 					/>
 					<h3 className="text-xl font-bold text-white leading-tight">
-						{data.title}
+						{data.vault_name}
 					</h3>
 				</div>
 			</div>
 
 			{/* Description */}
 			<p className="text-sm text-dark-gray-100 line-clamp-1 truncate text-center overflow-hidden w-full">
-				{data.description}
+				{data.summary || "No description available"}
 			</p>
 
 			{/* METRICS: Annual Return và TVL */}
@@ -53,7 +92,7 @@ const StrategyCard: React.FC<StrategyCardProps> = ({ data }) => {
 					{/* Annual Return */}
 					<div className="flex flex-col items-center justify-center w-[145px]">
 						<span className="text-lg font-bold text-green-500">
-							{data.annualReturn}
+							{data.annual_return.toFixed(1)}%
 						</span>						
 						<span className="text-sm text-green-500">Annual return</span>
 
@@ -62,7 +101,7 @@ const StrategyCard: React.FC<StrategyCardProps> = ({ data }) => {
 
 					<div className="w-px h-full bg-dark-gray-400 mx-2"></div>
 					<div className="flex flex-col items-center font-exo w-[145px]">
-						<span className="text-lg font-bold text-white">{data.tvl}</span>
+						<span className="text-lg font-bold text-white">{formatCurrency(data.tvl_usd)}</span>
 						<span className="text-sm text-white underline">TVL</span>
 					</div>
 
@@ -89,37 +128,27 @@ const StrategyCard: React.FC<StrategyCardProps> = ({ data }) => {
 								<QuestionInfoIcon size={14} className="text-dark-gray-200" />
 							</div>
 							<span className="text-base font-bold text-white">
-								{data.subStats.maxDrawdown}
+								{data.max_drawdown ? `${data.max_drawdown.toFixed(1)}%` : "N/A"}
 							</span>
 						</div>
 
 						<div className="flex flex-col">
 							<div className="flex items-center gap-1 mb-1">
-								<span className="text-sm font-light">Sharpe</span>
+								<span className="text-sm font-light">State</span>
 								<QuestionInfoIcon size={14} className="text-dark-gray-200" />
 							</div>
-							<span className="text-base font-bold text-white">
-								{data.subStats.sharpe}
+							<span className="text-base font-bold text-white capitalize">
+								{data.state.replace(/_/g, " ")}
 							</span>
 						</div>
 
-						<div className="flex flex-col">
-							<div className="flex items-center gap-1 mb-1">
-								<span className="text-sm font-light">Sortino</span>
-								<QuestionInfoIcon size={14} className="text-dark-gray-200" />
-							</div>
-							<span className="text-base font-bold text-white">
-								{data.subStats.sortino}
-							</span>
-						</div>
-
-						<div className="flex flex-col">
+						<div className="flex flex-col col-span-2">
 							<div className="flex items-center gap-1 mb-1">
 								<span className="text-sm font-light">Age</span>
 								<QuestionInfoIcon size={14} className="text-dark-gray-200" />
 							</div>
 							<span className="text-base font-bold text-white">
-								{data.subStats.age}
+								{calculateAge(data.start_time)}
 							</span>
 						</div>
 					</div>

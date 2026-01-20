@@ -1,62 +1,285 @@
-import CommonLineChart, {
-	ChartDataPoint,
-	TimeFilterOption,
-} from "@/components/common/chart/Line";
+import {
+	AreaChart,
+	Area,
+	XAxis,
+	YAxis,
+	CartesianGrid,
+	Tooltip,
+	ResponsiveContainer,
+} from "recharts";
 import GrowDownIcon from "@/components/icon/Icon_GrowDown";
-import { StrategyCardData } from "@/data/strategy";
+import { VaultInfo } from "@/types/vault";
 import MyDeposits from "./MyDeposits";
 import CopyIcon from "@/components/icon/Icon_Copy";
 import ArrowUpRightIcon from "@/components/icon/Icon_ArrowUpRight";
 import QuestionInfoIcon from "@/components/icon/Icon_QuestionInfo";
-import Image from "next/image";
 import { strategyDescriptionContent } from "@/data/strategy-description";
+import { useEffect, useState } from "react";
+import { vaultApi } from "@/services/vaultServices";
+import { VaultResolution } from "@/types/vault";
+import type { ChartDataPoint } from "@/components/common/chart/Line";
+import { formatWallet } from "@/lib/format";
+import Copy from "@/components/common/Copy";
 
 // Main Overview Component
-const Overview = ({ data }: { data: StrategyCardData }) => {
-	const mockData: ChartDataPoint[] = [
-		{ date: "Aug 1", value: 100 },
-		{ date: "Aug 8", value: 95 },
-		{ date: "Aug 15", value: 98 },
-		{ date: "Aug 22", value: 90 },
-		{ date: "Sep 8", value: 85 },
-		{ date: "Sep 15", value: 80 },
-		{ date: "Sep 22", value: 82 },
-		{ date: "Oct 8", value: 78 },
-		{ date: "Oct 15", value: 75 },
-		{ date: "Oct 22", value: 72 },
-		{ date: "Nov 1", value: 70 },
-		{ date: "Nov 8", value: 75 },
-		{ date: "Nov 15", value: 68 },
-		{ date: "Nov 22", value: 85 },
-	];
+const Overview = ({ data }: { data: VaultInfo }) => {
+	const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+	const [isChartLoading, setIsChartLoading] = useState(true);
+	const [selectedResolution, setSelectedResolution] =
+		useState<VaultResolution>("1d");
+	const [priceChange, setPriceChange] = useState<{
+		value: number;
+		percentage: number;
+	} | null>(null);
 
-	const filterOptions: TimeFilterOption[] = [
-		{ key: "1W", label: "1W" },
-		{ key: "1M", label: "1M" },
-		{ key: "3M", label: "3M" },
-		{ key: "MAX", label: "Max" },
-	];
+	useEffect(() => {
+		const fetchChartData = async () => {
+			setIsChartLoading(true);
+			try {
+				const response = await vaultApi.getVaultValues(data.id, {
+					resolution: selectedResolution,
+					currency: "usd",
+					count_back: 20,
+				});
+
+				if (response.s === "ok" && response.t && response.c) {
+					// Convert TradingView format to chart format
+					const converted: ChartDataPoint[] = response.t.map(
+						(timestamp, index) => {
+							const date = new Date(timestamp * 1000);
+							const dateStr = formatDate(
+								date,
+								selectedResolution
+							);
+
+							return {
+								date: dateStr,
+								value: response.c[index],
+							};
+						}
+					);
+
+					setChartData(converted);
+
+					// Calculate price change
+					if (response.c.length > 0) {
+						const firstPrice = response.c[0];
+						const lastPrice = response.c[response.c.length - 1];
+						const change = lastPrice - firstPrice;
+						const percentage = (change / firstPrice) * 100;
+						setPriceChange({ value: change, percentage });
+					}
+				} else {
+					setChartData([]);
+					setPriceChange(null);
+				}
+			} catch (error) {
+				console.error("Error fetching vault values:", error);
+				setChartData([]);
+				setPriceChange(null);
+			} finally {
+				setIsChartLoading(false);
+			}
+		};
+
+		if (data.id) {
+			fetchChartData();
+		}
+	}, [data.id, selectedResolution]);
+
+	// Helper function to format date based on resolution
+	const formatDate = (date: Date, resolution: VaultResolution): string => {
+		if (resolution === "1d") {
+			return date.toLocaleDateString("en-US", {
+				month: "short",
+				day: "numeric",
+			});
+		} else if (resolution === "1w") {
+			return date.toLocaleDateString("en-US", {
+				month: "short",
+				day: "numeric",
+			});
+		} else if (resolution === "1m") {
+			return date.toLocaleDateString("en-US", {
+				month: "short",
+				year: "2-digit",
+			});
+		}
+		return date.toLocaleDateString();
+	};
 
 	return (
 		<div className="flex flex-col gap-5">
 			{/* Block 1: Chart + Metrics - Background đen */}
 			<div className="bg-[#111113] rounded-2xl p-4 border border-dark-gray-700">
-				<CommonLineChart
-					data={mockData}
-					lineColor="#EC4B6B"
-					dataKeyX="date"
-					dataKeyY="value"
-					timeFilters={filterOptions}
-					headerTitle={
-						<div className="flex items-center gap-3 text-dark-gray-200">
-							<div className="text-red-500 py-0.5 px-3 bg-red-500/10 rounded-md">
-								<GrowDownIcon size={16} /> 9.6%
+				{isChartLoading ? (
+					<div className="h-80 flex items-center justify-center text-gray-400">
+						Loading chart data...
+					</div>
+				) : chartData.length === 0 ? (
+					<div className="h-80 flex items-center justify-center text-gray-400">
+						No chart data available
+					</div>
+				) : (
+					<div>
+						{/* Chart Header with Filters */}
+						<div className="flex justify-between items-center mb-4">
+							{priceChange && (
+								<div className="flex items-center gap-3 text-dark-gray-200">
+									<div
+										className={`${
+											priceChange.value >= 0
+												? "text-green-500 bg-green-500/10"
+												: "text-red-500 bg-red-500/10"
+										} py-0.5 px-3 rounded-md`}
+									>
+										{priceChange.value >= 0 ? (
+											<GrowDownIcon
+												size={16}
+												className="inline mr-1"
+											/>
+										) : (
+											<GrowDownIcon
+												size={16}
+												className="inline mr-1 rotate-180"
+											/>
+										)}
+										{Math.abs(
+											priceChange.percentage
+										).toFixed(1)}
+										%
+									</div>
+									<div>
+										{selectedResolution === "1d"
+											? "past day"
+											: selectedResolution === "1w"
+											? "past week"
+											: "past month"}
+									</div>
+								</div>
+							)}
+							<div className="flex rounded-lg p-1 space-x-0.5">
+								{[
+									{ key: "1d", label: "1D" },
+									{ key: "1w", label: "1W" },
+									{ key: "1m", label: "1M" },
+								].map((filter) => (
+									<button
+										key={filter.key}
+										onClick={() =>
+											setSelectedResolution(
+												filter.key as VaultResolution
+											)
+										}
+										className={`px-3 py-1 text-xs font-medium rounded-md text-white transition-all duration-150 ${
+											selectedResolution === filter.key
+												? "bg-dark-gray-800"
+												: "hover:bg-gray-700"
+										}`}
+									>
+										{filter.label}
+									</button>
+								))}
 							</div>
-							<div>past 90 days</div>
 						</div>
-					}
-					height={300}
-				/>
+
+						{/* Chart */}
+						<div style={{ height: 300 + 60 }}>
+							<ResponsiveContainer width="100%" height={300}>
+								<AreaChart
+									data={chartData}
+									margin={{
+										top: 5,
+										right: 20,
+										left: 0,
+										bottom: 5,
+									}}
+								>
+									<defs>
+										<linearGradient
+											id="chartGradient"
+											x1="0"
+											y1="0"
+											x2="0"
+											y2="1"
+										>
+											<stop
+												stopColor={
+													priceChange &&
+													priceChange.value >= 0
+														? "#10b981"
+														: "#EC4B6B"
+												}
+												stopOpacity={0.4}
+												offset={0}
+											/>
+											<stop
+												offset="1"
+												stopColor={
+													priceChange &&
+													priceChange.value >= 0
+														? "#10b981"
+														: "#EC4B6B"
+												}
+												stopOpacity={0}
+											/>
+										</linearGradient>
+									</defs>
+									<CartesianGrid
+										vertical={false}
+										stroke="none"
+										strokeDasharray="3 3"
+									/>
+									<XAxis
+										dataKey="date"
+										stroke="#555555"
+										tick={{ fill: "#999999", fontSize: 10 }}
+										tickLine={false}
+										axisLine={false}
+									/>
+									<YAxis
+										stroke="#555555"
+										tick={{ fill: "#999999", fontSize: 10 }}
+										tickLine={false}
+										axisLine={false}
+										domain={["auto", "auto"]}
+										hide={true}
+									/>
+									<Tooltip
+										contentStyle={{
+											backgroundColor:
+												"rgba(107, 114, 128, 0.8)",
+											border: "1px solid rgb(75, 85, 99)",
+											borderRadius: "6px",
+											color: "white",
+										}}
+										labelStyle={{
+											color: "rgb(156, 163, 175)",
+										}}
+									/>
+									<Area
+										type="linear"
+										dataKey="value"
+										stroke={
+											priceChange &&
+											priceChange.value >= 0
+												? "#10b981"
+												: "#EC4B6B"
+										}
+										strokeWidth={2}
+										fill="url(#chartGradient)"
+										dot={false}
+										activeDot={{
+											r: 5,
+											strokeWidth: 1,
+											fill: "white",
+										}}
+									/>
+								</AreaChart>
+							</ResponsiveContainer>
+						</div>
+					</div>
+				)}
 
 				<MetricsGrid data={data} />
 
@@ -70,7 +293,7 @@ const Overview = ({ data }: { data: StrategyCardData }) => {
 
 				<div className="vault-divider"></div>
 
-				<DescriptionSection />
+				<DescriptionSection description={data.description} />
 			</div>
 
 			{/* My Deposits - Right side */}
@@ -82,7 +305,15 @@ const Overview = ({ data }: { data: StrategyCardData }) => {
 };
 
 // Metrics Grid Component
-const MetricsGrid = ({ data }: { data: StrategyCardData }) => {
+const MetricsGrid = ({ data }: { data: VaultInfo }) => {
+	const formatCurrency = (value: number) => {
+		if (value >= 1_000_000) {
+			return `$${(value / 1_000_000).toFixed(1)}M`;
+		} else if (value >= 1_000) {
+			return `$${(value / 1_000).toFixed(1)}K`;
+		}
+		return `$${value.toFixed(2)}`;
+	};
 	return (
 		<div className="flex flex-col gap-4 mt-4">
 			{/* Row 1: Annual return, TVL */}
@@ -98,7 +329,7 @@ const MetricsGrid = ({ data }: { data: StrategyCardData }) => {
 						/>
 					</div>
 					<div className="vault-metric-value text-green-500">
-						{data.annualReturn}
+						{data.annual_return.toFixed(1)}%
 					</div>
 				</div>
 
@@ -110,7 +341,9 @@ const MetricsGrid = ({ data }: { data: StrategyCardData }) => {
 							className="text-dark-gray-200"
 						/>
 					</div>
-					<div className="vault-metric-value">{data.tvl}</div>
+					<div className="vault-metric-value">
+						{formatCurrency(data.tvl_usd)}
+					</div>
 				</div>
 			</div>
 
@@ -127,33 +360,7 @@ const MetricsGrid = ({ data }: { data: StrategyCardData }) => {
 						/>
 					</div>
 					<div className="vault-metric-value">
-						{data.subStats.maxDrawdown}
-					</div>
-				</div>
-
-				<div className="vault-metric-card bg-dark-glass">
-					<div className="vault-metric-label">
-						<span className="vault-metric-label-text">Sharpe</span>
-						<QuestionInfoIcon
-							size={16}
-							className="text-dark-gray-200"
-						/>
-					</div>
-					<div className="vault-metric-value">
-						{data.subStats.sharpe}
-					</div>
-				</div>
-
-				<div className="vault-metric-card bg-dark-glass">
-					<div className="vault-metric-label">
-						<span className="vault-metric-label-text">Sortino</span>
-						<QuestionInfoIcon
-							size={16}
-							className="text-dark-gray-200"
-						/>
-					</div>
-					<div className="vault-metric-value">
-						{data.subStats.sortino}
+						{data.max_drawdown.toFixed(1)}%
 					</div>
 				</div>
 			</div>
@@ -162,7 +369,15 @@ const MetricsGrid = ({ data }: { data: StrategyCardData }) => {
 };
 
 // Timeframes Section Component
-const TimeframesSection = ({ data }: { data: StrategyCardData }) => {
+const TimeframesSection = ({ data }: { data: VaultInfo }) => {
+	const calculateAge = (startTime: number) => {
+		const start = new Date(startTime);
+		const now = new Date();
+		const diffTime = Math.abs(now.getTime() - start.getTime());
+		const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+		return `${diffDays} days`;
+	};
+
 	return (
 		<div className="vault-section">
 			<h3 className="vault-section-title">Timeframes</h3>
@@ -176,7 +391,7 @@ const TimeframesSection = ({ data }: { data: StrategyCardData }) => {
 						/>
 					</div>
 					<div className="vault-metric-value">
-						{data.subStats.age}
+						{calculateAge(Number(data.start_time) * 1000)}
 					</div>
 				</div>
 
@@ -190,7 +405,9 @@ const TimeframesSection = ({ data }: { data: StrategyCardData }) => {
 							className="text-dark-gray-200"
 						/>
 					</div>
-					<div className="vault-metric-value">1 day</div>
+					<div className="vault-metric-value">
+						{data.decision_cycle}
+					</div>
 				</div>
 
 				<div className="vault-metric-card bg-dark-glass">
@@ -203,7 +420,9 @@ const TimeframesSection = ({ data }: { data: StrategyCardData }) => {
 							className="text-dark-gray-200"
 						/>
 					</div>
-					<div className="vault-metric-value">3.0/mo</div>
+					<div className="vault-metric-value">
+						{data.trade_per_month.toFixed(1)}/mo
+					</div>
 				</div>
 			</div>
 		</div>
@@ -211,10 +430,10 @@ const TimeframesSection = ({ data }: { data: StrategyCardData }) => {
 };
 
 // Vault Information Section Component
-const VaultInformationSection = ({ data }: { data: StrategyCardData }) => {
+const VaultInformationSection = ({ data }: { data: VaultInfo }) => {
 	const handleCopyAddress = () => {
-		if (data.vaultInfo?.address) {
-			navigator.clipboard.writeText(data.vaultInfo.address);
+		if (data.address) {
+			navigator.clipboard.writeText(data.address);
 		}
 	};
 
@@ -229,11 +448,11 @@ const VaultInformationSection = ({ data }: { data: StrategyCardData }) => {
 					</div>
 					<div className="flex items-center gap-2">
 						<div className="flex items-center gap-2">
-							<div className="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center text-white">
-								{data.vaultInfo?.vaultTypeIcon || "E"}
+							<div className="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs font-bold">
+								{data.vault_type.charAt(0).toUpperCase()}
 							</div>
 							<span className="vault-info-value">
-								{data.vaultInfo?.vaultType || "Enzyme"}
+								{data.vault_type}
 							</span>
 						</div>
 						<ArrowUpRightIcon
@@ -247,21 +466,11 @@ const VaultInformationSection = ({ data }: { data: StrategyCardData }) => {
 				<div className="vault-info-card">
 					<div className="vault-info-label">Blockchain</div>
 					<div className="flex items-center gap-2">
-						{data.vaultInfo?.blockchainIcon ? (
-							<Image
-								src={data.vaultInfo.blockchainIcon}
-								alt={data.vaultInfo.blockchain}
-								width={24}
-								height={24}
-								className="rounded-full"
-							/>
-						) : (
-							<div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">
-								★
-							</div>
-						)}
+						<div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">
+							{data.blockchain.charAt(0).toUpperCase()}
+						</div>
 						<span className="vault-info-value">
-							{data.vaultInfo?.blockchain || "Cardano"}
+							{data.blockchain}
 						</span>
 					</div>
 				</div>
@@ -269,21 +478,9 @@ const VaultInformationSection = ({ data }: { data: StrategyCardData }) => {
 				{/* Address */}
 				<div className="vault-info-card">
 					<div className="vault-info-label">Address</div>
-					<div className="flex items-center gap-2">
-						<div className="vault-info-value truncate flex-1">
-							{data.vaultInfo?.address ||
-								"0x53b23bDOCe01bAd74A314B8C5e7E891e27c13D5a"}
-						</div>
-						<button
-							onClick={handleCopyAddress}
-							className="cursor-pointer shrink-0"
-						>
-							<CopyIcon
-								size={16}
-								className="text-dark-gray-200"
-							/>
-						</button>
-					</div>
+					<Copy value={data.address} className="text-white">
+						{formatWallet(data.address)}
+					</Copy>
 				</div>
 			</div>
 		</div>
@@ -291,296 +488,15 @@ const VaultInformationSection = ({ data }: { data: StrategyCardData }) => {
 };
 
 // Description Section Component
-const DescriptionSection = () => {
+const DescriptionSection = ({ description }: { description: string }) => {
 	return (
 		<div className="vault-section">
 			<h3 className="vault-section-title">Description</h3>
 
-			{/* Strategy description */}
-			<div className="flex flex-col gap-3">
-				<h4 className="vault-subsection-title">Strategy description</h4>
-				<div className="vault-description-text">
-					<p className="vault-description-paragraph">
-						{
-							strategyDescriptionContent.mainDescription.split(
-								"\n\n"
-							)[0]
-						}
-					</p>
-					<ul className="vault-description-list vault-description-paragraph">
-						{strategyDescriptionContent.mainDescription
-							.split("\n\n")
-							.slice(1, -1)
-							.map((item, index) => (
-								<li key={index}>{item}</li>
-							))}
-					</ul>
-					<p>
-						{
-							strategyDescriptionContent.mainDescription
-								.split("\n\n")
-								.slice(-1)[0]
-						}
-					</p>
-				</div>
-			</div>
-
-			{/* Assets and trading venues */}
-			<div className="flex flex-col gap-3">
-				<h4 className="vault-subsection-title">
-					{strategyDescriptionContent.assetsAndTradingVenues.title}
-				</h4>
-				<div className="vault-description-text">
-					<p className="vault-description-paragraph">
-						{
-							strategyDescriptionContent.assetsAndTradingVenues.content.split(
-								"\n\n"
-							)[0]
-						}
-					</p>
-					<ul className="vault-description-list">
-						{strategyDescriptionContent.assetsAndTradingVenues.content
-							.split("\n\n")
-							.slice(1)
-							.map((item, index) => (
-								<li key={index}>{item}</li>
-							))}
-					</ul>
-				</div>
-			</div>
-
-			{/* Backtesting */}
-			<div className="flex flex-col gap-3">
-				<h4 className="vault-subsection-title">
-					{strategyDescriptionContent.backtesting.title}
-				</h4>
-				<div className="vault-description-text">
-					<p className="vault-description-paragraph">
-						{
-							strategyDescriptionContent.backtesting.content.split(
-								"\n\n"
-							)[0]
-						}
-					</p>
-					<ul className="vault-description-list">
-						{strategyDescriptionContent.backtesting.content
-							.split("\n\n")
-							.slice(1)
-							.map((item, index) => (
-								<li key={index}>{item}</li>
-							))}
-					</ul>
-				</div>
-			</div>
-
-			{/* Profit */}
-			<div className="flex flex-col gap-3">
-				<h4 className="vault-subsection-title">
-					{strategyDescriptionContent.profit.title}
-				</h4>
-				<div className="vault-description-text">
-					{strategyDescriptionContent.profit.content
-						.split("\n\n")
-						.map((paragraph, index) => (
-							<p
-								key={index}
-								className={
-									index <
-									strategyDescriptionContent.profit.content.split(
-										"\n\n"
-									).length -
-										1
-										? "vault-description-paragraph"
-										: ""
-								}
-							>
-								{paragraph}
-							</p>
-						))}
-				</div>
-			</div>
-
-			{/* Risk */}
-			<div className="flex flex-col gap-3">
-				<h4 className="vault-subsection-title">
-					{strategyDescriptionContent.risk.title}
-				</h4>
-				<div className="vault-description-text">
-					<p className="vault-description-paragraph">
-						{
-							strategyDescriptionContent.risk.content.split(
-								"\n\n"
-							)[0]
-						}
-					</p>
-					<p className="vault-description-paragraph">
-						{
-							strategyDescriptionContent.risk.content.split(
-								"\n\n"
-							)[1]
-						}
-					</p>
-					<ul className="vault-description-list">
-						{strategyDescriptionContent.risk.content
-							.split("\n\n")
-							.slice(2)
-							.map((item, index) => (
-								<li key={index}>{item}</li>
-							))}
-					</ul>
-				</div>
-			</div>
-
-			{/* Benchmark */}
-			<div className="flex flex-col gap-3">
-				<h4 className="vault-subsection-title">
-					{strategyDescriptionContent.benchmark.title}
-				</h4>
-				<div className="vault-description-text">
-					<p className="vault-description-paragraph">
-						{strategyDescriptionContent.benchmark.content}
-					</p>
-
-					{/* Table */}
-					<div className="overflow-x-auto vault-description-paragraph">
-						<table className="vault-table">
-							<thead>
-								<tr className="vault-table-header">
-									{strategyDescriptionContent.benchmark.table.headers.map(
-										(header, index) => (
-											<th
-												key={index}
-												className="vault-table-header-cell"
-											>
-												{header}
-											</th>
-										)
-									)}
-								</tr>
-							</thead>
-							<tbody>
-								{strategyDescriptionContent.benchmark.table.rows.map(
-									(row, rowIndex) => (
-										<tr
-											key={rowIndex}
-											className="vault-table-row"
-										>
-											{row.map((cell, cellIndex) => (
-												<td
-													key={cellIndex}
-													className="vault-table-cell"
-												>
-													{cell}
-												</td>
-											))}
-										</tr>
-									)
-								)}
-							</tbody>
-						</table>
-					</div>
-
-					<p className="mb-2">Sources:</p>
-					<ul className="list-disc list-inside space-y-1">
-						{strategyDescriptionContent.benchmark.sources.map(
-							(source, index) => (
-								<li key={index}>{source}</li>
-							)
-						)}
-					</ul>
-				</div>
-			</div>
-
-			{/* Trading frequency */}
-			<div className="flex flex-col gap-3">
-				<h4 className="vault-subsection-title">
-					{strategyDescriptionContent.tradingFrequency.title}
-				</h4>
-				<div className="vault-description-text">
-					{strategyDescriptionContent.tradingFrequency.content
-						.split("\n\n")
-						.map((paragraph, index) => (
-							<p
-								key={index}
-								className={
-									index <
-									strategyDescriptionContent.tradingFrequency.content.split(
-										"\n\n"
-									).length -
-										1
-										? "vault-description-paragraph"
-										: ""
-								}
-							>
-								{paragraph}
-							</p>
-						))}
-				</div>
-			</div>
-
-			{/* Robustness */}
-			<div className="flex flex-col gap-3">
-				<h4 className="vault-subsection-title">
-					{strategyDescriptionContent.robustness.title}
-				</h4>
-				<div className="vault-description-text">
-					<p>{strategyDescriptionContent.robustness.content}</p>
-				</div>
-			</div>
-
-			{/* Updates */}
-			<div className="flex flex-col gap-3">
-				<h4 className="vault-subsection-title">
-					{strategyDescriptionContent.updates.title}
-				</h4>
-				<div className="vault-description-text">
-					{strategyDescriptionContent.updates.content
-						.split("\n\n")
-						.map((paragraph, index) => (
-							<p
-								key={index}
-								className={
-									index <
-									strategyDescriptionContent.updates.content.split(
-										"\n\n"
-									).length -
-										1
-										? "vault-description-paragraph"
-										: ""
-								}
-							>
-								{paragraph}
-							</p>
-						))}
-				</div>
-			</div>
-
-			{/* Further information */}
-			<div className="flex flex-col gap-3">
-				<h4 className="vault-subsection-title">
-					{strategyDescriptionContent.furtherInformation.title}
-				</h4>
-				<div className="vault-description-text">
-					{strategyDescriptionContent.furtherInformation.content
-						.split("\n\n")
-						.map((paragraph, index) => (
-							<p
-								key={index}
-								className={
-									index <
-									strategyDescriptionContent.furtherInformation.content.split(
-										"\n\n"
-									).length -
-										1
-										? "vault-description-paragraph"
-										: ""
-								}
-							>
-								{paragraph}
-							</p>
-						))}
-				</div>
-			</div>
+			<div
+				className="flex flex-col gap-3"
+				dangerouslySetInnerHTML={{ __html: description || "" }}
+			></div>
 		</div>
 	);
 };

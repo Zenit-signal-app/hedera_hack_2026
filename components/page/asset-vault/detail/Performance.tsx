@@ -1,15 +1,14 @@
-import { StrategyCardData } from "@/data/strategy";
+import { VaultInfo, VaultStats } from "@/types/vault";
 import CommonLineChart, {
 	ChartDataPoint,
 	TimeFilterOption,
 } from "@/components/common/chart/Line";
-import { useState } from "react";
-import { performanceSummaryData } from "@/data/performance-metrics";
-import Input from "@/components/common/input";
+import { useState, useEffect } from "react";
 import SearchIcon from "@/components/icon/Icon_ Search";
+import { vaultApi } from "@/services/vaultServices";
 
 interface PerformanceProps {
-	data: StrategyCardData;
+	data: VaultInfo;
 }
 const mockData: ChartDataPoint[] = [
 	// August - High volatility, downward trend
@@ -83,6 +82,32 @@ const mockData: ChartDataPoint[] = [
 const Performance = ({ data }: PerformanceProps) => {
 	const [activeTab, setActiveTab] = useState<"live" | "backtest">("live");
 	const [filterMetrics, setFilterMetrics] = useState("");
+	const [stats, setStats] = useState<VaultStats | null>(null);
+	const [isLoading, setIsLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	// Fetch vault stats
+	useEffect(() => {
+		const fetchStats = async () => {
+			try {
+				setIsLoading(true);
+				setError(null);
+				const statsData = await vaultApi.getVaultStats(data.id);
+				setStats(statsData);
+			} catch (err) {
+				setError(
+					err instanceof Error ? err.message : "Failed to fetch stats"
+				);
+				console.error("Error fetching vault stats:", err);
+			} finally {
+				setIsLoading(false);
+			}
+		};
+
+		if (data?.id) {
+			fetchStats();
+		}
+	}, [data?.id]);
 
 	const filterOptions: TimeFilterOption[] = [
 		{ key: "1W", label: "1W" },
@@ -91,8 +116,77 @@ const Performance = ({ data }: PerformanceProps) => {
 		{ key: "MAX", label: "Max" },
 	];
 
+	const performanceMetrics = stats
+		? [
+				{
+					label: "Total Return",
+					long: `${stats.return_percent.toFixed(2)}%`,
+					short: "-",
+					trend: stats.return_percent > 0 ? "↑" : "↓",
+				},
+				{
+					label: "Win Rate",
+					long: `${stats.win_rate.toFixed(2)}%`,
+					short: "-",
+					trend: "-",
+				},
+				{
+					label: "Total Trades",
+					long: stats.total_trades.toString(),
+					short: "-",
+					trend: "-",
+				},
+				{
+					label: "Winning Trades",
+					long: stats.winning_trades.toString(),
+					short: "-",
+					trend: "-",
+				},
+				{
+					label: "Losing Trades",
+					long: stats.losing_trades.toString(),
+					short: "-",
+					trend: "-",
+				},
+				{
+					label: "Avg Win %",
+					long: `${stats.avg_profit_per_winning_trade_pct.toFixed(
+						2
+					)}%`,
+					short: "-",
+					trend: "↑",
+				},
+				{
+					label: "Avg Loss %",
+					long: `${Math.abs(
+						stats.avg_loss_per_losing_trade_pct
+					).toFixed(2)}%`,
+					short: "-",
+					trend: "↓",
+				},
+				{
+					label: "Max Drawdown",
+					long: `${stats.max_drawdown.toFixed(2)}%`,
+					short: "-",
+					trend: "↓",
+				},
+				{
+					label: "Total Fees",
+					long: `$${stats.total_fees_paid.toFixed(2)}`,
+					short: "-",
+					trend: "-",
+				},
+				{
+					label: "Monthly Trades",
+					long: `${stats.trade_per_month.toFixed(2)}`,
+					short: "-",
+					trend: "-",
+				},
+		  ]
+		: [];
+
 	// Filter metrics based on search
-	const filteredMetrics = performanceSummaryData.metrics.filter((metric) =>
+	const filteredMetrics = performanceMetrics.filter((metric) =>
 		metric.label.toLowerCase().includes(filterMetrics.toLowerCase())
 	);
 
@@ -103,7 +197,7 @@ const Performance = ({ data }: PerformanceProps) => {
 				{/* Tabs Header */}
 				<div className="flex justify-between items-center gap-4 mb-4">
 					{/* Horizontal Tabs */}
-					<div className="flex items-center p-1 gap-0.5 bg-dark-gray-900 rounded-lg w-fit">
+					{/* <div className="flex items-center p-1 gap-0.5 bg-dark-gray-900 rounded-lg w-fit">
 						<button
 							onClick={() => setActiveTab("live")}
 							className={`flex justify-center cursor-pointer items-center px-3 py-1.5 gap-1 rounded-lg transition-all duration-200 ${
@@ -140,7 +234,7 @@ const Performance = ({ data }: PerformanceProps) => {
 								Backtesting
 							</span>
 						</button>
-					</div>
+					</div> */}
 
 					{/* Right Text */}
 					<div className="font-quicksand font-medium text-sm leading-6 tracking-[0.1px] text-[#B2B3BD]">
@@ -155,7 +249,7 @@ const Performance = ({ data }: PerformanceProps) => {
 				</div>
 
 				{/* Chart */}
-				<CommonLineChart
+				{/* <CommonLineChart
 					data={mockData}
 					lineColor="#EC4B6B"
 					dataKeyX="date"
@@ -163,7 +257,7 @@ const Performance = ({ data }: PerformanceProps) => {
 					timeFilters={filterOptions}
 					headerTitle={
 						<div className="flex flex-col justify-center items-start pt-4 px-2">
-							<div className="font-bold text-[20px] leading-[28px] tracking-[0.1px] text-white flex-none order-0 grow-0">
+							<div className="font-bold text-[20px] leading-7 tracking-[0.1px] text-white flex-none order-0 grow-0">
 								Performance
 							</div>
 							<div className="text-[14px] leading-3xl tracking-[0.1px] text-[#797B86] flex-none order-1 grow-0">
@@ -174,7 +268,7 @@ const Performance = ({ data }: PerformanceProps) => {
 						</div>
 					}
 					height={300}
-				/>
+				/> */}
 			</div>
 
 			{/* Divider */}
@@ -189,7 +283,7 @@ const Performance = ({ data }: PerformanceProps) => {
 							Performance summary
 						</h3>
 						<p className="text-sm text-dark-gray-200">
-							{performanceSummaryData.strategy}
+							{stats?.decision_cycle || "Loading..."}
 						</p>
 					</div>
 
@@ -209,73 +303,89 @@ const Performance = ({ data }: PerformanceProps) => {
 					</div>
 				</div>
 
+				{/* Loading State */}
+				{isLoading && (
+					<div className="text-center py-10 text-gray-400">
+						Loading performance data...
+					</div>
+				)}
+
+				{/* Error State */}
+				{error && (
+					<div className="text-center py-10 text-red-500">
+						{error}
+					</div>
+				)}
+
 				{/* Performance Table */}
-				<div className="overflow-x-auto">
-					<table className="w-full border-separate border-spacing-y-0.5">
-						<thead>
-							<tr className="bg-[#19191B] border-b border-dark-gray-700">
-								<th className="text-left py-2 px-4 pl-4 font-quicksand font-semibold text-sm text-[#797B86] tracking-[0.1px]">
-									Metric
-								</th>
-								<th className="text-right py-2 px-2 font-quicksand font-semibold text-sm text-[#797B86] tracking-[0.1px]">
-									All
-								</th>
-								<th className="text-right py-2 px-2 font-quicksand font-semibold text-sm text-[#797B86] tracking-[0.1px]">
-									Long
-								</th>
-								<th className="text-right py-2 px-2 pr-4 font-quicksand font-semibold text-sm text-[#797B86] tracking-[0.1px]">
-									Short
-								</th>
-							</tr>
-						</thead>
-						<tbody>
-							{filteredMetrics.map((metric, index) => (
-								<tr
-									key={index}
-									className={
-										index % 2 === 0
-											? "bg-transparent"
-											: "bg-dark-gray-900 rounded-lg"
-									}
-								>
-									<td
-										className={`py-2 px-4 font-quicksand text-sm text-white tracking-[0.1px] ${
-											index % 2 === 1
-												? "rounded-l-lg"
-												: ""
-										}`}
-									>
-										{metric.label}
-									</td>
-									<td className="text-right py-2 px-2 font-quicksand text-sm text-white tracking-[0.1px]">
-										{metric.long !== null &&
-										metric.long !== undefined
-											? metric.long
-											: "-"}
-									</td>
-									<td className="text-right py-2 px-2 font-quicksand text-sm text-white tracking-[0.1px]">
-										{metric.short !== null &&
-										metric.short !== undefined
-											? metric.short
-											: "-"}
-									</td>
-									<td
-										className={`text-right py-2 px-2 pr-4 font-quicksand text-sm text-white tracking-[0.1px] ${
-											index % 2 === 1
-												? "rounded-r-lg"
-												: ""
-										}`}
-									>
-										{metric.trend !== null &&
-										metric.trend !== undefined
-											? metric.trend
-											: "-"}
-									</td>
+				{!isLoading && !error && stats && (
+					<div className="overflow-x-auto">
+						<table className="w-full border-separate border-spacing-y-0.5">
+							<thead>
+								<tr className="bg-[#19191B] border-b border-dark-gray-700">
+									<th className="text-left py-2 px-4 pl-4 font-quicksand font-semibold text-sm text-[#797B86] tracking-[0.1px]">
+										Metric
+									</th>
+									<th className="text-right py-2 px-2 font-quicksand font-semibold text-sm text-[#797B86] tracking-[0.1px]">
+										All
+									</th>
+									<th className="text-right py-2 px-2 font-quicksand font-semibold text-sm text-[#797B86] tracking-[0.1px]">
+										Long
+									</th>
+									<th className="text-right py-2 px-2 pr-4 font-quicksand font-semibold text-sm text-[#797B86] tracking-[0.1px]">
+										Short
+									</th>
 								</tr>
-							))}
-						</tbody>
-					</table>
-				</div>
+							</thead>
+							<tbody>
+								{filteredMetrics.map((metric, index) => (
+									<tr
+										key={index}
+										className={
+											index % 2 === 0
+												? "bg-transparent"
+												: "bg-dark-gray-900 rounded-lg"
+										}
+									>
+										<td
+											className={`py-2 px-4 font-quicksand text-sm text-white tracking-[0.1px] ${
+												index % 2 === 1
+													? "rounded-l-lg"
+													: ""
+											}`}
+										>
+											{metric.label}
+										</td>
+										<td className="text-right py-2 px-2 font-quicksand text-sm text-white tracking-[0.1px]">
+											{metric.long !== null &&
+											metric.long !== undefined
+												? metric.long
+												: "-"}
+										</td>
+										<td className="text-right py-2 px-2 font-quicksand text-sm text-white tracking-[0.1px]">
+											{metric.short !== null &&
+											metric.short !== undefined
+												? metric.short
+												: "-"}
+										</td>
+										<td
+											className={`text-right py-2 px-2 pr-4 font-quicksand text-sm text-white tracking-[0.1px] ${
+												index % 2 === 1
+													? "rounded-r-lg"
+													: ""
+											}`}
+										>
+											{metric.trend !== null &&
+											metric.trend !== undefined
+												? metric.trend
+												: "-"}
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+				)}
 			</div>
 		</div>
 	);

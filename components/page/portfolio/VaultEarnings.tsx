@@ -1,17 +1,16 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { TableWrapper } from "@/components/common/table";
 import ArrowUpRightIcon from "@/components/icon/Icon_ArrowUpRight";
+import { VaultEarning } from "@/types/vault";
+import { vaultApi } from "@/services/vaultServices";
+import { useWalletStore } from "@/store/walletStore";
 
-interface VaultData {
-  id: number;
-  vault: string;
-  totalDeposit: string;
-  currentValue: string;
-  roi: string;
-  claimable: string;
+interface VaultData extends VaultEarning {
+  profit: number;
+  profitPercent: number;
   action: "Claim" | "View";
   actionColor: string;
   iconColor: string;
@@ -20,101 +19,107 @@ interface VaultData {
 const VaultEarnings = () => {
   const [pageIndex, setPageIndex] = React.useState(0);
   const [pageSize, setPageSize] = React.useState(10);
+  const [vaultData, setVaultData] = useState<VaultData[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [totalRecords, setTotalRecords] = useState(0);
+  
+  const { usedAddress } = useWalletStore();
 
-  const vaultData: VaultData[] = [
-    {
-      id: 1,
-      vault: "ETH-BTC long swing",
-      totalDeposit: "$300.50",
-      currentValue: "$802.31",
-      roi: "+8.5%",
-      claimable: "$84.12",
-      action: "Claim",
-      actionColor: "text-purple-500",
-      iconColor: "#893BFF",
-    },
-    {
-      id: 2,
-      vault: "SNEK",
-      totalDeposit: "$100.50",
-      currentValue: "$90.41",
-      roi: "+1.02%",
-      claimable: "-",
-      action: "View",
-      actionColor: "text-sky-500",
-      iconColor: "#4CCCFA",
-    },
-    {
-      id: 3,
-      vault: "WMTX",
-      totalDeposit: "$830.00",
-      currentValue: "$900.00",
-      roi: "+2.31%",
-      claimable: "-",
-      action: "View",
-      actionColor: "text-sky-500",
-      iconColor: "#4CCCFA",
-    },
-    {
-      id: 4,
-      vault: "ADA",
-      totalDeposit: "$2,400.90",
-      currentValue: "$3,100.21",
-      roi: "+12.55%",
-      claimable: "$400.00",
-      action: "Claim",
-      actionColor: "text-purple-500",
-      iconColor: "#893BFF",
-    },
-  ];
+  // Fetch vault earnings
+  useEffect(() => {
+    const fetchEarnings = async () => {
+      if (!usedAddress) {
+        setError("Wallet address not connected");
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const response = await vaultApi.getUserVaultEarnings({
+          wallet_address: usedAddress,
+          limit: pageSize,
+          offset: pageIndex * pageSize
+        });
+
+        // Transform API response to VaultData format
+        const transformedData: VaultData[] = response.earnings.map((earning) => {
+          const profit = earning.current_value - earning.total_deposit;
+          const profitPercent = (earning.roi * 100);
+          const hasClaimable = profit > 0;
+
+          return {
+            ...earning,
+            profit,
+            profitPercent,
+            action: hasClaimable ? "Claim" : "View",
+            actionColor: hasClaimable ? "text-purple-500" : "text-sky-500",
+            iconColor: hasClaimable ? "#893BFF" : "#4CCCFA"
+          };
+        });
+
+        setVaultData(transformedData);
+        setTotalRecords(response.total);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch vault earnings');
+        console.error('Error fetching vault earnings:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEarnings();
+  }, [usedAddress, pageIndex, pageSize]);
 
   const columns: ColumnDef<VaultData>[] = [
     {
-      accessorKey: "vault",
+      accessorKey: "vault_name",
       header: () => <div className="text-left">Vault</div>,
       cell: ({ row }) => (
         <div className="text-white text-sm font-semibold overflow-hidden text-ellipsis">
-          {row.original.vault}
+          {row.original.vault_name}
         </div>
       ),
     },
     {
-      accessorKey: "totalDeposit",
+      accessorKey: "total_deposit",
       header: () => <div className="text-right">Total Deposit</div>,
       cell: ({ row }) => (
         <div className="text-white text-sm font-semibold text-right">
-          {row.original.totalDeposit}
+          ${row.original.total_deposit.toFixed(2)}
         </div>
       ),
     },
     {
-      accessorKey: "currentValue",
+      accessorKey: "current_value",
       header: () => <div className="text-right">Current value</div>,
       cell: ({ row }) => (
         <div className="text-white text-sm font-semibold text-right">
-          {row.original.currentValue}
+          ${row.original.current_value.toFixed(2)}
         </div>
       ),
     },
     {
-      accessorKey: "roi",
+      accessorKey: "roi_percent",
       header: () => <div className="text-right">ROI</div>,
       cell: ({ row }) => (
         <div className="text-white text-sm font-semibold text-right">
-          {row.original.roi}
+          {row.original.profitPercent > 0 ? '+' : ''}{row.original.profitPercent.toFixed(2)}%
         </div>
       ),
     },
     {
-      accessorKey: "claimable",
-      header: () => <div className="text-right">Claimable</div>,
+      accessorKey: "profit",
+      header: () => <div className="text-right">Profit</div>,
       cell: ({ row }) => (
         <div
           className={`text-sm font-semibold text-right ${
-            row.original.claimable === "-" ? "text-gray-400" : "text-white"
+            row.original.profit === 0 ? "text-gray-400" : row.original.profit > 0 ? "text-green-500" : "text-red-500"
           }`}
         >
-          {row.original.claimable}
+          {row.original.profit > 0 ? '+' : ''}{row.original.profit > 0 || row.original.profit < 0 ? `$${row.original.profit.toFixed(2)}` : "-"}
         </div>
       ),
     },
@@ -138,23 +143,41 @@ const VaultEarnings = () => {
     <div className="flex flex-col items-center gap-2 bg-black rounded-3xl overflow-hidden border border-gray-700 w-full">
       <div className="flex flex-col min-w-[300px] items-start justify-center gap-4 px-3 py-4 md:p-4 w-full">
         <div className="text-white text-xl font-bold">Vault Earnings</div>
-        <TableWrapper
-          columns={columns}
-          data={vaultData}
-          isLoading={false}
-          pagination={{
-            pageIndex,
-            pageSize,
-            totalPages: 1,
-            totalRecords: vaultData.length,
-          }}
-          setPageIndex={setPageIndex}
-          setPageSize={setPageSize}
-          variant="minimal"
-          className="border-none"
-          rowClassName="rounded-lg overflow-hidden"
-          showHeaderBorder={false}
-        />
+        
+        {/* Loading State */}
+        {isLoading && (
+          <div className="w-full text-center py-10 text-gray-400">
+            Loading vault earnings...
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="w-full text-center py-10 text-red-500">
+            {error}
+          </div>
+        )}
+
+        {/* Table */}
+        {!isLoading && !error && (
+          <TableWrapper
+            columns={columns}
+            data={vaultData}
+            isLoading={false}
+            pagination={{
+              pageIndex,
+              pageSize,
+              totalPages: Math.ceil(totalRecords / pageSize),
+              totalRecords: totalRecords,
+            }}
+            setPageIndex={setPageIndex}
+            setPageSize={setPageSize}
+            variant="minimal"
+            className="border-none"
+            rowClassName="rounded-lg overflow-hidden"
+            showHeaderBorder={false}
+          />
+        )}
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { tool } from 'ai';
 import api from '@/axios/axiosInstance';
 import axios from 'axios';
