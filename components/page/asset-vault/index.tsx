@@ -48,7 +48,7 @@ const AssetVaultPage = () => {
 	}, [searchTerm, vaults]);
 
 	return (
-		<div className="flex flex-col gap-y-6">
+		<div className="flex flex-col gap-y-6 h-screen">
 			<div className="flex items-center justify-between">
 				<TabsWrapper
 					tabs={[
@@ -83,6 +83,7 @@ const AssetVaultPage = () => {
         grid 
         gap-6 
         grid-cols-1 
+				md:grid-cols-2
         lg:grid-cols-3
         items-start
       "

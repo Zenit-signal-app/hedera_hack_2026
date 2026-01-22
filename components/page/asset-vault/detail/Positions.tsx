@@ -439,7 +439,7 @@ const PositionRow = ({ position, index, status }: PositionRowProps) => {
 				style={{ width: "30%" }}
 			>
 				<span className="positions-opened-text">
-					{formatDate(position.open_time)}
+					{formatDate(status === "open" ? position.open_time : position.close_time)}
 				</span>
 			</div>
 		</div>

@@ -16,6 +16,7 @@ import { createIdGenerator } from "ai";
 export default function AIChatPage() {
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
+	const messagesContainerRef = useRef<HTMLDivElement>(null);
 	const scrollToBottom = useCallback(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, []);
@@ -73,6 +74,37 @@ export default function AIChatPage() {
 		return () => clearTimeout(timer);
 	}, [messages.length, scrollToBottom]);
 
+	useEffect(() => {
+		const messagesContainer = messagesContainerRef.current;
+		if (!messagesContainer) return;
+
+		const handleWheel = (e: WheelEvent) => {
+			const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
+			const isAtTop = scrollTop === 0;
+			const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1;
+
+			if ((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom)) {
+				e.preventDefault();
+			}
+		};
+
+		const handleTouchMove = (e: TouchEvent) => {
+			e.stopPropagation();
+		};
+
+		messagesContainer.addEventListener("wheel", handleWheel, {
+			passive: false,
+		});
+		messagesContainer.addEventListener("touchmove", handleTouchMove, {
+			passive: false,
+		});
+
+		return () => {
+			messagesContainer.removeEventListener("wheel", handleWheel);
+			messagesContainer.removeEventListener("touchmove", handleTouchMove);
+		};
+	}, []);
+
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
 		if (e.key === "Enter" && !e.shiftKey) {
 			e.preventDefault();
@@ -82,12 +114,19 @@ export default function AIChatPage() {
 	};
 
 	return (
-		<div className="w-full py-6 lg:px-[217px] px-6 h-screen flex flex-col gap-y-6 justify-between">
-			<div className="flex flex-col items-center flex-1 justify-center">
+		<div
+			ref={messagesContainerRef}
+			className="w-full h-screen  flex flex-col lg:px-[217px] px-6 py-6 gap-y-4 overflow-hidden"
+		>
+			<div className="flex-1 lg:pt-20 overflow-y-auto space-y-4 pb-6 scrollbar-hide">
 				{messages.length === 0 ? (
-					<PromptSuggestions onSelectPrompt={handleSelectPrompt} />
+					<div className="h-full flex items-center justify-center">
+						<PromptSuggestions
+							onSelectPrompt={handleSelectPrompt}
+						/>
+					</div>
 				) : (
-					<div className="w-full space-y-4">
+					<>
 						{messages.map((msg) => {
 							return msg.role === "user" ? (
 								<div key={msg.id}>
@@ -263,17 +302,20 @@ export default function AIChatPage() {
 								<LoadingAI />
 							</div>
 						)}
-					</div>
+						<div ref={messagesEndRef} />
+					</>
 				)}
 			</div>
-			<ChatInput
-				value={input}
-				onChange={handleInputChange}
-				onKeyDown={handleKeyDown}
-				ref={inputRef}
-				disabled={loadingAI}
-				handleSubmit={handleSubmit}
-			/>
+			<div className="sticky bottom-0 left-0 right-0 border-t border-white/10 pt-3">
+				<ChatInput
+					value={input}
+					onChange={handleInputChange}
+					onKeyDown={handleKeyDown}
+					ref={inputRef}
+					disabled={loadingAI}
+					handleSubmit={handleSubmit}
+				/>
+			</div>
 		</div>
 	);
 }

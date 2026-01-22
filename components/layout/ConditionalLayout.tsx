@@ -19,14 +19,16 @@ export default async function ConditionalLayout({
 	}
 
 	return (
-		<div className="lg:grid grid-cols-5 bg-gray-950 font-museomoderno">
-			<div className="lg:col-span-1 hidden border-r-2 border-dark-gray-900 lg:flex flex-col lg:h-full">
+		<div className="lg:grid grid-cols-5  font-museomoderno h-screen">
+			<div className="lg:col-span-1 hidden bg-gray-950 lg:z-9999 border-r-2 border-dark-gray-900 lg:flex flex-col lg:h-full">
 				<Navigator />
 			</div>
-			<div className="lg:col-span-4 w-full flex flex-col overflow-hidden">
-				<Header />
-				<div className="relative background-container flex-1 h-content overflow-y-auto ">
-					<div className="overflow-x-hidden h-content content">
+			<div className="lg:col-span-4 w-full flex flex-col h-screen">
+				<div className="lg:sticky top-0 z-50 w-full bg-gray-950 border-b border-dark-gray-900">
+					<Header />
+				</div>
+				<div className="flex-1 overflow-y-auto background-container">
+					<div className="relative overflow-x-hidden content">
 						{children}
 					</div>
 				</div>

@@ -20,6 +20,7 @@ import { VaultResolution } from "@/types/vault";
 import type { ChartDataPoint } from "@/components/common/chart/Line";
 import { formatWallet } from "@/lib/format";
 import Copy from "@/components/common/Copy";
+import Image from "next/image";
 
 // Main Overview Component
 const Overview = ({ data }: { data: VaultInfo }) => {
@@ -317,7 +318,7 @@ const MetricsGrid = ({ data }: { data: VaultInfo }) => {
 	return (
 		<div className="flex flex-col gap-4 mt-4">
 			{/* Row 1: Annual return, TVL */}
-			<div className="vault-grid-2">
+			<div className="vault-grid-3">
 				<div className="vault-metric-card bg-dark-glass">
 					<div className="vault-metric-label">
 						<span className="vault-metric-label-text">
@@ -345,10 +346,7 @@ const MetricsGrid = ({ data }: { data: VaultInfo }) => {
 						{formatCurrency(data.tvl_usd)}
 					</div>
 				</div>
-			</div>
 
-			{/* Row 2: Max drawdown, Sharpe, Sortino */}
-			<div className="vault-grid-3">
 				<div className="vault-metric-card bg-dark-glass">
 					<div className="vault-metric-label">
 						<span className="vault-metric-label-text">
@@ -364,6 +362,8 @@ const MetricsGrid = ({ data }: { data: VaultInfo }) => {
 					</div>
 				</div>
 			</div>
+
+			{/* Row 2: Max drawdown, Sharpe, Sortino */}
 		</div>
 	);
 };
@@ -448,9 +448,14 @@ const VaultInformationSection = ({ data }: { data: VaultInfo }) => {
 					</div>
 					<div className="flex items-center gap-2">
 						<div className="flex items-center gap-2">
-							<div className="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs font-bold">
-								{data.vault_type.charAt(0).toUpperCase()}
-							</div>
+							<Image
+								src={data.vault_type_logo}
+								width={24}
+								height={24}
+								alt="Logo vault"
+								className="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs font-bold"
+							/>
+
 							<span className="vault-info-value">
 								{data.vault_type}
 							</span>
@@ -466,9 +471,13 @@ const VaultInformationSection = ({ data }: { data: VaultInfo }) => {
 				<div className="vault-info-card">
 					<div className="vault-info-label">Blockchain</div>
 					<div className="flex items-center gap-2">
-						<div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">
-							{data.blockchain.charAt(0).toUpperCase()}
-						</div>
+						<Image
+							src={data.blockchain_logo}
+							width={24}
+							height={24}
+							alt="Logo vault"
+							className="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs font-bold"
+						/>
 						<span className="vault-info-value">
 							{data.blockchain}
 						</span>
