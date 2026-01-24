@@ -12,29 +12,29 @@ RUN set -ex; \
 
 COPY . .
 
-RUN FORCE_WEBPACK=1 TURBOPACK=0 NEXT_TELEMETRY_DISABLED=1 npm run build
+RUN npm run build
 
 FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+# Tắt Turbopack telemetry nếu cần
+ENV NEXT_TELEMETRY_DISABLED 1
 
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs && \
-    mkdir -p /app && \
-    chown -R nextjs:nodejs /app
+    adduser --system --uid 1001 nextjs
+
+# Bước quan trọng: Copy thư mục public (chứa charting_library của bạn)
+COPY --from=builder /app/public ./public
+
+# Copy kết quả build từ chế độ standalone
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
-WORKDIR /app
-
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
-
-COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
-
-
+EXPOSE 3005
 ENV PORT 3005
 
-EXPOSE 3005
-
-CMD ["npm", "start"]
+# Ở chế độ standalone, ta chạy file server.js thay vì npm start
+CMD ["node", "server.js"]
