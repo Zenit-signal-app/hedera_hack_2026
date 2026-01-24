@@ -12,7 +12,7 @@ RUN set -ex; \
 
 COPY . .
 
-RUN NEXT_TELEMETRY_DISABLED=1 npm run build
+RUN FORCE_WEBPACK=1 TURBOPACK=0 NEXT_TELEMETRY_DISABLED=1 npm run build
 
 FROM node:20-alpine AS runner
 

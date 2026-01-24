@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+
 const nextConfig: NextConfig = {
 	experimental: {
 		globalNotFound: false,
@@ -7,6 +8,19 @@ const nextConfig: NextConfig = {
 	images: {
 		domains: ["asset-logos.minswap.org", "minswap.org", "api.seerbot.io"],
 	},
+	webpack: (config, { isServer }) => {
+		// Copy charting library static assets
+		config.module.rules.push({
+			test: /charting_library\/bundles\/.*\.(svg|png|jpg|jpeg|gif)$/,
+			type: 'asset/resource',
+			generator: {
+				filename: 'static/charting_library/bundles/[name][ext]'
+			}
+		});
+
+		return config;
+	},
 };
+
 const withNextIntl = createNextIntlPlugin();
 export default withNextIntl(nextConfig);
