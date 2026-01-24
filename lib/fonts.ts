@@ -102,17 +102,22 @@ export const quickSand = localFont({
 			style: "normal",
 		},
 		{
-			path: "../public/fonts/Quicksand/Quicksand-Light.ttf",
+			path: "../public/fonts/QuickSand/Quicksand-Light.ttf",
 			weight: "300",
 			style: "normal",
 		},
 		{
-			path: "../public/fonts/Quicksand/Quicksand-Medium.ttf",
+			path: "../public/fonts/QuickSand/Quicksand-Regular.ttf",
+			weight: "400",
+			style: "normal",
+		},
+		{
+			path: "../public/fonts/QuickSand/Quicksand-Medium.ttf",
 			weight: "500",
 			style: "normal",
 		},
 		{
-			path: "../public/fonts/Quicksand/Quicksand-SemiBold.ttf",
+			path: "../public/fonts/QuickSand/Quicksand-SemiBold.ttf",
 			weight: "600",
 			style: "normal",
 		},
