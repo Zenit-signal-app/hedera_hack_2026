@@ -1,0 +1,28 @@
+stages:
+  - deploy
+
+deploy_to_production:
+  stage: deploy
+  image: alpine:latest
+  only:
+    - main  # Chỉ chạy khi code được push vào nhánh main
+  before_script:
+    # 1. Cài đặt ssh-agent và git
+    - 'command -v ssh-agent >/dev/null || ( apk add --update openssh )' 
+    
+    # 2. Chạy ssh-agent
+    - eval $(ssh-agent -s)
+
+    # 3. Thêm SSH Key từ biến môi trường vào agent
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    
+    # 4. Tạo thư mục .ssh và tắt kiểm tra Host Key (để tránh lỗi hỏi yes/no lần đầu)
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+
+  script:
+    - echo "Bắt đầu deploy..."
+    # Lệnh SSH vào server và thực hiện chuỗi hành động
+    - ssh $SSH_USER@$SSH_IP "cd /home/ubuntu/my-app && git pull origin main && docker compose up -d --build"
+    - echo "Deploy thành công!"
