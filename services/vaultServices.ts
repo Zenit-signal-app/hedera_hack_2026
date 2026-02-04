@@ -98,5 +98,35 @@ export const vaultApi = {
       }
     });
     return response.data;
+  },
+
+  /**
+   * Deposit to vault
+   * @param data - vault_id, pool_id, amount_ada, amount_lovelace, contributor_address
+   */
+  depositToVault: async (data: {
+    vault_id: string;
+    pool_id: string;
+    amount_ada: number;
+    amount_lovelace: number;
+    contributor_address: string;
+  }): Promise<{ tx_id: string }> => {
+    const response = await api.post<{ tx_id: string }>('/vault/deposit', data);
+    return response.data;
+  },
+
+  /**
+   * Redeem from vault
+   * @param data - vault_id, pool_id, amount_ada, amount_lovelace, recipient_address
+   */
+  redeemFromVault: async (data: {
+    vault_id: string;
+    pool_id: string;
+    amount_ada: number;
+    amount_lovelace: number;
+    recipient_address: string;
+  }): Promise<{ tx_id: string }> => {
+    const response = await api.post<{ tx_id: string }>('/vault/redeem', data);
+    return response.data;
   }
 };

@@ -36,6 +36,9 @@ export interface VaultInfo {
 	decision_cycle: string;
 	vault_type_logo: string;
 	blockchain_logo: string;
+	pool_id: string;
+	user_deposit_value: number;
+	user_deposit_share: number;
 }
 
 export interface VaultsResponse {

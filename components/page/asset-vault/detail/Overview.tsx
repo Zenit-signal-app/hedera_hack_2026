@@ -50,14 +50,14 @@ const Overview = ({ data }: { data: VaultInfo }) => {
 							const date = new Date(timestamp * 1000);
 							const dateStr = formatDate(
 								date,
-								selectedResolution
+								selectedResolution,
 							);
 
 							return {
 								date: dateStr,
 								value: response.c[index],
 							};
-						}
+						},
 					);
 
 					setChartData(converted);
@@ -146,7 +146,7 @@ const Overview = ({ data }: { data: VaultInfo }) => {
 											/>
 										)}
 										{Math.abs(
-											priceChange.percentage
+											priceChange.percentage,
 										).toFixed(1)}
 										%
 									</div>
@@ -154,8 +154,8 @@ const Overview = ({ data }: { data: VaultInfo }) => {
 										{selectedResolution === "1d"
 											? "past day"
 											: selectedResolution === "1w"
-											? "past week"
-											: "past month"}
+												? "past week"
+												: "past month"}
 									</div>
 								</div>
 							)}
@@ -169,7 +169,7 @@ const Overview = ({ data }: { data: VaultInfo }) => {
 										key={filter.key}
 										onClick={() =>
 											setSelectedResolution(
-												filter.key as VaultResolution
+												filter.key as VaultResolution,
 											)
 										}
 										className={`px-3 py-1 text-xs font-medium rounded-md text-white transition-all duration-150 ${
@@ -297,9 +297,21 @@ const Overview = ({ data }: { data: VaultInfo }) => {
 				<DescriptionSection description={data.description} />
 			</div>
 
-			{/* My Deposits - Right side */}
 			<div className="lg:hidden">
-				<MyDeposits />
+				<MyDeposits
+					vaultId={data.id}
+					poolId={data.pool_id}
+					userDepositValue={data.user_deposit_value}
+					userDepositShare={data.user_deposit_share}
+					onDepositSuccess={() => {
+						// Refetch vault data after successful deposit
+						// This will trigger a re-fetch of the vault info
+					}}
+					onRedeemSuccess={() => {
+						// Refetch vault data after successful redeem
+						// This will trigger a re-fetch of the vault info
+					}}
+				/>
 			</div>
 		</div>
 	);

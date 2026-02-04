@@ -6,7 +6,7 @@ import {
 } from "@/types/transaction";
 import { useState, useEffect, useCallback } from "react";
 
-const INITIAL_LIMIT = 20;
+const INITIAL_LIMIT = 10;
 
 interface HookResult {
 	data: Transaction[];
@@ -41,10 +41,11 @@ export const useFetchTransactions = (pair?: string): HookResult => {
 				};
 
 				const result: ApiResponse = await fetchTransactions(params);
-
+        console.log(result);
+				
 				setData(result.transactions);
 				setTotalRecords(result.total);
-				setTotalPages(result.totalPages);
+				setTotalPages(Math.ceil(result.total / INITIAL_LIMIT));
 			} catch (e) {
 				console.error("Failed to load transaction data:", e);
 				setData([]);

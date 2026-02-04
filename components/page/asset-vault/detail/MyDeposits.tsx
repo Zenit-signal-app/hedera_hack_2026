@@ -1,4 +1,31 @@
-const MyDeposits = () => {
+"use client";
+
+import { useState } from "react";
+import { useWalletStore } from "@/store/walletStore";
+import DepositModal from "./DepositModal";
+import RedeemModal from "./RedeemModal";
+
+interface MyDepositsProps {
+	vaultId: string;
+	poolId: string;
+	userDepositValue?: number;
+	userDepositShare?: number;
+	onDepositSuccess?: () => void;
+	onRedeemSuccess?: () => void;
+}
+
+const MyDeposits = ({
+	vaultId,
+	poolId,
+	userDepositValue = 0,
+	userDepositShare = 0,
+	onDepositSuccess,
+	onRedeemSuccess,
+}: MyDepositsProps) => {
+	const walletAddress = useWalletStore((state) => state.usedAddress);
+	const [showDepositModal, setShowDepositModal] = useState(false);
+	const [showRedeemModal, setShowRedeemModal] = useState(false);
+
 	return (
 		<div className="box-border flex flex-col items-start p-3 gap-3 rounded-3xl border border-dark-gray-700">
 			<h1 
@@ -14,7 +41,7 @@ const MyDeposits = () => {
 						Values
 					</div>
 					<div className="font-quickSan text-subtitle-2 font-bold text-white">
-						$0.00
+						${userDepositValue.toFixed(2)}
 					</div>
 				</div>
 				<div className="flex flex-col justify-center items-start flex-1">
@@ -22,19 +49,45 @@ const MyDeposits = () => {
 						Shared
 					</div>
 					<div className="font-quickSan text-subtitle-2 font-bold text-white">
-						0%
+						{userDepositShare.toFixed(2)}%
 					</div>
 				</div>
 			</div>
 
 			<div className="flex flex-row items-center gap-3 w-full">
-				<button className="flex flex-row justify-center items-center py-2 px-3 gap-2 h-10 flex-1 bg-primary-700 rounded-lg font-museomoderno text-label-3 font-semibold text-white cursor-pointer hover:-translate-y-0.5 active:translate-y-0 transition-transform duration-200">
+				<button 
+					onClick={() => setShowDepositModal(true)}
+					className="flex flex-row justify-center items-center py-2 px-3 gap-2 h-10 flex-1 bg-primary-700 rounded-lg font-museomoderno text-label-3 font-semibold text-white cursor-pointer hover:-translate-y-0.5 active:translate-y-0 transition-transform duration-200"
+				>
 					Deposit
 				</button>
-				<button className="box-border flex flex-row justify-center items-center py-2 px-3 gap-2 h-10 flex-1 bg-dark-gray-950 border border-primary-600 rounded-lg font-museomoderno text-label-3 font-medium text-white cursor-pointer hover:-translate-y-0.5 active:translate-y-0 transition-transform duration-200">
+				<button 
+					onClick={() => setShowRedeemModal(true)}
+					disabled={userDepositValue <= 0}
+					className="box-border flex flex-row justify-center items-center py-2 px-3 gap-2 h-10 flex-1 bg-dark-gray-950 border border-primary-600 rounded-lg font-museomoderno text-label-3 font-medium text-white cursor-pointer hover:-translate-y-0.5 active:translate-y-0 transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+				>
 					Redeem
 				</button>
 			</div>
+
+			<DepositModal
+				isOpen={showDepositModal}
+				onOpenChange={setShowDepositModal}
+				vaultId={vaultId}
+				poolId={poolId}
+				walletAddress={walletAddress}
+				onSuccess={onDepositSuccess}
+			/>
+
+			<RedeemModal
+				isOpen={showRedeemModal}
+				onOpenChange={setShowRedeemModal}
+				vaultId={vaultId}
+				poolId={poolId}
+				walletAddress={walletAddress}
+				maxAmount={userDepositValue}
+				onSuccess={onRedeemSuccess}
+			/>
 		</div>
 	);
 };

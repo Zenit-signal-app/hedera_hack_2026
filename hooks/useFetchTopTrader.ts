@@ -5,7 +5,7 @@ import {
 } from "@/types/transaction";
 import { useState, useEffect, useCallback } from "react";
 
-const INITIAL_LIMIT = 20;
+const INITIAL_LIMIT = 10;
 
 interface HookResult {
   data: TopTrader[];
@@ -43,7 +43,7 @@ export const useFetchTopTraders = (pair?: string): HookResult => {
 
         setData(result.traders);
         setTotalRecords(result.total);
-        setTotalPages(result.total%10);
+        setTotalPages(Math.ceil(result.total / INITIAL_LIMIT));
       } catch (e) {
         setData([]);
       } finally {
