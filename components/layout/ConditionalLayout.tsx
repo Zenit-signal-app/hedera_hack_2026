@@ -18,6 +18,8 @@ export default async function ConditionalLayout({
 		return <>{children}</>;
 	}
 
+	const isAIAssistant = pathname === "/ai-assistant";
+
 	return (
 		<div className="lg:grid grid-cols-5  font-museomoderno h-screen">
 			<div className="lg:col-span-1 hidden bg-gray-950 lg:z-9999 border-r-2 border-dark-gray-900 lg:flex flex-col lg:h-full">
@@ -27,7 +29,7 @@ export default async function ConditionalLayout({
 				<div className="lg:sticky top-0 z-50 w-full bg-gray-950 border-b border-dark-gray-900">
 					<Header />
 				</div>
-				<div className="flex-1 overflow-y-auto background-container">
+				<div className={`flex-1 ${!isAIAssistant ? "overflow-y-auto" : "overflow-hidden"} background-container`}>
 					<div className="relative overflow-x-hidden content">
 						{children}
 					</div>

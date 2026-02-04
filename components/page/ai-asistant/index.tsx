@@ -74,37 +74,6 @@ export default function AIChatPage() {
 		return () => clearTimeout(timer);
 	}, [messages.length, scrollToBottom]);
 
-	useEffect(() => {
-		const messagesContainer = messagesContainerRef.current;
-		if (!messagesContainer) return;
-
-		const handleWheel = (e: WheelEvent) => {
-			const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
-			const isAtTop = scrollTop === 0;
-			const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1;
-
-			if ((e.deltaY < 0 && isAtTop) || (e.deltaY > 0 && isAtBottom)) {
-				e.preventDefault();
-			}
-		};
-
-		const handleTouchMove = (e: TouchEvent) => {
-			e.stopPropagation();
-		};
-
-		messagesContainer.addEventListener("wheel", handleWheel, {
-			passive: false,
-		});
-		messagesContainer.addEventListener("touchmove", handleTouchMove, {
-			passive: false,
-		});
-
-		return () => {
-			messagesContainer.removeEventListener("wheel", handleWheel);
-			messagesContainer.removeEventListener("touchmove", handleTouchMove);
-		};
-	}, []);
-
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
 		if (e.key === "Enter" && !e.shiftKey) {
 			e.preventDefault();
@@ -114,11 +83,8 @@ export default function AIChatPage() {
 	};
 
 	return (
-		<div
-			ref={messagesContainerRef}
-			className="w-full h-screen  flex flex-col lg:px-[217px] px-6 py-6 gap-y-4 overflow-hidden"
-		>
-			<div className="flex-1 lg:pt-20 overflow-y-auto space-y-4 pb-6 scrollbar-hide">
+		<div className="w-full h-screen flex flex-col lg:px-[217px] px-6 py-6 gap-y-4">
+			<div className="flex-1 lg:pt-20 space-y-4 pb-6 overflow-y-auto scrollbar-hide">
 				{messages.length === 0 ? (
 					<div className="h-full flex items-center justify-center">
 						<PromptSuggestions
@@ -131,7 +97,7 @@ export default function AIChatPage() {
 							return msg.role === "user" ? (
 								<div key={msg.id}>
 									<div className="flex justify-end text-sm">
-										<p className="px-4 py-2.5 bg-white/10 rounded-xl text-right font-quicksand w-11/12 sm:w-5/6 md:w-4/5 lg:w-3/4 xl:w-2/3 break-all">
+										<p className="px-4 py-2.5 bg-white/10 rounded-xl text-right font-quicksand w-max max-w-3/5 break-all">
 											{msg.content}
 										</p>
 									</div>
@@ -306,7 +272,7 @@ export default function AIChatPage() {
 					</>
 				)}
 			</div>
-			<div className="sticky bottom-0 left-0 right-0 border-t border-white/10 pt-3">
+			<div className="flex-shrink-0 border-t border-white/10 pt-3">
 				<ChatInput
 					value={input}
 					onChange={handleInputChange}
