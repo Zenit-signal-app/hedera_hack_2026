@@ -1,5 +1,5 @@
 import api from "@/axios/axiosInstance";
-import { VaultsResponse, VaultStatus, VaultInfo, VaultValuesResponse, VaultValuesRequest, PositionsResponse, PositionsRequest, VaultStats, UserVaultEarningsResponse, UserVaultEarningsRequest, UserVaultTransactionsResponse, UserVaultTransactionsRequest } from "@/types/vault";
+import { VaultsResponse, VaultStatus, VaultInfo, VaultValuesResponse, VaultValuesRequest, PositionsResponse, PositionsRequest, VaultStats, UserVaultEarningsResponse, UserVaultEarningsRequest, UserVaultTransactionsResponse, UserVaultTransactionsRequest, UserVaultEarningInfoResponse, VaultWithdrawRequest, VaultWithdrawResponse } from "@/types/vault";
 
 export const vaultApi = {
   /**
@@ -85,6 +85,20 @@ export const vaultApi = {
   },
 
   /**
+   * Get user's earning info for a specific vault
+   * @param id - Vault UUID
+   * @param walletAddress - Wallet address of the user
+   */
+  getUserVaultEarningInfo: async (id: string, walletAddress: string): Promise<UserVaultEarningInfoResponse> => {
+    const response = await api.get<UserVaultEarningInfoResponse>(`/vaults/${id}/contribute`, {
+      params: {
+        wallet_address: walletAddress
+      }
+    });
+    return response.data;
+  },
+
+  /**
    * Get user vault transactions
    * @param options - wallet_address (required), vault_id (optional), page, limit
    */
@@ -116,17 +130,12 @@ export const vaultApi = {
   },
 
   /**
-   * Redeem from vault
-   * @param data - vault_id, pool_id, amount_ada, amount_lovelace, recipient_address
+   * Withdraw from vault
+   * @param data - vault_id, wallet_address, amount_ada (optional - defaults to all withdrawable)
+   * @returns status, tx_id, and reason if failed
    */
-  redeemFromVault: async (data: {
-    vault_id: string;
-    pool_id: string;
-    amount_ada: number;
-    amount_lovelace: number;
-    recipient_address: string;
-  }): Promise<{ tx_id: string }> => {
-    const response = await api.post<{ tx_id: string }>('/vault/redeem', data);
+  withdrawFromVault: async (data: VaultWithdrawRequest): Promise<VaultWithdrawResponse> => {
+    const response = await api.post<VaultWithdrawResponse>('/vaults/withdraw', data);
     return response.data;
   }
 };

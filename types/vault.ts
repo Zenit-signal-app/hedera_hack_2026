@@ -1,8 +1,4 @@
-export type VaultState =
-	| "withdrawable"
-	| "trading"
-	| "settled"
-	| "closed";
+export type VaultState = "withdrawable" | "trading" | "settled" | "closed";
 
 export type VaultStatus = "active" | "inactive" | "all";
 
@@ -24,8 +20,11 @@ export interface VaultInfo {
 	icon_url?: string;
 	vault_name: string;
 	vault_type: string;
+	vault_type_logo: string;
 	blockchain: string;
+	blockchain_logo: string;
 	address: string;
+	pool_id: string;
 	summary?: string;
 	description: string;
 	annual_return: number;
@@ -34,11 +33,6 @@ export interface VaultInfo {
 	start_time: string;
 	trade_per_month: number;
 	decision_cycle: string;
-	vault_type_logo: string;
-	blockchain_logo: string;
-	pool_id: string;
-	user_deposit_value: number;
-	user_deposit_share: number;
 }
 
 export interface VaultsResponse {
@@ -78,7 +72,7 @@ export interface Position {
 	profit: number; // profit percentage
 	open_time: string;
 	status: PositionStatus;
-  close_time: string;
+	close_time: string;
 }
 
 export interface PositionsResponse {
@@ -124,6 +118,12 @@ export interface VaultEarning {
 	total_deposit: number;
 	current_value: number;
 	roi: number;
+}
+
+export interface UserVaultEarningInfoResponse {
+	total_deposit: number;
+	is_redeemed: boolean;
+	profit_rate: number;
 }
 
 export interface UserVaultEarningsRequest {
@@ -172,4 +172,16 @@ export interface UserVaultTransactionsResponse {
 	total: number;
 	page: number;
 	limit: number;
+}
+
+export interface VaultWithdrawRequest {
+	vault_id: string;
+	wallet_address: string;
+	amount_ada?: number;
+}
+
+export interface VaultWithdrawResponse {
+	status: "ok" | "invalid";
+	tx_id: string | null;
+	reason?: string;
 }

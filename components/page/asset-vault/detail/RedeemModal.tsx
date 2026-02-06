@@ -10,7 +10,6 @@ interface RedeemModalProps {
 	isOpen: boolean;
 	onOpenChange: (open: boolean) => void;
 	vaultId: string;
-	poolId: string;
 	walletAddress: string | null;
 	maxAmount: number;
 	onSuccess?: () => void;
@@ -20,7 +19,6 @@ const RedeemModal = ({
 	isOpen,
 	onOpenChange,
 	vaultId,
-	poolId,
 	walletAddress,
 	maxAmount,
 	onSuccess,
@@ -49,23 +47,24 @@ const RedeemModal = ({
 		setError(null);
 
 		try {
-			const amountLovelace = Math.floor(Number(redeemAmount) * 1_000_000);
-
-			const result = await vaultApi.redeemFromVault({
+			const result = await vaultApi.withdrawFromVault({
 				vault_id: vaultId,
-				pool_id: poolId,
+				wallet_address: walletAddress,
 				amount_ada: Number(redeemAmount),
-				amount_lovelace: amountLovelace,
-				recipient_address: walletAddress,
 			});
+
+			// Check if withdrawal was successful
+			if (result.status === "invalid") {
+				throw new Error(result.reason || "Withdrawal failed");
+			}
 
 			setRedeemAmount("");
 			onOpenChange(false);
 			onSuccess?.();
 
-			alert(`Redeem successful! TX: ${result.tx_id}`);
+			alert(`Withdrawal successful! TX: ${result.tx_id}`);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Redeem failed. Please try again.");
+			setError(err instanceof Error ? err.message : "Withdrawal failed. Please try again.");
 		} finally {
 			setIsLoading(false);
 		}

@@ -4,8 +4,7 @@ import ChevronLeftMiniIcon from "@/components/icon/ChevronLeftMiniICon";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import Overview from "./Overview";
 import Performance from "./Performance";
 import Positions from "./Positions";
@@ -118,7 +117,11 @@ const DetailPage = () => {
 							<Overview data={vaultInfo} />
 						</div>
 						<div className="col-span-1 hidden lg:block">
-							<MyDeposits />
+							<MyDeposits
+								vaultId={vaultInfo.id}
+								poolId={vaultInfo.pool_id}
+								vaultAddress={vaultInfo.address}
+							/>
 						</div>
 					</div>
 				</TabsContent>

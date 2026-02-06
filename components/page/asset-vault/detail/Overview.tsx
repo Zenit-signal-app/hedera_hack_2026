@@ -21,6 +21,7 @@ import type { ChartDataPoint } from "@/components/common/chart/Line";
 import { formatWallet } from "@/lib/format";
 import Copy from "@/components/common/Copy";
 import Image from "next/image";
+import { toast } from "sonner";
 
 // Main Overview Component
 const Overview = ({ data }: { data: VaultInfo }) => {
@@ -301,15 +302,12 @@ const Overview = ({ data }: { data: VaultInfo }) => {
 				<MyDeposits
 					vaultId={data.id}
 					poolId={data.pool_id}
-					userDepositValue={data.user_deposit_value}
-					userDepositShare={data.user_deposit_share}
+					vaultAddress={data.address}
 					onDepositSuccess={() => {
-						// Refetch vault data after successful deposit
-						// This will trigger a re-fetch of the vault info
+					  toast.success("Deposit successful!")
 					}}
 					onRedeemSuccess={() => {
-						// Refetch vault data after successful redeem
-						// This will trigger a re-fetch of the vault info
+					  toast.success("Redeem successful!")
 					}}
 				/>
 			</div>
