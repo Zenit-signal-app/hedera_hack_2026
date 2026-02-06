@@ -61,8 +61,6 @@ const DetailPage = () => {
 		);
 	}
 
-	console.log(vaultInfo);
-
 	return (
 		<div className="flex flex-col gap-y-5">
 			<Link

@@ -13,7 +13,7 @@ interface DepositModalProps {
 	poolId: string;
 	vaultAddress: string;
 	walletAddress: string | null;
-	onSuccess?: () => void;
+	onSuccess?: (txId: string) => void;
 }
 
 const DepositModal = ({
@@ -70,13 +70,7 @@ const DepositModal = ({
 			return;
 		}
 
-		// Safety check: walletAddress should be substantial (100+ chars for wallet addresses)
 		if (walletAddress.length < 80) {
-			console.warn("Suspicious walletAddress length:", {
-				walletAddress,
-				length: walletAddress.length,
-				possibly_script_address: walletAddress.startsWith("addr1q") && walletAddress.length < 80,
-			});
 		}
 
 		let isCancelled = false;
@@ -84,12 +78,6 @@ const DepositModal = ({
 
 		const timer = setTimeout(async () => {
 			try {
-				console.log("Estimating fee with:", {
-					walletAddress: `${walletAddress.substring(0, 20)}... (len: ${walletAddress.length})`,
-					vaultAddress: `${vaultAddress.substring(0, 20)}... (len: ${vaultAddress.length})`,
-					poolId: `${poolId.substring(0, 20)}...`,
-					amountAda,
-				});
 				const fee = await estimateFee(vaultConfig, amountAda, walletAddress);
 				if (!isCancelled) {
 					setFeeLovelace(fee);
@@ -143,7 +131,7 @@ const DepositModal = ({
 			// Success
 			setDepositAmount("");
 			onOpenChange(false);
-			onSuccess?.();
+			onSuccess?.(resultTxHash);
 		}
 	};
 

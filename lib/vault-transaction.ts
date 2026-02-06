@@ -21,11 +21,11 @@ const normalizePoolIdHex = (poolId: string): string => {
 	}
 
 	const hex = poolId.replace(/\./g, "");
-	
+
 	if (!/^[0-9a-fA-F]+$/.test(hex)) {
 		throw new Error(`pool_id must be valid hex, got: ${poolId}`);
 	}
-	
+
 	return hex;
 };
 
@@ -63,7 +63,7 @@ export function buildDepositDatum(
 ): string {
 	if (contributorAddress.length < 80) {
 		throw new Error(
-			"Contributor address appears to be a script address, not a wallet address. Wallet addresses are typically 100+ chars."
+			"Contributor address appears to be a script address, not a wallet address. Wallet addresses are typically 100+ chars.",
 		);
 	}
 
@@ -76,13 +76,13 @@ export function buildDepositDatum(
 			);
 		}
 
-		const poolIdHex = normalizePoolIdHex(poolId);
-
+		const poolIdHex = poolId.split(".")[1];
+    
 		const datum: DepositDatum = {
 			contributor_address: addressDetails.paymentCredential.hash,
 			pool_id: poolIdHex,
 		};
-
+    
 		return Data.to(datum as any, DepositDatumSchema);
 	} catch (error: any) {
 		throw new Error(
@@ -104,27 +104,36 @@ export async function buildDepositTransaction(
 	}
 
 	const vaultAddress = vaultConfig.vault_address.trim().replace(/^"|"$/g, "");
-	
+
 	if (!isValidAddressFormat(vaultAddress)) {
-		throw new Error("Vault address format is invalid. Expected Cardano address.");
+		throw new Error(
+			"Vault address format is invalid. Expected Cardano address.",
+		);
 	}
 
 	if (!contributorAddress || typeof contributorAddress !== "string") {
-		throw new Error("Contributor address must be provided and cannot be empty");
+		throw new Error(
+			"Contributor address must be provided and cannot be empty",
+		);
 	}
 
 	const contributor = contributorAddress.trim();
 
 	if (!contributor.startsWith("addr")) {
-		throw new Error("Invalid contributor address: must be a valid Cardano wallet address starting with 'addr'");
+		throw new Error(
+			"Invalid contributor address: must be a valid Cardano wallet address starting with 'addr'",
+		);
 	}
 
 	if (contributor === vaultAddress) {
-		throw new Error("Contributor address cannot be the same as vault address");
+		throw new Error(
+			"Contributor address cannot be the same as vault address",
+		);
 	}
 
 	const datum = buildDepositDatum(contributor, vaultConfig.pool_id);
-
+	console.log("Datum" , datum);
+	
 	const tx = lucid
 		.newTx()
 		.payToContract(
@@ -161,6 +170,8 @@ export async function depositToVaultContract(
 	contributorAddress?: string,
 ): Promise<string> {
 	try {
+		console.log("vaultConfig", vaultConfig);
+
 		const completeTx = await buildDepositTransaction(
 			lucid,
 			vaultConfig,
@@ -206,6 +217,25 @@ export function adaToLovelace(ada: number): number {
 
 export function lovelaceToAda(lovelace: number): number {
 	return lovelace / 1_000_000;
+}
+
+export function getPaymentHashFromAddress(address: string): string {
+	const details = getAddressDetails(address);
+	if (!details.paymentCredential) {
+		throw new Error("Invalid address: missing payment credential");
+	}
+	return details.paymentCredential.hash;
+}
+
+export function isSamePaymentCredential(
+	address: string,
+	contributorPaymentHash: string,
+): boolean {
+	try {
+		return getPaymentHashFromAddress(address) === contributorPaymentHash;
+	} catch {
+		return false;
+	}
 }
 
 export async function waitForTransactionConfirmation(

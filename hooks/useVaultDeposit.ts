@@ -106,8 +106,7 @@ export function useVaultDeposit(): UseVaultDepositResult {
 
         const lucid = await initializeLucid(network, blockfrostApiKey, activeWallet);
 
-        const amountLovelace = adaToLovelace(amountAda);
-
+        const amountLovelace = adaToLovelace(amountAda); 
         const txHash = await depositToVaultContract(
           lucid,
           vaultConfig,

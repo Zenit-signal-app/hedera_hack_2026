@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useWalletStore } from "@/store/walletStore";
 import DepositModal from "./DepositModal";
 import RedeemModal from "./RedeemModal";
 import { vaultApi } from "@/services/vaultServices";
 import { UserVaultEarningInfoResponse } from "@/types/vault";
+import { useVaultSocket } from "@/hooks/useVaultSocket";
 
 interface MyDepositsProps {
 	vaultId: string;
@@ -30,6 +31,68 @@ const MyDeposits = ({
 	const [earningInfo, setEarningInfo] =
 		useState<UserVaultEarningInfoResponse | null>(null);
 	const [isEarningLoading, setIsEarningLoading] = useState(false);
+	const [socketExtraValue, setSocketExtraValue] = useState(0);
+	const [socketEnabled, setSocketEnabled] = useState(false);
+	const pendingTxIdsRef = useRef<Set<string>>(new Set());
+	const socketExtraValueRef = useRef(0);
+	const lastApiTotalRef = useRef<number | null>(null);
+
+	useEffect(() => {
+		socketExtraValueRef.current = socketExtraValue;
+	}, [socketExtraValue]);
+
+	const handleVaultSocketMessage = useCallback(
+		(payload: Record<string, unknown>) => {
+			const wallet =
+				(payload.wallet_address as string | undefined) ||
+				(payload.walletAddress as string | undefined);
+			const vault =
+				(payload.vault_id as string | undefined) ||
+				(payload.vaultId as string | undefined);
+			const txId =
+				(payload.transaction_id as string | undefined) ||
+				(payload.tx_id as string | undefined) ||
+				(payload.txId as string | undefined);
+			const status =
+				(payload.status as string | undefined) ||
+				(payload.result as string | undefined) ||
+				(payload.state as string | undefined);
+			const value =
+				(payload.value as number | undefined) ??
+				(payload.amount as number | undefined) ??
+				(payload.amount_ada as number | undefined) ??
+				(payload.amountAda as number | undefined);
+
+			if (!walletAddress || !vaultId) return;
+			if (wallet && wallet !== walletAddress) return;
+			if (vault && vault !== vaultId) return;
+			if (txId && !pendingTxIdsRef.current.has(txId)) return;
+			if (
+				status &&
+				![
+					"ok",
+					"oke",
+					"success",
+					"confirmed",
+					"completed",
+				].includes(String(status).toLowerCase())
+			) {
+				return;
+			}
+			if (typeof value !== "number" || Number.isNaN(value)) return;
+
+			setSocketExtraValue((prev) => prev + value);
+			if (txId) {
+				pendingTxIdsRef.current.delete(txId);
+			}
+		},
+		[vaultId, walletAddress]
+	);
+
+	const { sendMessage } = useVaultSocket({
+		onMessage: handleVaultSocketMessage,
+		enabled: socketEnabled,
+	});
 
 	const fetchEarningInfo = useCallback(async () => {
 		if (!walletAddress || !vaultId) {
@@ -44,6 +107,19 @@ const MyDeposits = ({
 				walletAddress,
 			);
 			setEarningInfo(data);
+
+			const previousApiTotal = lastApiTotalRef.current;
+			if (
+				previousApiTotal !== null &&
+				socketExtraValueRef.current > 0 &&
+				data.total_deposit >=
+					previousApiTotal + socketExtraValueRef.current - 0.000001
+			) {
+				setSocketExtraValue(0);
+				pendingTxIdsRef.current.clear();
+				setSocketEnabled(false);
+			}
+			lastApiTotalRef.current = data.total_deposit;
 		} catch (err) {
 			console.error("Failed to fetch vault earning info:", err);
 			setEarningInfo(null);
@@ -56,12 +132,23 @@ const MyDeposits = ({
 		fetchEarningInfo();
 	}, [fetchEarningInfo]);
 
-	const effectiveDepositValue = earningInfo?.total_deposit || 0;
+	const effectiveDepositValue =
+		(earningInfo?.total_deposit || 0) + socketExtraValue;
 	const hasDeposited = effectiveDepositValue > 0;
 	const isRedeemed = Boolean(earningInfo?.is_redeemed);
 	const isRedeemDisabled = !hasDeposited || isRedeemed;
 
-	const handleDepositSuccess = async () => {
+	const handleDepositSuccess = async (txId: string) => {
+		if (walletAddress && vaultId && txId) {
+			pendingTxIdsRef.current.add(txId);
+			setSocketEnabled(true);
+			sendMessage({
+				channel: "vault_deposit",
+				wallet_address: walletAddress,
+				transaction_id: txId,
+				vault_id: vaultId,
+			});
+		}
 		await fetchEarningInfo();
 		onDepositSuccess?.();
 	};
