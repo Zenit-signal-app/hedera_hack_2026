@@ -21,25 +21,15 @@ const MyDeposits = ({
 	vaultId,
 	poolId,
 	vaultAddress,
-	userDepositValue = 0,
-	userDepositShare = 0,
 	onDepositSuccess,
 	onRedeemSuccess,
 }: MyDepositsProps) => {
 	const walletAddress = useWalletStore((state) => state.usedAddress);
 	const [showDepositModal, setShowDepositModal] = useState(false);
 	const [showRedeemModal, setShowRedeemModal] = useState(false);
-	const [earningInfo, setEarningInfo] = useState<UserVaultEarningInfoResponse | null>(null);
+	const [earningInfo, setEarningInfo] =
+		useState<UserVaultEarningInfoResponse | null>(null);
 	const [isEarningLoading, setIsEarningLoading] = useState(false);
-
-	// Debug log wallet address
-	useEffect(() => {
-		console.log("MyDeposits - walletAddress from store:", {
-			walletAddress: walletAddress ? `${walletAddress.substring(0, 20)}... (len: ${walletAddress.length})` : null,
-			vaultAddress: vaultAddress ? `${vaultAddress.substring(0, 20)}... (len: ${vaultAddress.length})` : null,
-			matches: walletAddress === vaultAddress,
-		});
-	}, [walletAddress, vaultAddress]);
 
 	const fetchEarningInfo = useCallback(async () => {
 		if (!walletAddress || !vaultId) {
@@ -49,7 +39,10 @@ const MyDeposits = ({
 
 		setIsEarningLoading(true);
 		try {
-			const data = await vaultApi.getUserVaultEarningInfo(vaultId, walletAddress);
+			const data = await vaultApi.getUserVaultEarningInfo(
+				vaultId,
+				walletAddress,
+			);
 			setEarningInfo(data);
 		} catch (err) {
 			console.error("Failed to fetch vault earning info:", err);
@@ -63,7 +56,7 @@ const MyDeposits = ({
 		fetchEarningInfo();
 	}, [fetchEarningInfo]);
 
-	const effectiveDepositValue = earningInfo?.total_deposit ?? userDepositValue;
+	const effectiveDepositValue = earningInfo?.total_deposit || 0;
 	const hasDeposited = effectiveDepositValue > 0;
 	const isRedeemed = Boolean(earningInfo?.is_redeemed);
 	const isRedeemDisabled = !hasDeposited || isRedeemed;
@@ -77,7 +70,7 @@ const MyDeposits = ({
 		await fetchEarningInfo();
 		onRedeemSuccess?.();
 	};
-	
+
 	return (
 		<div className="box-border flex flex-col items-start p-3 gap-3 rounded-3xl border border-dark-gray-700">
 			<h1

@@ -24,10 +24,6 @@ export interface UseVaultDepositResult {
   reset: () => void;
 }
 
-/**
- * Hook for depositing to vault via smart contract
- * Requires wallet to be connected
- */
 export function useVaultDeposit(): UseVaultDepositResult {
   const [isDepositing, setIsDepositing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,14 +38,6 @@ export function useVaultDeposit(): UseVaultDepositResult {
     if (trimmed.startsWith("addr")) return "Mainnet";
     return null;
   };
-
-  /**
-   * Deposit to vault
-   * @param vaultConfig - Vault configuration (address, pool_id, min_lovelace)
-   * @param amountAda - Amount to deposit in ADA
-   * @param contributorAddress - Optional contributor address
-   * @returns Transaction hash or null if failed
-   */
   const deposit = useCallback(
     async (
       vaultConfig: VaultConfig,
@@ -64,12 +52,10 @@ export function useVaultDeposit(): UseVaultDepositResult {
         return null;
       }
 
-      // Validate contributor address is provided or wallet is connected
       if (!contributorAddress) {
         const errorMsg = 'Contributor wallet address is required for deposit';
         setError(errorMsg);
         toast.error(errorMsg);
-        console.error('Missing contributorAddress:', { contributorAddress, activeWallet: Boolean(activeWallet) });
         return null;
       }
 
@@ -89,7 +75,6 @@ export function useVaultDeposit(): UseVaultDepositResult {
         return null;
       }
 
-      // Check minimum deposit (convert lovelace to ADA for comparison)
       const minAda = vaultConfig.min_lovelace / 1_000_000;
       if (amountAda < minAda) {
         const errorMsg = `Minimum deposit is ${minAda} ADA`;
@@ -103,7 +88,6 @@ export function useVaultDeposit(): UseVaultDepositResult {
       setTxHash(null);
 
       try {
-        // Determine network (0 = testnet, 1 = mainnet)
         const network = networkId === 1 ? 'Mainnet' : 'Preview';
 
         const addressNetwork = inferNetworkFromAddress(vaultConfig.vault_address);
@@ -113,7 +97,6 @@ export function useVaultDeposit(): UseVaultDepositResult {
           );
         }
 
-        // Get Blockfrost API key from environment
         const blockfrostApiKey = process.env.NEXT_PUBLIC_BLOCKFROST_API_KEY;
         if (!blockfrostApiKey) {
           throw new Error('Blockfrost API key not configured');
@@ -121,13 +104,10 @@ export function useVaultDeposit(): UseVaultDepositResult {
 
         toast.loading('Building transaction...', { id: 'deposit-tx' });
 
-        // Initialize Lucid with wallet
         const lucid = await initializeLucid(network, blockfrostApiKey, activeWallet);
 
-        // Convert ADA to lovelace
         const amountLovelace = adaToLovelace(amountAda);
 
-        // Build, sign, and submit transaction directly to smart contract
         const txHash = await depositToVaultContract(
           lucid,
           vaultConfig,
@@ -203,9 +183,6 @@ export function useVaultDeposit(): UseVaultDepositResult {
     [activeWallet, networkId]
   );
 
-  /**
-   * Reset state
-   */
   const reset = useCallback(() => {
     setIsDepositing(false);
     setError(null);
