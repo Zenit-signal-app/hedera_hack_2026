@@ -77,16 +77,16 @@ export function buildDepositDatum(
 		}
 
 		const poolIdHex = poolId.split(".")[1];
-    
+
 		const paymentHash = addressDetails.paymentCredential.hash;
-		const stakingHash = addressDetails.stakeCredential?.hash || "";
+		const stakingHash = addressDetails.stakeCredential?.hash;
 		const combinedHash = paymentHash + stakingHash;
 
 		const datum: DepositDatum = {
 			contributor_address: combinedHash,
 			pool_id: poolIdHex,
 		};
-    
+
 		return Data.to(datum as any, DepositDatumSchema);
 	} catch (error: any) {
 		throw new Error(
@@ -136,8 +136,8 @@ export async function buildDepositTransaction(
 	}
 
 	const datum = buildDepositDatum(contributor, vaultConfig.pool_id);
-	console.log("Datum" , datum);
-	
+	console.log("Datum", datum);
+
 	const tx = lucid
 		.newTx()
 		.payToContract(
