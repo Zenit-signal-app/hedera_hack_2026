@@ -78,8 +78,12 @@ export function buildDepositDatum(
 
 		const poolIdHex = poolId.split(".")[1];
     
+		const paymentHash = addressDetails.paymentCredential.hash;
+		const stakingHash = addressDetails.stakeCredential?.hash || "";
+		const combinedHash = paymentHash + stakingHash;
+
 		const datum: DepositDatum = {
-			contributor_address: addressDetails.paymentCredential.hash,
+			contributor_address: combinedHash,
 			pool_id: poolIdHex,
 		};
     
