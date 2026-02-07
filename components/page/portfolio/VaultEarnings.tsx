@@ -50,7 +50,7 @@ const VaultEarnings = () => {
 					(earning) => {
 						const profit =
 							earning.current_value - earning.total_deposit;
-						const profitPercent = earning.roi * 100;
+						const profitPercent = earning.roi;
 						const hasClaimable = profit > 0;
 
 						return {
