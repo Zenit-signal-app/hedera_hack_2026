@@ -7,6 +7,7 @@ import Input, { NumberInput } from "@/components/common/input";
 import { vaultApi } from "@/services/vaultServices";
 import { toast } from "sonner";
 import Image from "next/image";
+import Loader from "@/components/common/loading/loader";
 
 interface RedeemModalProps {
 	isOpen: boolean;
@@ -113,7 +114,14 @@ const RedeemModal = ({
 						max={maxAmount}
 						disabled={isLoading || maxAmount <= 0}
 						className="border-dark-gray-600 focus-within:border-primary-600"
-						startIcon={<Image src="/images/ada.png" alt="icon" width={20} height={20} />}
+						startIcon={
+							<Image
+								src="/images/ada.png"
+								alt="icon"
+								width={20}
+								height={20}
+							/>
+						}
 					/>
 				</div>
 
@@ -135,8 +143,7 @@ const RedeemModal = ({
 					>
 						{isLoading ? (
 							<>
-								<LoadingAI />
-								Processing...
+								<Loader size={"sm"} />
 							</>
 						) : (
 							"Redeem"
