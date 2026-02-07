@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { Lucid, Data, Blockfrost, getAddressDetails } from "lucid-cardano";
+import { toast } from "sonner";
 
 const DepositDatumSchema = Data.Object({
 	contributor_address: Data.Bytes(),
@@ -17,13 +18,13 @@ export interface VaultConfig {
 
 const normalizePoolIdHex = (poolId: string): string => {
 	if (!poolId) {
-		throw new Error("pool_id is required for deposit");
+		toast.error("pool_id is required for deposit");
 	}
 
 	const hex = poolId.replace(/\./g, "");
 
 	if (!/^[0-9a-fA-F]+$/.test(hex)) {
-		throw new Error(`pool_id must be valid hex, got: ${poolId}`);
+		toast.error(`pool_id must be valid hex, got: ${poolId}`);
 	}
 
 	return hex;
@@ -34,7 +35,7 @@ const isValidAddressFormat = (address: string): boolean => {
 	return address.match(/^addr(1|_test1)[a-z0-9]{50,}$/i) !== null;
 };
 
-const extractFeeLovelace = (txComplete: any): number => {
+const extractFeeLovelace = (txComplete: any): number | undefined => {
 	const feeValue =
 		txComplete?.fee ??
 		txComplete?.txComplete?.body?.()?.fee?.()?.to_str?.();
@@ -54,15 +55,15 @@ const extractFeeLovelace = (txComplete: any): number => {
 		return feeValue;
 	}
 
-	throw new Error("Unable to read transaction fee");
+	toast.error("Unable to read transaction fee");
 };
 
 export function buildDepositDatum(
 	contributorAddress: string,
 	poolId: string,
-): string {
+): string | undefined {
 	if (contributorAddress.length < 80) {
-		throw new Error(
+		toast.error(
 			"Contributor address appears to be a script address, not a wallet address. Wallet addresses are typically 100+ chars.",
 		);
 	}
@@ -71,15 +72,15 @@ export function buildDepositDatum(
 		const addressDetails = getAddressDetails(contributorAddress);
 
 		if (!addressDetails.paymentCredential) {
-			throw new Error(
+			toast.error(
 				"Invalid contributor address: missing payment credential",
 			);
 		}
 
 		const poolIdHex = poolId.split(".")[1];
 
-		const paymentHash = addressDetails.paymentCredential.hash;
-		const stakingHash = addressDetails.stakeCredential?.hash;
+		const paymentHash = addressDetails.paymentCredential?.hash || "";
+		const stakingHash = addressDetails.stakeCredential?.hash || "";
 		const combinedHash = paymentHash + stakingHash;
 
 		const datum: DepositDatum = {
@@ -89,7 +90,7 @@ export function buildDepositDatum(
 
 		return Data.to(datum as any, DepositDatumSchema);
 	} catch (error: any) {
-		throw new Error(
+		toast.error(
 			`Invalid contributor address format: ${error.message || error}`,
 		);
 	}
@@ -102,7 +103,7 @@ export async function buildDepositTransaction(
 	contributorAddress?: string,
 ) {
 	if (amountLovelace < vaultConfig.min_lovelace) {
-		throw new Error(
+		toast.error(
 			`Deposit amount (${amountLovelace}) is below minimum required (${vaultConfig.min_lovelace} lovelace)`,
 		);
 	}
@@ -110,32 +111,28 @@ export async function buildDepositTransaction(
 	const vaultAddress = vaultConfig.vault_address.trim().replace(/^"|"$/g, "");
 
 	if (!isValidAddressFormat(vaultAddress)) {
-		throw new Error(
+		toast.error(
 			"Vault address format is invalid. Expected Cardano address.",
 		);
 	}
 
 	if (!contributorAddress || typeof contributorAddress !== "string") {
-		throw new Error(
-			"Contributor address must be provided and cannot be empty",
-		);
+		toast.error("Contributor address must be provided and cannot be empty");
 	}
 
-	const contributor = contributorAddress.trim();
+	const contributor = contributorAddress?.trim();
 
-	if (!contributor.startsWith("addr")) {
-		throw new Error(
+	if (!contributor?.startsWith("addr")) {
+		toast.error(
 			"Invalid contributor address: must be a valid Cardano wallet address starting with 'addr'",
 		);
 	}
 
 	if (contributor === vaultAddress) {
-		throw new Error(
-			"Contributor address cannot be the same as vault address",
-		);
+		toast.error("Contributor address cannot be the same as vault address");
 	}
 
-	const datum = buildDepositDatum(contributor, vaultConfig.pool_id);
+	const datum = buildDepositDatum(contributor || "", vaultConfig.pool_id);
 	console.log("Datum", datum);
 
 	const tx = lucid
@@ -164,7 +161,7 @@ export async function estimateDepositFee(
 		contributorAddress,
 	);
 
-	return extractFeeLovelace(completeTx);
+	return extractFeeLovelace(completeTx) as number;
 }
 
 export async function depositToVaultContract(
@@ -172,7 +169,7 @@ export async function depositToVaultContract(
 	vaultConfig: VaultConfig,
 	amountLovelace: number,
 	contributorAddress?: string,
-): Promise<string> {
+): Promise<string | undefined> {
 	try {
 		console.log("vaultConfig", vaultConfig);
 
@@ -189,10 +186,7 @@ export async function depositToVaultContract(
 
 		return txHash;
 	} catch (error: any) {
-		console.error("Error depositing to vault:", error);
-		throw new Error(
-			`Failed to deposit to vault: ${error.message || error}`,
-		);
+		toast.error(`Failed to deposit to vault: ${error.message || error}`);
 	}
 }
 
@@ -226,9 +220,9 @@ export function lovelaceToAda(lovelace: number): number {
 export function getPaymentHashFromAddress(address: string): string {
 	const details = getAddressDetails(address);
 	if (!details.paymentCredential) {
-		throw new Error("Invalid address: missing payment credential");
+		toast.error("Invalid address: missing payment credential");
 	}
-	return details.paymentCredential.hash;
+	return details.paymentCredential?.hash || "";
 }
 
 export function isSamePaymentCredential(

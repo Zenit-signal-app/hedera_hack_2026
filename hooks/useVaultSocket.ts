@@ -116,7 +116,6 @@ export const useVaultSocket = ({
 			};
 
 			ws.onerror = (error) => {
-				console.error("Vault socket error:", error);
 				ws.close();
 			};
 		};

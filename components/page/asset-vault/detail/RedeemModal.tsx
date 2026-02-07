@@ -26,26 +26,26 @@ const RedeemModal = ({
 }: RedeemModalProps) => {
 	const [redeemAmount, setRedeemAmount] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
-	const [error, setError] = useState<string | null>(null);
 
 	const handleRedeem = async () => {
 		if (!walletAddress) {
-			setError("Wallet not connected");
+			toast.error("Wallet not connected");
 			return;
 		}
 
 		if (!redeemAmount || isNaN(Number(redeemAmount)) || Number(redeemAmount) <= 0) {
-			setError("Please enter a valid amount");
+			toast.error("Please enter a valid amount");
 			return;
 		}
 
 		if (Number(redeemAmount) > maxAmount) {
-			setError(`Redeem amount exceeds your deposit value (Max: $${maxAmount.toFixed(2)})`);
+			toast.error(
+				`Redeem amount exceeds your deposit value (Max: $${maxAmount.toFixed(2)})`
+			);
 			return;
 		}
 
 		setIsLoading(true);
-		setError(null);
 
 		try {
 			const result = await vaultApi.withdrawFromVault({
@@ -65,7 +65,9 @@ const RedeemModal = ({
 
 			toast.success("Withdrawal request submitted successfully!");
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Withdrawal failed. Please try again.");
+			toast.error(
+				err instanceof Error ? err.message : "Withdrawal failed. Please try again."
+			);
 		} finally {
 			setIsLoading(false);
 		}
@@ -73,7 +75,6 @@ const RedeemModal = ({
 
 	const handleMaxClick = () => {
 		setRedeemAmount(maxAmount.toString());
-		setError(null);
 	};
 
 	return (
@@ -83,12 +84,6 @@ const RedeemModal = ({
 			onOpenChange={onOpenChange}
 		>
 			<div className="space-y-4">
-				{error && (
-					<div className="bg-red-500/20 border border-red-500 text-red-400 p-3 rounded">
-						{error}
-					</div>
-				)}
-
 				<div>
 					<div className="flex items-center justify-between mb-2">
 						<label className="block text-sm font-medium text-dark-gray-200">
@@ -107,7 +102,6 @@ const RedeemModal = ({
 						value={redeemAmount}
 						onChange={(e) => {
 							setRedeemAmount(e.target.value);
-							setError(null);
 						}}
 						placeholder="0.00"
 						max={maxAmount}
@@ -121,7 +115,6 @@ const RedeemModal = ({
 						onClick={() => {
 							onOpenChange(false);
 							setRedeemAmount("");
-							setError(null);
 						}}
 						disabled={isLoading}
 						className="flex-1 py-2 px-3 bg-dark-gray-800 border border-dark-gray-600 rounded text-white font-medium hover:bg-dark-gray-700 disabled:opacity-50"

@@ -6,6 +6,7 @@ import LoadingAI from "@/components/common/loading/loading_ai";
 import Input from "@/components/common/input";
 import { useVaultDeposit } from "@/hooks/useVaultDeposit";
 import { VaultConfig } from "@/lib/vault-transaction";
+import { toast } from "sonner";
 
 interface DepositModalProps {
 	isOpen: boolean;
@@ -61,6 +62,12 @@ const DepositModal = ({
 	}, [isOpen]);
 
 	useEffect(() => {
+		if (depositError) {
+			toast.error(depositError);
+		}
+	}, [depositError]);
+
+	useEffect(() => {
 		if (!isOpen) return;
 
 		const amountAda = Number(depositAmount);
@@ -83,7 +90,6 @@ const DepositModal = ({
 					setFeeLovelace(fee);
 				}
 			} catch (err) {
-				console.error("Failed to estimate fee:", err);
 				if (!isCancelled) {
 					setFeeLovelace(null);
 				}
@@ -102,17 +108,17 @@ const DepositModal = ({
 
 	const handleDeposit = async () => {
 		if (!walletAddress) {
-			alert("Please connect your wallet first");
+			toast.error("Please connect your wallet first");
 			return;
 		}
 
 		if (!hasVaultConfig) {
-			alert("Vault configuration is missing. Please refresh and try again.");
+			toast.error("Vault configuration is missing. Please refresh and try again.");
 			return;
 		}
 
 		if (!depositAmount || isNaN(Number(depositAmount)) || Number(depositAmount) <= 0) {
-			alert("Please enter a valid amount");
+			toast.error("Please enter a valid amount");
 			return;
 		}
 
@@ -120,7 +126,7 @@ const DepositModal = ({
 		const minAda = vaultConfig.min_lovelace / 1_000_000;
 
 		if (amountAda < minAda) {
-			alert(`Minimum deposit is ${minAda} ADA`);
+			toast.error(`Minimum deposit is ${minAda} ADA`);
 			return;
 		}
 
@@ -142,13 +148,6 @@ const DepositModal = ({
 			onOpenChange={onOpenChange}
 		>
 			<div className="space-y-4">
-				{/* Error display */}
-				{depositError && (
-					<div className="bg-red-500/20 border border-red-500 text-red-400 p-3 rounded">
-						{depositError}
-					</div>
-				)}
-
 				{!hasVaultConfig && (
 					<div className="bg-yellow-500/20 border border-yellow-500 text-yellow-400 p-3 rounded">
 						Vault config missing. Please reload the page.

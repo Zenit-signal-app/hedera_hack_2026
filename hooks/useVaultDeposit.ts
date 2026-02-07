@@ -114,13 +114,15 @@ export function useVaultDeposit(): UseVaultDepositResult {
           contributorAddress
         );
 
-        setTxHash(txHash);
-        toast.success('Deposit transaction submitted successfully!', {
-          id: 'deposit-tx',
-          description: `TX: ${txHash.slice(0, 8)}...${txHash.slice(-8)}`,
-        });
+        if (txHash) {
+          setTxHash(txHash);
+          toast.success('Deposit transaction submitted successfully!', {
+            id: 'deposit-tx',
+            description: `TX: ${txHash.slice(0, 8)}...${txHash.slice(-8)}`,
+          });
+        }
 
-        return txHash;
+        return txHash ?? null;
       } catch (err: any) {
         const errorMsg = err.message || 'Failed to deposit to vault';
         setError(errorMsg);
