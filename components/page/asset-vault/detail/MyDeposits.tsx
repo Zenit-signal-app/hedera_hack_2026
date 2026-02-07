@@ -7,6 +7,7 @@ import RedeemModal from "./RedeemModal";
 import { vaultApi } from "@/services/vaultServices";
 import { UserVaultEarningInfoResponse } from "@/types/vault";
 import { useVaultSocket } from "@/hooks/useVaultSocket";
+import { useVaultSocketStore } from "@/store/vaultSocketStore";
 
 interface MyDepositsProps {
 	vaultId: string;
@@ -34,8 +35,12 @@ const MyDeposits = ({
 	const [socketExtraValue, setSocketExtraValue] = useState(0);
 	const [socketEnabled, setSocketEnabled] = useState(false);
 	const pendingTxIdsRef = useRef<Set<string>>(new Set());
+	const lastSentTxIdRef = useRef<string | null>(null);
 	const socketExtraValueRef = useRef(0);
 	const lastApiTotalRef = useRef<number | null>(null);
+	const persistedTxId = useVaultSocketStore((state) => state.txId);
+	const setPersistedTxId = useVaultSocketStore((state) => state.setTxId);
+	const clearPersistedTxId = useVaultSocketStore((state) => state.clearTxId);
 
 	useEffect(() => {
 		socketExtraValueRef.current = socketExtraValue;
@@ -43,16 +48,9 @@ const MyDeposits = ({
 
 	const handleVaultSocketMessage = useCallback(
 		(payload: Record<string, unknown>) => {
-			const wallet =
-				(payload.wallet_address as string | undefined) ||
-				(payload.walletAddress as string | undefined);
-			const vault =
-				(payload.vault_id as string | undefined) ||
-				(payload.vaultId as string | undefined);
-			const txId =
-				(payload.transaction_id as string | undefined) ||
-				(payload.tx_id as string | undefined) ||
-				(payload.txId as string | undefined);
+			const wallet = payload.user as string | undefined;
+			const vault = payload.vault_id as string | undefined;
+			const txId = payload.tx_id as string | undefined;
 			const status =
 				(payload.status as string | undefined) ||
 				(payload.result as string | undefined) ||
@@ -84,15 +82,39 @@ const MyDeposits = ({
 			setSocketExtraValue((prev) => prev + value);
 			if (txId) {
 				pendingTxIdsRef.current.delete(txId);
+				if (txId === persistedTxId) {
+					clearPersistedTxId();
+					lastSentTxIdRef.current = null;
+				}
 			}
 		},
-		[vaultId, walletAddress]
+		[vaultId, walletAddress, persistedTxId, clearPersistedTxId]
 	);
 
-	const { sendMessage } = useVaultSocket({
+	const { sendMessage, status: socketStatus } = useVaultSocket({
 		onMessage: handleVaultSocketMessage,
 		enabled: socketEnabled,
 	});
+
+	useEffect(() => {
+		if (!persistedTxId || !walletAddress || !vaultId) return;
+		pendingTxIdsRef.current.add(persistedTxId);
+		setSocketEnabled(true);
+	}, [persistedTxId, walletAddress, vaultId]);
+
+	useEffect(() => {
+		if (!persistedTxId || !walletAddress || !vaultId) return;
+		if (socketStatus !== WebSocket.OPEN) return;
+		if (lastSentTxIdRef.current === persistedTxId) return;
+
+		sendMessage({
+			action: "vault_deposit",
+			tx_id: persistedTxId,
+			user: walletAddress,
+			vault_id: vaultId,
+		});
+		lastSentTxIdRef.current = persistedTxId;
+	}, [persistedTxId, walletAddress, vaultId, socketStatus, sendMessage]);
 
 	const fetchEarningInfo = useCallback(async () => {
 		if (!walletAddress || !vaultId) {
@@ -118,6 +140,8 @@ const MyDeposits = ({
 				setSocketExtraValue(0);
 				pendingTxIdsRef.current.clear();
 				setSocketEnabled(false);
+				clearPersistedTxId();
+				lastSentTxIdRef.current = null;
 			}
 			lastApiTotalRef.current = data.total_deposit;
 		} catch (err) {
@@ -126,7 +150,7 @@ const MyDeposits = ({
 		} finally {
 			setIsEarningLoading(false);
 		}
-	}, [vaultId, walletAddress]);
+	}, [vaultId, walletAddress, clearPersistedTxId]);
 
 	useEffect(() => {
 		fetchEarningInfo();
@@ -142,10 +166,11 @@ const MyDeposits = ({
 		if (walletAddress && vaultId && txId) {
 			pendingTxIdsRef.current.add(txId);
 			setSocketEnabled(true);
+			setPersistedTxId(txId);
 			sendMessage({
-				channel: "vault_deposit",
-				wallet_address: walletAddress,
-				transaction_id: txId,
+				action: "vault_deposit",
+				tx_id: txId,
+				user: walletAddress,
 				vault_id: vaultId,
 			});
 		}

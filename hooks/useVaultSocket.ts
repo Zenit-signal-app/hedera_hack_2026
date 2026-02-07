@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useVaultSocketStore } from "@/store/vaultSocketStore";
 
 const SOCKET_URL = "wss://api.seerbot.io/ws";
 const RECONNECT_INTERVAL = 3000;
@@ -17,30 +18,37 @@ export const useVaultSocket = ({
 	enabled = true,
 }: UseVaultSocketOptions = {}) => {
 	const wsRef = useRef<WebSocket | null>(null);
-	const queueRef = useRef<string[]>([]);
-	const statusRef = useRef<number>(WebSocket.CLOSED);
+	const pendingPayloadRef = useRef<VaultSocketPayload | null>(null);
 	const [status, setStatus] = useState<number>(WebSocket.CLOSED);
+	const persistedEnabled = useVaultSocketStore((state) => state.enabled);
+	const setPersistedEnabled = useVaultSocketStore(
+		(state) => state.setEnabled,
+	);
+	const channelName = "vault_deposit";
+	const effectiveEnabled = enabled || persistedEnabled;
 
-	const flushQueue = useCallback(() => {
+	const sendPendingPayload = useCallback(() => {
 		const ws = wsRef.current;
 		if (!ws || ws.readyState !== WebSocket.OPEN) return;
+		if (!pendingPayloadRef.current) return;
 
-		while (queueRef.current.length > 0) {
-			const message = queueRef.current.shift();
-			if (message) {
-				ws.send(message);
-			}
-		}
+		ws.send(JSON.stringify(pendingPayloadRef.current));
+		pendingPayloadRef.current = null;
 	}, []);
 
 	useEffect(() => {
-		if (!enabled) {
+		if (enabled) {
+			setPersistedEnabled(true);
+		}
+	}, [enabled, setPersistedEnabled]);
+
+	useEffect(() => {
+		if (!effectiveEnabled) {
 			if (wsRef.current) {
 				wsRef.current.onclose = null;
 				wsRef.current.close();
 				wsRef.current = null;
 			}
-			statusRef.current = WebSocket.CLOSED;
 			return;
 		}
 
@@ -49,25 +57,60 @@ export const useVaultSocket = ({
 		const connect = () => {
 			const ws = new WebSocket(SOCKET_URL);
 			wsRef.current = ws;
-			statusRef.current = WebSocket.CONNECTING;
+			setStatus(WebSocket.CONNECTING);
 
 			ws.onopen = () => {
-				statusRef.current = WebSocket.OPEN;
 				setStatus(WebSocket.OPEN);
-				flushQueue();
+				sendPendingPayload();
 			};
 
 			ws.onmessage = (event) => {
 				try {
-					const data = JSON.parse(event.data) as VaultSocketPayload;
-					onMessage?.(data);
+					const data = JSON.parse(event.data);
+
+					if (data.status === "already_subscribed") return;
+
+					const payload =
+						data.channel === channelName && data.data
+							? (data.data as VaultSocketPayload)
+							: data.action === channelName ||
+								  data.channel === channelName
+								? (data as VaultSocketPayload)
+								: null;
+
+					if (payload) {
+						onMessage?.(payload);
+
+						const message =
+							(payload.message as string | undefined) ??
+							(payload.status as string | undefined) ??
+							(payload.result as string | undefined);
+
+						if (
+							message &&
+							[
+								"ok",
+								"oke",
+								"success",
+								"confirmed",
+								"completed",
+							].includes(message.toLowerCase())
+						) {
+							setPersistedEnabled(false);
+							if (wsRef.current) {
+								wsRef.current.onclose = null;
+								wsRef.current.close();
+								wsRef.current = null;
+							}
+							setStatus(WebSocket.CLOSED);
+						}
+					}
 				} catch (error) {
 					console.error("Vault socket parse error:", error);
 				}
 			};
 
 			ws.onclose = () => {
-				statusRef.current = WebSocket.CLOSED;
 				setStatus(WebSocket.CLOSED);
 				reconnectTimeout = setTimeout(connect, RECONNECT_INTERVAL);
 			};
@@ -87,18 +130,25 @@ export const useVaultSocket = ({
 			}
 			clearTimeout(reconnectTimeout);
 		};
-	}, [flushQueue, onMessage, enabled]);
+	}, [sendPendingPayload, onMessage, effectiveEnabled, setPersistedEnabled]);
 
-	const sendMessage = useCallback((payload: VaultSocketPayload) => {
-		if (!enabled) return;
-		const message = JSON.stringify(payload);
-		if (wsRef.current?.readyState === WebSocket.OPEN) {
-			wsRef.current.send(message);
-			return;
+	useEffect(() => {
+		if (status === WebSocket.OPEN) {
+			sendPendingPayload();
 		}
+	}, [status, sendPendingPayload]);
 
-		queueRef.current.push(message);
-	}, [enabled]);
+	const sendMessage = useCallback(
+		(payload: VaultSocketPayload) => {
+			if (!effectiveEnabled) return;
+			pendingPayloadRef.current = payload;
+			if (wsRef.current?.readyState === WebSocket.OPEN) {
+				wsRef.current.send(JSON.stringify(payload));
+				pendingPayloadRef.current = null;
+			}
+		},
+		[effectiveEnabled],
+	);
 
 	return {
 		sendMessage,

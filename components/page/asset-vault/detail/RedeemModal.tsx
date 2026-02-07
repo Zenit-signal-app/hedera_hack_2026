@@ -5,6 +5,7 @@ import CommonModal from "@/components/common/modal";
 import LoadingAI from "@/components/common/loading/loading_ai";
 import Input from "@/components/common/input";
 import { vaultApi } from "@/services/vaultServices";
+import { toast } from "sonner";
 
 interface RedeemModalProps {
 	isOpen: boolean;
@@ -62,7 +63,7 @@ const RedeemModal = ({
 			onOpenChange(false);
 			onSuccess?.();
 
-			alert(`Withdrawal successful! TX: ${result.tx_id}`);
+			toast.success("Withdrawal request submitted successfully!");
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Withdrawal failed. Please try again.");
 		} finally {
