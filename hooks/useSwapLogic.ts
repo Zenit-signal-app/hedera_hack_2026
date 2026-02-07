@@ -224,40 +224,45 @@ export const useSwapLogic = () => {
 				}
 
 				if (mainAsset && quoteAsset) {
-					const getAmount = (assetId: string) =>
-						walletBalance.find(
-							(item) => item.asset.token_id === assetId
-						)?.amount;
-
-					const mainInfo = {
-						amount: getAmount(mainAsset.token_id)
-							? formatTokenAmount(
-									parseFloat(getAmount(mainAsset.token_id)!),
-									mainAsset.decimals || 6
-							  )
-							: "0",
-						asset: mainAsset,
-					};
-
-					const quoteInfo = {
-						amount: getAmount(quoteAsset.token_id)
-							? formatTokenAmount(
-									parseFloat(getAmount(quoteAsset.token_id)!),
-									quoteAsset.decimals || 6
-							  )
-							: "0",
-						asset: quoteAsset,
-					};
-
-					setTokenIn(mainInfo);
-					setTokenOut(quoteInfo);
+					setTokenIn({ amount: "0", asset: mainAsset });
+					setTokenOut({ amount: "0", asset: quoteAsset });
 				}
 			} catch (err: any) {
 				console.error(err);
 			}
 		};
 		handleGetTokenInfo();
-	}, [token, quoteToken, walletBalance]);
+	}, [token, quoteToken]);
+
+	useEffect(() => {
+		if (!tokenIn?.asset || !tokenOut?.asset) return;
+
+		const getAmount = (assetId: string, decimals: number) => {
+			const rawAmount = walletBalance.find(
+				(item) => item.asset.token_id === assetId
+			)?.amount;
+			if (!rawAmount) return "0";
+			return formatTokenAmount(parseFloat(rawAmount), decimals || 6);
+		};
+
+		const nextInAmount = getAmount(
+			tokenIn.asset.token_id,
+			tokenIn.asset.decimals || 6
+		);
+		const nextOutAmount = getAmount(
+			tokenOut.asset.token_id,
+			tokenOut.asset.decimals || 6
+		);
+
+		setTokenIn((prev) =>
+			prev.amount === nextInAmount ? prev : { ...prev, amount: nextInAmount }
+		);
+		setTokenOut((prev) =>
+			prev.amount === nextOutAmount
+				? prev
+				: { ...prev, amount: nextOutAmount }
+		);
+	}, [walletBalance, tokenIn.asset?.token_id, tokenOut.asset?.token_id]);
 
 	const handleChangeTokenIn = useCallback((token: MinswapBalanceItem) => {
 		setTokenIn(token);

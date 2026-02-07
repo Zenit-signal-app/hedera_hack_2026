@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import Input from "@/components/common/input";
+import Input, { NumberInput } from "@/components/common/input";
 import ChevronDownMini from "@/components/icon/Icon_ChevronDownMini";
 import { useWalletStore } from "@/store/walletStore";
 import { TokenData } from "@/types";
@@ -11,6 +11,7 @@ import InfiniteScroll from "react-infinite-scroll-component";
 import { Loader2 } from "lucide-react";
 import { TokenPriceData } from "@/types/token";
 import { formatTokenAmount } from "@/lib/ultils";
+import { cn } from "@/lib/utils";
 
 interface TokenInputCardProps extends TokenData {
 	onAmountChange: (value: string) => void;
@@ -62,8 +63,7 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
 
 			<div className="flex justify-between items-start">
 				<div className="flex flex-col">
-					<Input
-						type="text"
+					<NumberInput
 						value={value}
 						onChange={(e) =>
 							isSell && onAmountChange(e.target.value)
@@ -71,6 +71,8 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
 						className="text-2xl bg-transparent font-bold px-0 py-0 border-none text-white outline-none focus:outline-none w-full max-w-[200px]"
 						placeholder="0"
 						disabled={!isSell || isLoadingTokens}
+						inputClassName={cn("text-2xl font-bold text-white placeholder--dark-gray-100", error && "text-red-500")}
+
 					/>
 				</div>
 				<PopoverWrapper

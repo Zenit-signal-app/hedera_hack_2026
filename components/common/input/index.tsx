@@ -53,3 +53,4 @@ const Input = ({
 };
 
 export default Input;
+export { default as NumberInput } from "./NumberInput";

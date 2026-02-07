@@ -3,11 +3,12 @@
 import { useState, useEffect, useMemo } from "react";
 import CommonModal from "@/components/common/modal";
 import LoadingAI from "@/components/common/loading/loading_ai";
-import Input from "@/components/common/input";
+import { NumberInput } from "@/components/common/input";
 import { useVaultDeposit } from "@/hooks/useVaultDeposit";
 import { VaultConfig } from "@/lib/vault-transaction";
 import { toast } from "sonner";
-
+import { useWalletStore } from "@/store/walletStore";
+import Image from "next/image";
 interface DepositModalProps {
 	isOpen: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -28,8 +29,16 @@ const DepositModal = ({
 	const [depositAmount, setDepositAmount] = useState("");
 	const [feeLovelace, setFeeLovelace] = useState<number | null>(null);
 	const [isFeeLoading, setIsFeeLoading] = useState(false);
-	
-	const { deposit, estimateFee, isDepositing, error: depositError, txHash, reset } = useVaultDeposit();
+
+	const {
+		deposit,
+		estimateFee,
+		isDepositing,
+		error: depositError,
+		txHash,
+		reset,
+	} = useVaultDeposit();
+	const walletBalance = useWalletStore((state) => state.balance);
 
 	// Vault configuration from props
 	const vaultConfig: VaultConfig = useMemo(
@@ -38,7 +47,7 @@ const DepositModal = ({
 			pool_id: poolId,
 			min_lovelace: 2_000_000, // 2 ADA minimum
 		}),
-		[poolId, vaultAddress]
+		[poolId, vaultAddress],
 	);
 
 	const hasVaultConfig = Boolean(poolId && vaultAddress);
@@ -49,6 +58,21 @@ const DepositModal = ({
 		feeAda !== null && !Number.isNaN(amountAda)
 			? Math.max(amountAda - feeAda, 0)
 			: null;
+	const adaBalance = useMemo(() => {
+		const adaItem = walletBalance.find(
+			(item) =>
+				item.asset.ticker === "ADA" ||
+				item.asset.token_id === "lovelace",
+		);
+		if (!adaItem) return 0;
+
+		const rawAmount = Number(adaItem.amount);
+		if (Number.isNaN(rawAmount)) return 0;
+		const decimals = adaItem.asset.decimals ?? 6;
+		return rawAmount / Math.pow(10, decimals);
+	}, [walletBalance]);
+	const hasValidAmount = !Number.isNaN(amountAda) && amountAda > 0;
+	const isInsufficientBalance = hasValidAmount && amountAda > adaBalance;
 
 	// Reset when modal closes
 	useEffect(() => {
@@ -71,7 +95,12 @@ const DepositModal = ({
 		if (!isOpen) return;
 
 		const amountAda = Number(depositAmount);
-		if (!walletAddress || !depositAmount || Number.isNaN(amountAda) || amountAda <= 0) {
+		if (
+			!walletAddress ||
+			!depositAmount ||
+			Number.isNaN(amountAda) ||
+			amountAda <= 0
+		) {
 			setFeeLovelace(null);
 			setIsFeeLoading(false);
 			return;
@@ -85,7 +114,11 @@ const DepositModal = ({
 
 		const timer = setTimeout(async () => {
 			try {
-				const fee = await estimateFee(vaultConfig, amountAda, walletAddress);
+				const fee = await estimateFee(
+					vaultConfig,
+					amountAda,
+					walletAddress,
+				);
 				if (!isCancelled) {
 					setFeeLovelace(fee);
 				}
@@ -104,7 +137,15 @@ const DepositModal = ({
 			isCancelled = true;
 			clearTimeout(timer);
 		};
-	}, [depositAmount, estimateFee, isOpen, walletAddress, vaultConfig, poolId, vaultAddress]);
+	}, [
+		depositAmount,
+		estimateFee,
+		isOpen,
+		walletAddress,
+		vaultConfig,
+		poolId,
+		vaultAddress,
+	]);
 
 	const handleDeposit = async () => {
 		if (!walletAddress) {
@@ -113,12 +154,23 @@ const DepositModal = ({
 		}
 
 		if (!hasVaultConfig) {
-			toast.error("Vault configuration is missing. Please refresh and try again.");
+			toast.error(
+				"Vault configuration is missing. Please refresh and try again.",
+			);
 			return;
 		}
 
-		if (!depositAmount || isNaN(Number(depositAmount)) || Number(depositAmount) <= 0) {
+		if (
+			!depositAmount ||
+			isNaN(Number(depositAmount)) ||
+			Number(depositAmount) <= 0
+		) {
 			toast.error("Please enter a valid amount");
+			return;
+		}
+
+		if (isInsufficientBalance) {
+			toast.error("Insufficient balance");
 			return;
 		}
 
@@ -131,7 +183,11 @@ const DepositModal = ({
 		}
 
 		// Call deposit hook - it will handle building, signing and submitting transaction
-		const resultTxHash = await deposit(vaultConfig, amountAda, walletAddress);
+		const resultTxHash = await deposit(
+			vaultConfig,
+			amountAda,
+			walletAddress,
+		);
 
 		if (resultTxHash) {
 			// Success
@@ -157,7 +213,9 @@ const DepositModal = ({
 				{/* Success display */}
 				{txHash && (
 					<div className="bg-green-500/20 border border-green-500 text-green-400 p-3 rounded">
-						<p className="font-medium mb-1">✓ Deposit Successful!</p>
+						<p className="font-medium mb-1">
+							✓ Deposit Successful!
+						</p>
 						<p className="text-xs break-all">TX: {txHash}</p>
 					</div>
 				)}
@@ -166,8 +224,7 @@ const DepositModal = ({
 					<label className="block text-sm font-medium text-dark-gray-200 mb-2">
 						Amount (ADA)
 					</label>
-					<Input
-						type="number"
+					<NumberInput
 						value={depositAmount}
 						onChange={(e) => {
 							setDepositAmount(e.target.value);
@@ -176,6 +233,14 @@ const DepositModal = ({
 						placeholder="0.00"
 						disabled={isDepositing}
 						className="border-dark-gray-600 focus-within:border-primary-600"
+						startIcon={
+							<Image
+								src="/images/ada.png"
+								alt="icon"
+								width={20}
+								height={20}
+							/>
+						}
 					/>
 					<p className="text-xs text-dark-gray-400 mt-1">
 						Minimum: {vaultConfig.min_lovelace / 1_000_000} ADA
@@ -211,7 +276,12 @@ const DepositModal = ({
 					</button>
 					<button
 						onClick={handleDeposit}
-						disabled={isDepositing || !depositAmount || !hasVaultConfig}
+						disabled={
+							isDepositing ||
+							!depositAmount ||
+							!hasVaultConfig ||
+							isInsufficientBalance
+						}
 						className="flex-1 py-2 px-3 bg-primary-700 rounded text-white font-medium hover:bg-primary-600 disabled:opacity-50 flex items-center justify-center gap-2"
 					>
 						{isDepositing ? (
@@ -219,6 +289,8 @@ const DepositModal = ({
 								<LoadingAI />
 								Processing...
 							</>
+						) : isInsufficientBalance ? (
+							"Insufficient balance"
 						) : (
 							"Deposit"
 						)}

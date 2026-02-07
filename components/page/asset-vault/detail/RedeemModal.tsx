@@ -3,9 +3,10 @@
 import { useState } from "react";
 import CommonModal from "@/components/common/modal";
 import LoadingAI from "@/components/common/loading/loading_ai";
-import Input from "@/components/common/input";
+import Input, { NumberInput } from "@/components/common/input";
 import { vaultApi } from "@/services/vaultServices";
 import { toast } from "sonner";
+import Image from "next/image";
 
 interface RedeemModalProps {
 	isOpen: boolean;
@@ -33,14 +34,18 @@ const RedeemModal = ({
 			return;
 		}
 
-		if (!redeemAmount || isNaN(Number(redeemAmount)) || Number(redeemAmount) <= 0) {
+		if (
+			!redeemAmount ||
+			isNaN(Number(redeemAmount)) ||
+			Number(redeemAmount) <= 0
+		) {
 			toast.error("Please enter a valid amount");
 			return;
 		}
 
 		if (Number(redeemAmount) > maxAmount) {
 			toast.error(
-				`Redeem amount exceeds your deposit value (Max: $${maxAmount.toFixed(2)})`
+				`Redeem amount exceeds your deposit value (Max: $${maxAmount.toFixed(2)})`,
 			);
 			return;
 		}
@@ -66,7 +71,9 @@ const RedeemModal = ({
 			toast.success("Withdrawal request submitted successfully!");
 		} catch (err) {
 			toast.error(
-				err instanceof Error ? err.message : "Withdrawal failed. Please try again."
+				err instanceof Error
+					? err.message
+					: "Withdrawal failed. Please try again.",
 			);
 		} finally {
 			setIsLoading(false);
@@ -97,8 +104,7 @@ const RedeemModal = ({
 							Max: ${maxAmount.toFixed(2)}
 						</button>
 					</div>
-					<Input
-						type="number"
+					<NumberInput
 						value={redeemAmount}
 						onChange={(e) => {
 							setRedeemAmount(e.target.value);
@@ -107,6 +113,7 @@ const RedeemModal = ({
 						max={maxAmount}
 						disabled={isLoading || maxAmount <= 0}
 						className="border-dark-gray-600 focus-within:border-primary-600"
+						startIcon={<Image src="/images/ada.png" alt="icon" width={20} height={20} />}
 					/>
 				</div>
 
