@@ -304,11 +304,12 @@ const Overview = ({ data }: { data: VaultInfo }) => {
 					poolId={data.pool_id}
 					vaultAddress={data.address}
 					onDepositSuccess={() => {
-					  toast.success("Deposit successful!")
+						toast.success("Deposit successful!");
 					}}
 					onRedeemSuccess={() => {
-					  toast.success("Redeem successful!")
+						toast.success("Redeem successful!");
 					}}
+					vaultState={data.state}
 				/>
 			</div>
 		</div>
