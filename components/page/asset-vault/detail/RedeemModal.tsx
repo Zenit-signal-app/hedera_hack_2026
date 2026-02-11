@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import CommonModal from "@/components/common/modal";
-import LoadingAI from "@/components/common/loading/loading_ai";
-import Input, { NumberInput } from "@/components/common/input";
+import AmountSlider from "@/components/common/slider/AmountSlider";
 import { vaultApi } from "@/services/vaultServices";
 import { toast } from "sonner";
-import Image from "next/image";
 import Loader from "@/components/common/loading/loader";
 
 interface RedeemModalProps {
@@ -14,6 +12,7 @@ interface RedeemModalProps {
 	onOpenChange: (open: boolean) => void;
 	vaultId: string;
 	walletAddress: string | null;
+	minAmount: number;
 	maxAmount: number;
 	onSuccess?: () => void;
 }
@@ -23,11 +22,35 @@ const RedeemModal = ({
 	onOpenChange,
 	vaultId,
 	walletAddress,
+	minAmount,
 	maxAmount,
 	onSuccess,
 }: RedeemModalProps) => {
-	const [redeemAmount, setRedeemAmount] = useState("");
+	const [redeemAmount, setRedeemAmount] = useState(0);
 	const [isLoading, setIsLoading] = useState(false);
+
+	const safeMaxAmount = useMemo(() => {
+		return Number.isFinite(maxAmount) ? Math.max(maxAmount, 0) : 0;
+	}, [maxAmount]);
+	const safeMinAmount = useMemo(() => {
+		return Number.isFinite(minAmount) ? Math.max(minAmount, 0) : 0;
+	}, [minAmount]);
+	const effectiveMin = Math.min(safeMinAmount, safeMaxAmount);
+	const hasEnoughForMin = safeMaxAmount >= safeMinAmount;
+
+	useEffect(() => {
+		if (!isOpen) {
+			setRedeemAmount(0);
+			return;
+		}
+
+		if (safeMaxAmount <= 0) {
+			setRedeemAmount(0);
+			return;
+		}
+
+		setRedeemAmount(effectiveMin);
+	}, [isOpen, safeMaxAmount, effectiveMin]);
 
 	const handleRedeem = async () => {
 		if (!walletAddress) {
@@ -35,18 +58,19 @@ const RedeemModal = ({
 			return;
 		}
 
-		if (
-			!redeemAmount ||
-			isNaN(Number(redeemAmount)) ||
-			Number(redeemAmount) <= 0
-		) {
+		if (!Number.isFinite(redeemAmount) || redeemAmount <= 0) {
 			toast.error("Please enter a valid amount");
 			return;
 		}
 
-		if (Number(redeemAmount) > maxAmount) {
+		if (redeemAmount < safeMinAmount) {
+			toast.error(`Minimum withdraw is ${safeMinAmount} ADA`);
+			return;
+		}
+
+		if (redeemAmount > safeMaxAmount) {
 			toast.error(
-				`Redeem amount exceeds your deposit value (Max: $${maxAmount.toFixed(2)})`,
+				`Redeem amount exceeds your deposit value (Max: ${safeMaxAmount.toFixed(2)} ADA)`,
 			);
 			return;
 		}
@@ -57,7 +81,7 @@ const RedeemModal = ({
 			const result = await vaultApi.withdrawFromVault({
 				vault_id: vaultId,
 				wallet_address: walletAddress,
-				amount_ada: Number(redeemAmount),
+				amount_ada: redeemAmount,
 			});
 
 			// Check if withdrawal was successful
@@ -65,7 +89,7 @@ const RedeemModal = ({
 				throw new Error(result.reason || "Withdrawal failed");
 			}
 
-			setRedeemAmount("");
+			setRedeemAmount(0);
 			onOpenChange(false);
 			onSuccess?.();
 
@@ -82,7 +106,7 @@ const RedeemModal = ({
 	};
 
 	const handleMaxClick = () => {
-		setRedeemAmount(maxAmount.toString());
+		setRedeemAmount(safeMaxAmount);
 	};
 
 	return (
@@ -93,43 +117,36 @@ const RedeemModal = ({
 		>
 			<div className="space-y-4">
 				<div>
-					<div className="flex items-center justify-between mb-2">
-						<label className="block text-sm font-medium text-dark-gray-200">
-							Amount (ADA)
-						</label>
+					<div className="flex items-center justify-between">
 						<button
 							onClick={handleMaxClick}
-							disabled={isLoading || maxAmount <= 0}
+							disabled={isLoading || safeMaxAmount <= 0}
 							className="text-xs text-primary-600 hover:text-primary-500 disabled:opacity-50"
 						>
-							Max: ${maxAmount.toFixed(2)}
+							Max: {safeMaxAmount.toFixed(2)} ADA
 						</button>
 					</div>
-					<NumberInput
+					<AmountSlider
+						label="Amount (ADA)"
+						min={safeMinAmount}
+						max={safeMaxAmount}
 						value={redeemAmount}
-						onChange={(e) => {
-							setRedeemAmount(e.target.value);
-						}}
-						placeholder="0.00"
-						max={maxAmount}
-						disabled={isLoading || maxAmount <= 0}
-						className="border-dark-gray-600 focus-within:border-primary-600"
-						startIcon={
-							<Image
-								src="/images/ada.png"
-								alt="icon"
-								width={20}
-								height={20}
-							/>
-						}
+						step={0.01}
+						onChange={setRedeemAmount}
+						disabled={isLoading}
 					/>
+					{!hasEnoughForMin && (
+						<p className="text-xs text-red-400">
+							Balance is below minimum withdraw.
+						</p>
+					)}
 				</div>
 
 				<div className="flex gap-3 pt-4">
 					<button
 						onClick={() => {
 							onOpenChange(false);
-							setRedeemAmount("");
+							setRedeemAmount(0);
 						}}
 						disabled={isLoading}
 						className="flex-1 py-2 px-3 bg-dark-gray-800 border border-dark-gray-600 rounded text-white font-medium hover:bg-dark-gray-700 disabled:opacity-50"
@@ -138,7 +155,12 @@ const RedeemModal = ({
 					</button>
 					<button
 						onClick={handleRedeem}
-						disabled={isLoading || !redeemAmount || maxAmount <= 0}
+						disabled={
+							isLoading ||
+							redeemAmount <= 0 ||
+							safeMaxAmount <= 0 ||
+							!hasEnoughForMin
+						}
 						className="flex-1 py-2 px-3 bg-primary-700 rounded text-white font-medium hover:bg-primary-600 disabled:opacity-50 flex items-center justify-center gap-2"
 					>
 						{isLoading ? (

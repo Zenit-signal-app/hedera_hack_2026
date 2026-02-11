@@ -5,7 +5,7 @@ import { useWalletStore } from "@/store/walletStore";
 import DepositModal from "./DepositModal";
 import RedeemModal from "./RedeemModal";
 import { vaultApi } from "@/services/vaultServices";
-import { UserVaultEarningInfoResponse } from "@/types/vault";
+import { UserVaultEarningInfoResponse, VaultState } from "@/types/vault";
 import { useVaultSocket } from "@/hooks/useVaultSocket";
 import { useVaultSocketStore } from "@/store/vaultSocketStore";
 
@@ -13,6 +13,7 @@ interface MyDepositsProps {
 	vaultId: string;
 	poolId: string;
 	vaultAddress: string;
+	vaultState: VaultState;
 	userDepositValue?: number;
 	userDepositShare?: number;
 	onDepositSuccess?: () => void;
@@ -23,6 +24,7 @@ const MyDeposits = ({
 	vaultId,
 	poolId,
 	vaultAddress,
+	vaultState,
 	onDepositSuccess,
 	onRedeemSuccess,
 }: MyDepositsProps) => {
@@ -53,13 +55,16 @@ const MyDeposits = ({
 			const txId = payload.tx_id as string | undefined;
 			const status =
 				(payload.status as string | undefined) ||
+				(payload.message as string | undefined) ||
 				(payload.result as string | undefined) ||
 				(payload.state as string | undefined);
-			const value =
-				(payload.value as number | undefined) ??
-				(payload.amount as number | undefined) ??
-				(payload.amount_ada as number | undefined) ??
-				(payload.amountAda as number | undefined);
+			const rawValue =
+				(payload.depositAmount as number | string | undefined) ??
+				(payload.value as number | string | undefined) ??
+				(payload.amount as number | string | undefined) ??
+				(payload.amount_ada as number | string | undefined) ??
+				(payload.amountAda as number | string | undefined);
+			const value = rawValue === undefined ? undefined : Number(rawValue);
 
 			if (!walletAddress || !vaultId) return;
 			if (wallet && wallet !== walletAddress) return;
@@ -67,13 +72,9 @@ const MyDeposits = ({
 			if (txId && !pendingTxIdsRef.current.has(txId)) return;
 			if (
 				status &&
-				![
-					"ok",
-					"oke",
-					"success",
-					"confirmed",
-					"completed",
-				].includes(String(status).toLowerCase())
+				!["ok", "oke", "success", "confirmed", "completed"].includes(
+					String(status).toLowerCase(),
+				)
 			) {
 				return;
 			}
@@ -88,7 +89,7 @@ const MyDeposits = ({
 				}
 			}
 		},
-		[vaultId, walletAddress, persistedTxId, clearPersistedTxId]
+		[vaultId, walletAddress, persistedTxId, clearPersistedTxId],
 	);
 
 	const { sendMessage, status: socketStatus } = useVaultSocket({
@@ -158,21 +159,20 @@ const MyDeposits = ({
 
 	const effectiveDepositValue =
 		(earningInfo?.total_deposit || 0) + socketExtraValue;
+	const minDeposit = earningInfo?.min_deposit ?? 0;
+	const minWithdraw = earningInfo?.min_withdraw ?? 0;
+	const maxWithdrawAmount = earningInfo?.total_deposit ?? 0;
+	const canDeposit = vaultState === "open";
+	const canWithdraw = vaultState === "withdrawable";
 	const hasDeposited = effectiveDepositValue > 0;
 	const isRedeemed = Boolean(earningInfo?.is_redeemed);
-	const isRedeemDisabled = !hasDeposited || isRedeemed;
+	const isRedeemDisabled = !hasDeposited || isRedeemed || !canWithdraw;
 
 	const handleDepositSuccess = async (txId: string) => {
 		if (walletAddress && vaultId && txId) {
 			pendingTxIdsRef.current.add(txId);
 			setSocketEnabled(true);
 			setPersistedTxId(txId);
-			sendMessage({
-				action: "vault_deposit",
-				tx_id: txId,
-				user: walletAddress,
-				vault_id: vaultId,
-			});
 		}
 		await fetchEarningInfo();
 		onDepositSuccess?.();
@@ -214,7 +214,8 @@ const MyDeposits = ({
 			<div className="flex flex-row items-center gap-3 w-full">
 				<button
 					onClick={() => setShowDepositModal(true)}
-					className="flex flex-row justify-center items-center py-2 px-3 gap-2 h-10 flex-1 bg-primary-700 rounded-lg font-museomoderno text-label-3 font-semibold text-white cursor-pointer hover:-translate-y-0.5 active:translate-y-0 transition-transform duration-200"
+					disabled={!canDeposit}
+					className="flex flex-row justify-center items-center py-2 px-3 gap-2 h-10 flex-1 bg-primary-700 rounded-lg font-museomoderno text-label-3 font-semibold text-white cursor-pointer hover:-translate-y-0.5 active:translate-y-0 transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					Deposit
 				</button>
@@ -239,6 +240,7 @@ const MyDeposits = ({
 				poolId={poolId}
 				vaultAddress={vaultAddress}
 				walletAddress={walletAddress}
+				minDeposit={minDeposit}
 				onSuccess={handleDepositSuccess}
 			/>
 
@@ -247,7 +249,8 @@ const MyDeposits = ({
 				onOpenChange={setShowRedeemModal}
 				vaultId={vaultId}
 				walletAddress={walletAddress}
-				maxAmount={effectiveDepositValue}
+				minAmount={minWithdraw}
+				maxAmount={maxWithdrawAmount}
 				onSuccess={handleRedeemSuccess}
 			/>
 		</div>

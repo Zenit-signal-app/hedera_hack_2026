@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useVaultSocketStore } from "@/store/vaultSocketStore";
-
 const SOCKET_URL = "wss://api.seerbot.io/ws";
 const RECONNECT_INTERVAL = 3000;
 
@@ -19,13 +18,12 @@ export const useVaultSocket = ({
 }: UseVaultSocketOptions = {}) => {
 	const wsRef = useRef<WebSocket | null>(null);
 	const pendingPayloadRef = useRef<VaultSocketPayload | null>(null);
+	const shouldReconnectRef = useRef(false);
+	const manualCloseRef = useRef(false);
 	const [status, setStatus] = useState<number>(WebSocket.CLOSED);
-	const persistedEnabled = useVaultSocketStore((state) => state.enabled);
-	const setPersistedEnabled = useVaultSocketStore(
-		(state) => state.setEnabled,
-	);
+	const clearTxId = useVaultSocketStore((state) => state.clearTxId);
 	const channelName = "vault_deposit";
-	const effectiveEnabled = enabled || persistedEnabled;
+	const effectiveEnabled = enabled;
 
 	const sendPendingPayload = useCallback(() => {
 		const ws = wsRef.current;
@@ -37,13 +35,9 @@ export const useVaultSocket = ({
 	}, []);
 
 	useEffect(() => {
-		if (enabled) {
-			setPersistedEnabled(true);
-		}
-	}, [enabled, setPersistedEnabled]);
-
-	useEffect(() => {
 		if (!effectiveEnabled) {
+			shouldReconnectRef.current = false;
+			manualCloseRef.current = true;
 			if (wsRef.current) {
 				wsRef.current.onclose = null;
 				wsRef.current.close();
@@ -51,6 +45,9 @@ export const useVaultSocket = ({
 			}
 			return;
 		}
+
+		shouldReconnectRef.current = true;
+		manualCloseRef.current = false;
 
 		let reconnectTimeout: NodeJS.Timeout;
 
@@ -70,21 +67,12 @@ export const useVaultSocket = ({
 
 					if (data.status === "already_subscribed") return;
 
-					const payload =
-						data.channel === channelName && data.data
-							? (data.data as VaultSocketPayload)
-							: data.action === channelName ||
-								  data.channel === channelName
-								? (data as VaultSocketPayload)
-								: null;
+					const payload = data;
 
 					if (payload) {
 						onMessage?.(payload);
 
-						const message =
-							(payload.message as string | undefined) ??
-							(payload.status as string | undefined) ??
-							(payload.result as string | undefined);
+						const message = payload.message as string;
 
 						if (
 							message &&
@@ -94,10 +82,14 @@ export const useVaultSocket = ({
 								"success",
 								"confirmed",
 								"completed",
+								"already_completed",
 							].includes(message.toLowerCase())
 						) {
-							setPersistedEnabled(false);
+							console.log("Clear");
+
+							clearTxId();
 							if (wsRef.current) {
+								manualCloseRef.current = true;
 								wsRef.current.onclose = null;
 								wsRef.current.close();
 								wsRef.current = null;
@@ -112,6 +104,8 @@ export const useVaultSocket = ({
 
 			ws.onclose = () => {
 				setStatus(WebSocket.CLOSED);
+				if (!shouldReconnectRef.current || manualCloseRef.current)
+					return;
 				reconnectTimeout = setTimeout(connect, RECONNECT_INTERVAL);
 			};
 
@@ -123,13 +117,15 @@ export const useVaultSocket = ({
 		connect();
 
 		return () => {
+			shouldReconnectRef.current = false;
+			manualCloseRef.current = true;
 			if (wsRef.current) {
 				wsRef.current.onclose = null;
 				wsRef.current.close();
 			}
 			clearTimeout(reconnectTimeout);
 		};
-	}, [sendPendingPayload, onMessage, effectiveEnabled, setPersistedEnabled]);
+	}, [sendPendingPayload, onMessage, effectiveEnabled]);
 
 	useEffect(() => {
 		if (status === WebSocket.OPEN) {

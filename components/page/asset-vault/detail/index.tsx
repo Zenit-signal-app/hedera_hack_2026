@@ -119,6 +119,7 @@ const DetailPage = () => {
 								vaultId={vaultInfo.id}
 								poolId={vaultInfo.pool_id}
 								vaultAddress={vaultInfo.address}
+								vaultState={vaultInfo.state}
 							/>
 						</div>
 					</div>

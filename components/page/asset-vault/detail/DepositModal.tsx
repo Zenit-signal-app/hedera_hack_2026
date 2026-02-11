@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import CommonModal from "@/components/common/modal";
 import LoadingAI from "@/components/common/loading/loading_ai";
 import { NumberInput } from "@/components/common/input";
+import AmountSlider from "@/components/common/slider/AmountSlider";
 import { useVaultDeposit } from "@/hooks/useVaultDeposit";
 import { VaultConfig } from "@/lib/vault-transaction";
 import { toast } from "sonner";
@@ -15,6 +16,7 @@ interface DepositModalProps {
 	poolId: string;
 	vaultAddress: string;
 	walletAddress: string | null;
+	minDeposit: number;
 	onSuccess?: (txId: string) => void;
 }
 
@@ -24,9 +26,10 @@ const DepositModal = ({
 	poolId,
 	vaultAddress,
 	walletAddress,
+	minDeposit,
 	onSuccess,
 }: DepositModalProps) => {
-	const [depositAmount, setDepositAmount] = useState("");
+	const [depositAmount, setDepositAmount] = useState(0);
 	const [feeLovelace, setFeeLovelace] = useState<number | null>(null);
 	const [isFeeLoading, setIsFeeLoading] = useState(false);
 
@@ -41,14 +44,16 @@ const DepositModal = ({
 	const walletBalance = useWalletStore((state) => state.balance);
 
 	// Vault configuration from props
-	const vaultConfig: VaultConfig = useMemo(
-		() => ({
+	const vaultConfig: VaultConfig = useMemo(() => {
+		const minAda = Number.isFinite(minDeposit)
+			? Math.max(minDeposit, 0)
+			: 0;
+		return {
 			vault_address: vaultAddress,
 			pool_id: poolId,
-			min_lovelace: 2_000_000, // 2 ADA minimum
-		}),
-		[poolId, vaultAddress],
-	);
+			min_lovelace: Math.round(minAda * 1_000_000),
+		};
+	}, [poolId, vaultAddress, minDeposit]);
 
 	const hasVaultConfig = Boolean(poolId && vaultAddress);
 
@@ -71,19 +76,35 @@ const DepositModal = ({
 		const decimals = adaItem.asset.decimals ?? 6;
 		return rawAmount / Math.pow(10, decimals);
 	}, [walletBalance]);
+	const safeMinDeposit = Number.isFinite(minDeposit)
+		? Math.max(minDeposit, 0)
+		: 0;
+	const safeMaxDeposit = Number.isFinite(adaBalance)
+		? Math.max(adaBalance, 0)
+		: 0;
 	const hasValidAmount = !Number.isNaN(amountAda) && amountAda > 0;
-	const isInsufficientBalance = hasValidAmount && amountAda > adaBalance;
+	const isInsufficientBalance = hasValidAmount && amountAda > safeMaxDeposit;
+	const hasEnoughForMin = safeMaxDeposit >= safeMinDeposit;
 
 	// Reset when modal closes
 	useEffect(() => {
 		if (!isOpen) {
-			setDepositAmount("");
+			setDepositAmount(0);
 			setFeeLovelace(null);
 			setIsFeeLoading(false);
 			reset();
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [isOpen]);
+
+	useEffect(() => {
+		if (!isOpen) return;
+		if (!hasEnoughForMin) {
+			setDepositAmount(0);
+			return;
+		}
+		setDepositAmount(safeMinDeposit);
+	}, [isOpen, hasEnoughForMin, safeMinDeposit]);
 
 	useEffect(() => {
 		if (depositError) {
@@ -95,12 +116,7 @@ const DepositModal = ({
 		if (!isOpen) return;
 
 		const amountAda = Number(depositAmount);
-		if (
-			!walletAddress ||
-			!depositAmount ||
-			Number.isNaN(amountAda) ||
-			amountAda <= 0
-		) {
+		if (!walletAddress || Number.isNaN(amountAda) || amountAda <= 0) {
 			setFeeLovelace(null);
 			setIsFeeLoading(false);
 			return;
@@ -160,11 +176,7 @@ const DepositModal = ({
 			return;
 		}
 
-		if (
-			!depositAmount ||
-			isNaN(Number(depositAmount)) ||
-			Number(depositAmount) <= 0
-		) {
+		if (Number.isNaN(amountAda) || amountAda <= 0) {
 			toast.error("Please enter a valid amount");
 			return;
 		}
@@ -174,11 +186,8 @@ const DepositModal = ({
 			return;
 		}
 
-		const amountAda = Number(depositAmount);
-		const minAda = vaultConfig.min_lovelace / 1_000_000;
-
-		if (amountAda < minAda) {
-			toast.error(`Minimum deposit is ${minAda} ADA`);
+		if (amountAda < safeMinDeposit) {
+			toast.error(`Minimum deposit is ${safeMinDeposit} ADA`);
 			return;
 		}
 
@@ -191,7 +200,7 @@ const DepositModal = ({
 
 		if (resultTxHash) {
 			// Success
-			setDepositAmount("");
+			setDepositAmount(0);
 			onOpenChange(false);
 			onSuccess?.(resultTxHash);
 		}
@@ -225,11 +234,14 @@ const DepositModal = ({
 						Amount (ADA)
 					</label>
 					<NumberInput
-						value={depositAmount}
-						onChange={(e) => {
-							setDepositAmount(e.target.value);
-							reset(); // Reset error when user types
+						value={Number.isFinite(depositAmount) ? depositAmount : 0}
+						onValueChange={(values) => {
+							const nextValue = values.floatValue ?? 0;
+							setDepositAmount(nextValue);
+							reset();
 						}}
+						allowNegative={false}
+						decimalScale={6}
 						placeholder="0.00"
 						disabled={isDepositing}
 						className="border-dark-gray-600 focus-within:border-primary-600"
@@ -242,9 +254,32 @@ const DepositModal = ({
 							/>
 						}
 					/>
-					<p className="text-xs text-dark-gray-400 mt-1">
-						Minimum: {vaultConfig.min_lovelace / 1_000_000} ADA
-					</p>
+					<div className="flex items-center justify-between mt-2">
+						<button
+							onClick={() => setDepositAmount(safeMaxDeposit)}
+							disabled={isDepositing || safeMaxDeposit <= 0}
+							className="text-xs text-primary-600 hover:text-primary-500 disabled:opacity-50"
+						>
+							Max: {safeMaxDeposit.toFixed(2)} ADA
+						</button>
+					</div>
+					<AmountSlider
+						label="Amount (ADA)"
+						min={safeMinDeposit}
+						max={safeMaxDeposit}
+						value={depositAmount}
+						step={0.01}
+						onChange={(nextValue) => {
+							setDepositAmount(nextValue);
+							reset();
+						}}
+						disabled={isDepositing}
+					/>
+					{!hasEnoughForMin && (
+						<p className="text-xs text-red-400">
+							Balance is below minimum deposit.
+						</p>
+					)}
 					{isFeeLoading && (
 						<p className="text-xs text-dark-gray-400 mt-1">
 							Estimating fee...
@@ -266,7 +301,7 @@ const DepositModal = ({
 					<button
 						onClick={() => {
 							onOpenChange(false);
-							setDepositAmount("");
+							setDepositAmount(0);
 							reset();
 						}}
 						disabled={isDepositing}
@@ -278,8 +313,9 @@ const DepositModal = ({
 						onClick={handleDeposit}
 						disabled={
 							isDepositing ||
-							!depositAmount ||
 							!hasVaultConfig ||
+							!hasEnoughForMin ||
+							depositAmount <= 0 ||
 							isInsufficientBalance
 						}
 						className="flex-1 py-2 px-3 bg-primary-700 rounded text-white font-medium hover:bg-primary-600 disabled:opacity-50 flex items-center justify-center gap-2"

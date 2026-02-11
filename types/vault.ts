@@ -1,4 +1,9 @@
-export type VaultState = "withdrawable" | "trading" | "settled" | "closed";
+export type VaultState =
+	| "open"
+	| "withdrawable"
+	| "trading"
+	| "settled"
+	| "closed";
 
 export type VaultStatus = "active" | "inactive" | "all";
 
@@ -124,6 +129,8 @@ export interface UserVaultEarningInfoResponse {
 	total_deposit: number;
 	is_redeemed: boolean;
 	profit_rate: number;
+	min_deposit?: number;
+	min_withdraw?: number;
 }
 
 export interface UserVaultEarningsRequest {
