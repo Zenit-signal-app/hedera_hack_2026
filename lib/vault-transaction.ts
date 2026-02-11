@@ -133,7 +133,6 @@ export async function buildDepositTransaction(
 	}
 
 	const datum = buildDepositDatum(contributor || "", vaultConfig.pool_id);
-	console.log("Datum", datum);
 
 	const tx = lucid
 		.newTx()
@@ -171,8 +170,6 @@ export async function depositToVaultContract(
 	contributorAddress?: string,
 ): Promise<string | undefined> {
 	try {
-		console.log("vaultConfig", vaultConfig);
-
 		const completeTx = await buildDepositTransaction(
 			lucid,
 			vaultConfig,

@@ -32,8 +32,6 @@ export function ServerPagination({
 	setPageIndex,
 	setPageSize,
 }: TProps) {
-	console.log("totalPages", totalPages);
-	
 	// Defensive normalization to avoid NaN and runtime errors
 	const totalNum = Math.max(0, Number(totalPages) || 0);
 	const pageIdx = Number.isFinite(Number(pageIndex)) ? Math.max(0, Math.floor(Number(pageIndex))) : 0;

@@ -28,8 +28,6 @@ const SwapTokenDisplay = ({
 	amount: string;
 	logo_url: string;
 }) => {
-	console.log(symbol);
-
 	return (
 		<div className="flex items-center gap-2">
 			<div className="relative w-7 h-7">
@@ -57,7 +55,9 @@ export const TransactionHistory = () => {
 	const [activeTab, setActiveTab] = useState("swap");
 	const [pageIndex, setPageIndex] = useState(0);
 	const [pageSize, setPageSize] = useState(10);
-	const [vaultTransactions, setVaultTransactions] = useState<VaultTransactionData[]>([]);
+	const [vaultTransactions, setVaultTransactions] = useState<
+		VaultTransactionData[]
+	>([]);
 	const [isLoadingVault, setIsLoadingVault] = useState(false);
 	const [vaultError, setVaultError] = useState<string | null>(null);
 	const [vaultTotal, setVaultTotal] = useState(0);
@@ -86,27 +86,37 @@ export const TransactionHistory = () => {
 				const response = await vaultApi.getUserVaultTransactions({
 					wallet_address: usedAddress,
 					page: pageIndex + 1,
-					limit: pageSize
+					limit: pageSize,
 				});
 
 				// Transform API response to VaultTransactionData format
-				const transformedData: VaultTransactionData[] = response.transactions.map((txn) => ({
-					...txn,
-					statusColor: txn.status === 'completed' ? 'text-green-500' : txn.status === 'pending' ? 'text-yellow-500' : 'text-red-500'
-				}));
+				const transformedData: VaultTransactionData[] =
+					response.transactions.map((txn) => ({
+						...txn,
+						statusColor:
+							txn.status === "completed"
+								? "text-green-500"
+								: txn.status === "pending"
+									? "text-yellow-500"
+									: "text-red-500",
+					}));
 
 				setVaultTransactions(transformedData);
 				setVaultTotal(response.total);
 			} catch (err) {
-				setVaultError(err instanceof Error ? err.message : 'Failed to fetch vault transactions');
-				console.error('Error fetching vault transactions:', err);
+				setVaultError(
+					err instanceof Error
+						? err.message
+						: "Failed to fetch vault transactions",
+				);
+				console.error("Error fetching vault transactions:", err);
 			} finally {
 				setIsLoadingVault(false);
 			}
 		};
 
 		// Only fetch when vault tab is active
-		if (activeTab === 'vault' && usedAddress) {
+		if (activeTab === "vault" && usedAddress) {
 			fetchVaultTransactions();
 		}
 	}, [usedAddress, pageIndex, pageSize, activeTab]);
@@ -127,7 +137,9 @@ export const TransactionHistory = () => {
 			),
 			cell: ({ row }) => (
 				<time className="font-semibold text-gray-400 text-sm leading-5 whitespace-nowrap">
-					{dayjs(row.original.timestamp * 1000).format("hh:mm A MMM DD, YYYY")}
+					{dayjs(row.original.timestamp * 1000).format(
+						"hh:mm A MMM DD, YYYY",
+					)}
 				</time>
 			),
 		},
@@ -154,10 +166,13 @@ export const TransactionHistory = () => {
 			header: () => <div>Amount</div>,
 			cell: ({ row }) => (
 				<div className="font-semibold text-white text-sm leading-5 whitespace-nowrap">
-					{row.original.amount.toLocaleString(undefined, {
-						minimumFractionDigits: 0,
-						maximumFractionDigits: 8,
-					})} {row.original.token_symbol}
+					{row.original.amount !== 0
+						? row.original.amount.toLocaleString(undefined, {
+								minimumFractionDigits: 0,
+								maximumFractionDigits: 8,
+							})
+						: "Unknown"}{" "}
+					{row.original.token_symbol || "ADA"}
 				</div>
 			),
 		},
@@ -192,7 +207,7 @@ export const TransactionHistory = () => {
 			cell: ({ row }) => (
 				<time className="font-semibold text-gray-400 text-sm leading-5 whitespace-nowrap">
 					{dayjs(row.original.timestamp * 1000).format(
-						"hh:mm A MMM DD, YYYY"
+						"hh:mm A MMM DD, YYYY",
 					)}
 				</time>
 			),
@@ -233,7 +248,8 @@ export const TransactionHistory = () => {
 						className="font-semibold text-end w-full text-green-500 text-sm leading-5 whitespace-nowrap"
 						target="_blank"
 					>
-						{formatTxHash(row.original.txn)} <DirectIcon size={16} />
+						{formatTxHash(row.original.txn)}{" "}
+						<DirectIcon size={16} />
 					</Link>
 				</div>
 			),
@@ -300,7 +316,9 @@ export const TransactionHistory = () => {
 								pagination={{
 									pageIndex,
 									pageSize,
-									totalPages: Math.ceil(vaultTotal / pageSize),
+									totalPages: Math.ceil(
+										vaultTotal / pageSize,
+									),
 									totalRecords: vaultTotal,
 								}}
 								setPageIndex={setPageIndex}
