@@ -4,7 +4,7 @@
 import { useEffect, useCallback, useState } from "react";
 import { WalletApi } from "../types/wallet";
 import { useWalletStore } from "../store/walletStore";
-import { convertHexToBech32, parseBalance } from "@/lib/ultils";
+import { convertHexToBech32 } from "@/lib/ultils";
 import { SUPPORTED_WALLETS } from "@/lib/constant";
 import { MinswapBalanceItem } from "@/types/minswap";
 import { fetchMinswapBalance } from "@/services/swapApi";
@@ -14,9 +14,13 @@ interface WalletHook {
 	disconnect: () => void;
 	isLoading: boolean;
 }
-const loadWalletInfo = async (walletApi: WalletApi) => {
-	const { setWalletInfo, setWalletInfoLoading, setError } =
+const loadWalletInfo = async (walletApi: WalletApi, skipIfCached: boolean = false) => {
+	const { setWalletInfo, setWalletInfoLoading, setError, usedAddress, balance } =
 		useWalletStore.getState();
+
+	if (skipIfCached && usedAddress && balance && balance.length > 0) {
+		return;
+	}
 
 	setWalletInfoLoading(true);
 	setError(null);
@@ -120,6 +124,32 @@ export const useWalletConnect = (): WalletHook => {
 		console.log("Đã ngắt kết nối.");
 	}, []);
 
+	useEffect(() => {
+		const walletStoreState = useWalletStore.getState();
+		const currentWalletId = walletStoreState.currentWalletId;
+		const usedAddress = walletStoreState.usedAddress;
+
+		if (currentWalletId && usedAddress && !walletStoreState.isConnected) {
+			const walletExists = availableWallets.some(w => w.id === currentWalletId);
+			if (walletExists) {
+				const attemptRestore = async () => {
+					try {
+						const walletApi = window.cardano?.[currentWalletId];
+						if (walletApi && typeof walletApi.enable === "function") {
+							const api = await walletApi.enable();
+							setConnected(api, currentWalletId);
+							console.log("Restored wallet connection from cache");
+						}
+					} catch (err) {
+						console.warn("Failed to restore wallet:", err);
+					}
+				};
+				
+				attemptRestore();
+			}
+		}
+	}, [availableWallets, setConnected]);
+
 	// 3. Hàm kết nối ví
 	const connect = useCallback(
 		async (walletId: string) => {
@@ -130,12 +160,10 @@ export const useWalletConnect = (): WalletHook => {
 				typeof window.cardano === "undefined" ||
 				!window.cardano[walletId]
 			) {
-				// Get wallet URL to redirect user
 				const wallet = SUPPORTED_WALLETS.find(w => w.id === walletId);
 				const extensionUrl = wallet?.url || '';
 				
 				if (extensionUrl) {
-					// Redirect to extension store
 					window.open(extensionUrl, '_blank');
 				}
 				
@@ -146,7 +174,7 @@ export const useWalletConnect = (): WalletHook => {
 
 			let retries = 0;
 			const maxRetries = 3;
-			const retryDelay = 1000; // 1 second
+			const retryDelay = 1000;
 
 			const attemptConnection = async (): Promise<void> => {
 				try {
@@ -192,14 +220,14 @@ export const useWalletConnect = (): WalletHook => {
 
 	useEffect(() => {
 		if (!activeWallet) return;
-		loadWalletInfo(activeWallet);
+		loadWalletInfo(activeWallet, true);
 
 		if (
 			typeof activeWallet.on === "function" &&
 			typeof activeWallet.off === "function"
 		) {
 			const handleAccountChange = () => {
-				loadWalletInfo(activeWallet);
+				loadWalletInfo(activeWallet, false);
 			};
 
 			activeWallet.on("accountChange", handleAccountChange);
@@ -212,13 +240,21 @@ export const useWalletConnect = (): WalletHook => {
 
 	useEffect(() => {
 		const storedWalletId = localStorage.getItem("connectedWalletId");
+		const walletStoreState = useWalletStore.getState();
+		
+		// Only auto-reconnect if:
+		// 1. We have a stored walletId
+		// 2. Wallet is in available wallets
+		// 3. We don't already have wallet connection (isConnected)
+		// Skipping if wallet info is cached to avoid duplicate fetches
 		if (
 			storedWalletId &&
 			availableWallets.length > 0 &&
-			availableWallets.some((w) => w.id === storedWalletId)
+			availableWallets.some((w) => w.id === storedWalletId) &&
+			!walletStoreState.isConnected
 		) {
 			setTimeout(() => {
-				connect(storedWalletId).catch((err) => {
+				connect(storedWalletId).catch(() => {
 					console.warn("Tự động kết nối lại thất bại.");
 					disconnect();
 				});

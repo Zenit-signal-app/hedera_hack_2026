@@ -41,7 +41,6 @@ export const useFetchTransactions = (pair?: string): HookResult => {
 				};
 
 				const result: ApiResponse = await fetchTransactions(params);
-        console.log(result);
 				
 				setData(result.transactions);
 				setTotalRecords(result.total);

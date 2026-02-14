@@ -117,7 +117,6 @@ export const TradingPairInfoComponent: React.FC = () => {
 
 		fetchTokenInfo();
 	}, [token.symbol, tokenInfoSocket]);
-	console.log(apiTokenInfo);
 
 	const tokenInfo = useMemo(() => {
 		const foundToken = listToken.find(

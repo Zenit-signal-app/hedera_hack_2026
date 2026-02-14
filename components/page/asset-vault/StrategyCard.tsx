@@ -163,7 +163,7 @@ const StrategyCard: React.FC<StrategyCardProps> = ({ data }) => {
 						<span className="text-lg font-bold text-white">
 							{data.max_drawdown
 								? `${data.max_drawdown.toFixed(1)}%`
-								: "N/A"}
+								: "0"}
 						</span>
 					</div>
 

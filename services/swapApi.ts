@@ -13,7 +13,7 @@ import { toast } from "sonner";
 const MINSWAP_API_BASE = "https://agg-api.minswap.org/aggregator";
 
 const TOKEN_INFO_TTL_MS = 30_000;
-const WALLET_BALANCE_TTL_MS = 15_000;
+const WALLET_BALANCE_TTL_MS = 60_000; // Increased from 15s to 60s since balance is now persisted
 const tokenInfoCache = new Map<
 	string,
 	{ data: MinswapTokensInfoResponse; expiresAt: number }

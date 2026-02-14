@@ -82,7 +82,7 @@ export const useWalletStore = create<WalletState & WalletActions>()(
 			},
 
 			setWalletInfo: ({ networkId, usedAddress, balance }) => {
-				set({ networkId, usedAddress, balance });
+				set({ networkId, usedAddress, balance, isWalletInfoLoading: false });
 			},
 
 			updateBalanceAfterSwap: ({
@@ -141,6 +141,10 @@ export const useWalletStore = create<WalletState & WalletActions>()(
 
 			partialize: (state) => ({
 				accessToken: state.accessToken,
+				networkId: state.networkId,
+				usedAddress: state.usedAddress,
+				balance: state.balance,
+				currentWalletId: state.currentWalletId,
 			}),
 		}
 	)

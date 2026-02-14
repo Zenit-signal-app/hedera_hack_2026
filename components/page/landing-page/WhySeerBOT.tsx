@@ -3,24 +3,22 @@
 import { Check } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
 import type { PlatformStatistics } from "@/types/platform";
+import { formatNumber } from "@/lib/format";
 
 const STATS_CARDS = [
 	{
-		value: "7,302,402",
 		label: "Trading pairs",
 		numericValue: "n_pair",
 		prefix: "",
 		suffix: "",
 	},
 	{
-		value: "$459.30B",
 		label: "liquidity",
 		numericValue: "liquidity",
 		prefix: "$",
-		suffix: "B",
+		suffix: "",
 	},
 	{
-		value: "8,450",
 		label: "decentralised exchanges",
 		numericValue: "n_tx",
 		prefix: "",
@@ -35,7 +33,7 @@ function AnimatedCounter({
 	suffix = "",
 	duration = 600,
 }: {
-	value: number;
+	value: string;
 	prefix?: string;
 	suffix?: string;
 	duration?: number;
@@ -43,34 +41,9 @@ function AnimatedCounter({
 	const [count, setCount] = useState(0);
 	const [hasAnimated, setHasAnimated] = useState(false);
 	const counterRef = useRef<HTMLHeadingElement>(null);
-
-	useEffect(() => {
-		const observer = new IntersectionObserver(
-			(entries) => {
-				entries.forEach((entry) => {
-					if (entry.isIntersecting && !hasAnimated) {
-						setHasAnimated(true);
-						animateCounter();
-					}
-				});
-			},
-			{ threshold: 0.3 }
-		);
-
-		if (counterRef.current) {
-			observer.observe(counterRef.current);
-		}
-
-		return () => {
-			if (counterRef.current) {
-				observer.unobserve(counterRef.current);
-			}
-		};
-	}, [hasAnimated]);
-
 	const animateCounter = () => {
 		const startTime = Date.now();
-		const endValue = value;
+		const endValue = parseFloat(value.replace(/[^0-9.-]+/g, ""));
 
 		const updateCounter = () => {
 			const now = Date.now();
@@ -91,6 +64,29 @@ function AnimatedCounter({
 
 		requestAnimationFrame(updateCounter);
 	};
+	useEffect(() => {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((entry) => {
+					if (entry.isIntersecting && !hasAnimated) {
+						setHasAnimated(true);
+						animateCounter();
+					}
+				});
+			},
+			{ threshold: 0.3 },
+		);
+
+		if (counterRef.current) {
+			observer.observe(counterRef.current);
+		}
+
+		return () => {
+			if (counterRef.current) {
+				observer.unobserve(counterRef.current);
+			}
+		};
+	}, [hasAnimated]);
 
 	const formatNumber = (num: number) => {
 		if (num >= 1000) {
@@ -108,7 +104,7 @@ function AnimatedCounter({
 	);
 }
 
-export default function WhySeerBOT({stats} : {stats: PlatformStatistics}) {
+export default function WhySeerBOT({ stats }: { stats: PlatformStatistics }) {
 	const cardsRef = useRef<HTMLDivElement>(null);
 	const [isDragging, setIsDragging] = useState(false);
 	const [startX, setStartX] = useState(0);
@@ -146,12 +142,17 @@ export default function WhySeerBOT({stats} : {stats: PlatformStatistics}) {
 				<div className="landing-section-content">
 					<h2 className="landing-section-title">Why SeerBOT</h2>
 					<p className="landing-section-subtitle">
-						Navigating the Cardano DeFi ecosystem shouldn't be complicated. SeerBOT combines the security of non-custodial trading with the power of AI-driven analysis. We provide the tools you need to validate market trends, automate your strategies, and trade with confidence without ever giving up control of your assets
+						Navigating the Cardano DeFi ecosystem shouldn&apos;t be
+						complicated. SeerBOT combines the security of
+						non-custodial trading with the power of AI-driven
+						analysis. We provide the tools you need to validate
+						market trends, automate your strategies, and trade with
+						confidence without ever giving up control of your assets
 					</p>
 				</div>
 
-			{/* Features */}
-			<div className="flex flex-col md:flex-row justify-center items-center gap-8 -mt-3xl pb-10">
+				{/* Features */}
+				<div className="flex flex-col md:flex-row justify-center items-center gap-8 -mt-3xl pb-10">
 					<div className="flex items-center gap-2">
 						<div className="w-5 h-5 rounded-full border-2 border-green-500 flex items-center justify-center">
 							<Check
@@ -201,7 +202,7 @@ export default function WhySeerBOT({stats} : {stats: PlatformStatistics}) {
 							<div className="why-seerbot-stats-card-bg"></div>
 							<div className="why-seerbot-stats-card-content">
 								<AnimatedCounter
-									value={Number(stats[card.numericValue])}
+									value={stats[card.numericValue]}
 									prefix={card.prefix}
 									suffix={card.suffix}
 									duration={1000}
