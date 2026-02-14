@@ -131,6 +131,7 @@ export interface UserVaultEarningInfoResponse {
 	profit_rate: number;
 	min_deposit?: number;
 	min_withdraw?: number;
+	max_withdraw: number;
 }
 
 export interface UserVaultEarningsRequest {
