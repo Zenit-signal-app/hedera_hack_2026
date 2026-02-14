@@ -130,8 +130,8 @@ export interface UserVaultEarningInfoResponse {
 	is_redeemed: boolean;
 	profit_rate: number;
 	min_deposit?: number;
-	min_withdraw?: number;
-	max_withdraw: number;
+	min_withdrawal: number;
+	max_withdrawal: number;
 }
 
 export interface UserVaultEarningsRequest {

@@ -160,8 +160,8 @@ const MyDeposits = ({
 	const effectiveDepositValue =
 		(earningInfo?.total_deposit || 0) + socketExtraValue;
 	const minDeposit = earningInfo?.min_deposit ?? 0;
-	const minWithdraw = earningInfo?.min_withdraw ?? 0;
-	const maxWithdrawAmount = earningInfo?.total_deposit ?? 0;
+	const minWithdraw = earningInfo?.min_withdrawal ?? 0;
+	const maxWithdrawAmount = earningInfo?.max_withdrawal ?? 0;
 	const canDeposit = vaultState === "open";
 	const canWithdraw = vaultState === "withdrawable";
 	const hasDeposited = effectiveDepositValue > 0;
