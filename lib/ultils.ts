@@ -109,8 +109,8 @@ export function parseTokenPair(symbol: string): TType {
 		};
 	}
 
-	const baseToken = parts[0].toUpperCase();
-	const quoteToken = parts[1].toUpperCase();
+	const baseToken = parts[0]?.toUpperCase();
+	const quoteToken = parts[1]?.toUpperCase(); 
 
 	return { baseToken, quoteToken };
 }

@@ -7,6 +7,8 @@ import {
 	FAQ,
 	TradeSmarter,
 } from "@/components/page/landing-page";
+import { Partner } from "@/types/partner";
+import { PlatformStatistics } from "@/types/platform";
 
 const baseUrl =
 	process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.seerbot.io";
@@ -20,25 +22,39 @@ const fetchApi = async (path: string) => {
 		);
 	}
 	const json = await res.json().catch(() => null);
-	// API may wrap payload in { data: T, ... } or return T directly
 	return json && Object.prototype.hasOwnProperty.call(json, "data")
 		? json.data
 		: json;
 };
 
 export default async function LandingPage() {
-	let partners = [] as any[];
-	let statistics: any = null;
+	let partners: Partner[] = [];
+	let statistics: PlatformStatistics = {
+		n_pair: "",
+		liquidity: "",
+		n_tx: "",
+	};
+	
+	try {
+		partners = await fetchApi("/content/partners").catch((err) => {
+			console.error("Failed to load partners", err);
+			return [];
+		});
+	} catch (err) {
+		console.error("Failed to load partners", err);
+	}
 
 	try {
-		const [p, s] = await Promise.all([
-			fetchApi("/content/partners"),
-			fetchApi("/content/statistics"),
-		]);
-		partners = p ?? [];
-		statistics = s ?? null;
+		statistics = await fetchApi("/content/statistics").catch((err) => {
+			console.error("Failed to load statistics", err);
+			return {
+				n_pair: "",
+				liquidity: "",
+				n_tx: "",
+			};
+		});
 	} catch (err) {
-		console.error("Failed to load landing page content", err);
+		console.error("Failed to load statistics", err);
 	}
 
 	return (

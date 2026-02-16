@@ -82,39 +82,49 @@ export const WalletPortfolio: React.FC<{
 						Đang tải tài sản...
 					</div>
 				) : (
-					balance.map((asset) => (
-						<div
-							key={asset.asset.token_id}
-							className="flex justify-between items-center"
-						>
-							<div className="flex items-center space-x-3">
-								<Image
-									src={asset.asset.logo}
-									alt={asset.asset.ticker}
-									width={30}
-									height={30}
-									className="rounded-full"
-								/>
-								<div className="flex flex-col">
-									<span className="text-white font-medium">
-										{asset.asset.ticker}
-									</span>
-									<span className="text-gray-500 text-xs">
-										{asset.asset.project_name}
+					balance
+						.filter((asset) => {
+							// Chỉ hiển thị token có tên (ticker) và project_name
+							return (
+								asset.asset.ticker &&
+								asset.asset.ticker.trim() !== "" &&
+								asset.asset.project_name &&
+								asset.asset.project_name.trim() !== ""
+							);
+						})
+						.map((asset) => (
+							<div
+								key={asset.asset.token_id}
+								className="flex justify-between items-center"
+							>
+								<div className="flex items-center space-x-3">
+									<Image
+										src={asset.asset.logo}
+										alt={asset.asset.ticker}
+										width={30}
+										height={30}
+										className="rounded-full"
+									/>
+									<div className="flex flex-col">
+										<span className="text-white font-medium">
+											{asset.asset.ticker}
+										</span>
+										<span className="text-gray-500 text-xs">
+											{asset.asset.project_name}
+										</span>
+									</div>
+								</div>
+
+								<div className="flex flex-col items-end">
+									<span className="text-white font-bold">
+										{formatTokenAmount(
+											asset.amount,
+											asset.asset.decimals
+										)}
 									</span>
 								</div>
 							</div>
-
-							<div className="flex flex-col items-end">
-								<span className="text-white font-bold">
-									{formatTokenAmount(
-										asset.amount,
-										asset.asset.decimals
-									)}
-								</span>
-							</div>
-						</div>
-					))
+						))
 				)}
 			</div>
 		</div>

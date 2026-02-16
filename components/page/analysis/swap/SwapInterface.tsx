@@ -33,12 +33,12 @@ export const SwapInterface: React.FC = () => {
 	const isInsufficientBalance = useMemo(() => {
 		const balanceToken = balance.find(
 			(item) =>
-				item.asset.ticker.toUpperCase() ===
+				item.asset?.ticker?.toUpperCase() ===
 				topCardData.token?.toUpperCase()
 		);
 
 		const valueToken =
-			balanceToken?.asset.ticker === "ADA"
+			balanceToken?.asset?.ticker === "ADA"
 				? Number(balanceToken.amount) / 1000000
 				: Number(balanceToken?.amount);
 

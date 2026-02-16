@@ -104,11 +104,19 @@ function AnimatedCounter({
 	);
 }
 
-export default function WhySeerBOT({ stats }: { stats: PlatformStatistics }) {
+export default function WhySeerBOT({ stats }: { stats: PlatformStatistics | null }) {
 	const cardsRef = useRef<HTMLDivElement>(null);
 	const [isDragging, setIsDragging] = useState(false);
 	const [startX, setStartX] = useState(0);
 	const [scrollLeft, setScrollLeft] = useState(0);
+
+	// Provide default values if stats is null
+	const defaultStats: PlatformStatistics = {
+		n_pair: "0",
+		liquidity: "0",
+		n_tx: "0",
+	};
+	const safeStats = stats || defaultStats;
 
 	const handleMouseDown = (e: React.MouseEvent) => {
 		if (!cardsRef.current) return;
@@ -202,7 +210,7 @@ export default function WhySeerBOT({ stats }: { stats: PlatformStatistics }) {
 							<div className="why-seerbot-stats-card-bg"></div>
 							<div className="why-seerbot-stats-card-content">
 								<AnimatedCounter
-									value={stats[card.numericValue]}
+									value={safeStats[card.numericValue]}
 									prefix={card.prefix}
 									suffix={card.suffix}
 									duration={1000}

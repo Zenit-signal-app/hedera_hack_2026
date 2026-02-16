@@ -40,11 +40,11 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
 	} = useTokenLoadMore(searchQuery);
 	const error = useMemo(() => {
 		const balanceToken = listBalanceToken.find(
-			(item) => item.asset.ticker.toUpperCase() === token?.toUpperCase()
+			(item) => item.asset?.ticker?.toUpperCase() === token?.toUpperCase()
 		);
 
 		const valueToken =
-			balanceToken?.asset.ticker === "ADA"
+			balanceToken?.asset?.ticker === "ADA"
 				? Number(balanceToken.amount) / 1000000
 				: Number(balanceToken?.amount);
 

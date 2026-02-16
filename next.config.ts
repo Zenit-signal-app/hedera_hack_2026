@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
 	experimental: {},
 	images: {
 		domains: ["asset-logos.minswap.org", "minswap.org", "api.seerbot.io"],
+		qualities: [25, 50, 75, 100],
 	},
 	webpack: (config, { isServer }) => {
 		config.module.rules.push({

@@ -2,7 +2,6 @@
 // components/Wallet/WalletConnectButton.tsx
 
 import React, { useCallback, useMemo, useState } from "react";
-import { useWalletConnect } from "@/hooks/useWalletConnect";
 import ModalConnectWallet from "./ModalConnectWallet";
 import WalletIcon from "../icon/Icon_ Wallet";
 import { useWalletStore } from "@/store/walletStore";
@@ -11,9 +10,7 @@ import WalletPortfolio from "./WalletPortfolio";
 import { useIsMobile } from "@/src/components/hooks/useIsMobile";
 
 const WalletConnectButton: React.FC = () => {
-	const { disconnect } = useWalletConnect();
-
-	const { isConnected, usedAddress, isWalletInfoLoading, availableWallets } =
+	const { isConnected, usedAddress, isWalletInfoLoading } =
 		useWalletStore();
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [open, setOpen] = useState(false);

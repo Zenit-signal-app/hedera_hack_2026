@@ -16,7 +16,7 @@ export default function NotFound() {
 				Page was not found
 			</p>
 			<Link
-				href="/asset-vault"
+				href="/analysis"
 				className="btn-gradient px-6 py-3 rounded-full mt-3 text-lg font-bold font-museomoderno"
 			>
 				Back to home
