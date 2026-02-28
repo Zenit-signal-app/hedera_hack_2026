@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     ENCODE_KEY: str | None
     ENCODE_ALGORITHM: str | None
     ACCESS_TOKEN_EXPIRE_MINUTES: int | None
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    REFRESH_TOKEN_HASH_KEY: str | None = None
+
+    # Firebase settings
+    FIREBASE_PROJECT_ID: str | None = None
+    FIREBASE_SERVICE_ACCOUNT_PATH: str | None = None
+    FIREBASE_SERVICE_ACCOUNT_JSON: str | None = None
 
     # Settings for session login
     GOOGLE_CLIENT_ID: str | None

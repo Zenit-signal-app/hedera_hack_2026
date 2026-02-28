@@ -77,10 +77,27 @@ class Token(CustormBaseModel):
     price: float = 0
     time: int = 0
     time_readable: str = ''
+    image: str = ''
+    priceChange: float = 0
+    priceChangePercent: float = 0
+    volume: float = 0
+    quoteVolume: float = 0
 
     @field_validator("price")
     def round_price(cls, v: float) -> float:
         return round(v, 6)
+
+    @field_validator("priceChange")
+    def round_price_change(cls, v: float) -> float:
+        return round(v, 6)
+
+    @field_validator("priceChangePercent")
+    def round_price_change_percent(cls, v: float) -> float:
+        return round(v, 2)
+
+    @field_validator("volume", "quoteVolume")
+    def round_volumes(cls, v: float) -> float:
+        return round(v, 2)
 
 
 class PriceHistory(CustormBaseModel):

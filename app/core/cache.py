@@ -18,9 +18,11 @@ def at_every_hours_min(minutes: int) -> int:
 CACHE_PATHS = {
     'GET': {},
     'POST': {},
+    'DELETE': {},
     'GET-MATCH': {},
     'POST-MATCH': {},
     'PUT-MATCH': {},
+    'DELETE-MATCH': {},
 }
 CACHE_TYPE = {
     'no-exp':

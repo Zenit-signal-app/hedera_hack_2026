@@ -68,11 +68,13 @@ async def openapi(username: str = Depends(doc_auth)):
 
 # Include your API routers
 # Organized by functionality
-from app.api import prices, token, signal_tools
+from app.api import auth, favorites, prices, signal_tools, token
 
 app.include_router(prices.router, prefix="/prices", tags=prices.group_tags)
 app.include_router(token.router, prefix="/tokens", tags=token.group_tags)
 app.include_router(signal_tools.router, prefix="/signal-tools", tags=signal_tools.group_tags)
+app.include_router(favorites.router, prefix="/favorites", tags=favorites.group_tags)
+app.include_router(auth.router, prefix="/auth", tags=auth.group_tags)
 
 if __name__ == "__main__":
     import uvicorn

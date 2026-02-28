@@ -218,6 +218,9 @@ __marimo__/
 # development file
 ecosystem.config.js
 
+confidential/
+
 # ploc - scratch folder
 scratch/
 commit-msg/
+firebase-emulator/
