@@ -4,11 +4,12 @@ import hashlib
 import hmac
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import Depends, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+from typing import Any
 
 from app.core.config import settings
 from app.core.jwt_auth import create_access_token
@@ -24,14 +25,15 @@ from app.schemas.auth import (
     TokenResponse,
     UserResponse,
 )
+from app.services.firebase_auth import verify_id_token
 
 router = APIRouter()
 group_tags: List[str] = ["Authentication"]
 
 # Authentication APIs:
-# - `POST /auth/firebase/login` accepts the JSON from the frontend (token, email, displayName, photoURL),
+# - `POST /auth/firebase/login` verifies the Firebase ID token using Firebase Admin,
 #   ensures the user exists, and returns backend access + refresh tokens.
-# - `POST /auth/refresh` rotates the provided refresh token (revokes the old record and issues a new pair).
+# - `POST /auth/refresh` rotates the provided refresh token.
 # - `POST /auth/logout` revokes the supplied refresh token.
 
 
@@ -155,17 +157,31 @@ def _upsert_user(
 def firebase_login(body: FirebaseLoginRequest, db: Session = Depends(get_db)) -> FirebaseLoginResponse:
     if not body.token.strip():
         raise HTTPException(status_code=400, detail="token is required")
-    request_email = body.email.strip().lower()
-    if not request_email:
-        raise HTTPException(status_code=400, detail="email is required")
-    email = request_email
-    provider = "firebase"
-    display_name = body.displayName
-    photo_url = body.photoURL
+    try:
+        decoded: Dict[str, Any] = verify_id_token(body.token.strip())
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail=f"Invalid Firebase token: {exc}")
+
+    firebase_uid = str(decoded.get("uid") or "")
+    if not firebase_uid:
+        raise HTTPException(status_code=401, detail="Firebase uid missing")
+
+    email = (decoded.get("email") or "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="Firebase token missing email")
+
+    firebase_claim = decoded.get("firebase")
+    provider = (
+        firebase_claim.get("sign_in_provider")
+        if isinstance(firebase_claim, dict)
+        else None
+    )
+    display_name = decoded.get("name")
+    photo_url = decoded.get("picture")
 
     user = _upsert_user(
         db=db,
-        firebase_uid=body.token,
+        firebase_uid=firebase_uid,
         email=email,
         display_name=display_name,
         photo_url=photo_url,

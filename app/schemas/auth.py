@@ -7,9 +7,6 @@ from pydantic import BaseModel, Field
 
 class FirebaseLoginRequest(BaseModel):
     token: str = Field(..., description="Firebase ID token")
-    email: str
-    displayName: Optional[str] = None
-    photoURL: Optional[str] = None
 
 
 class TokenResponse(BaseModel):
