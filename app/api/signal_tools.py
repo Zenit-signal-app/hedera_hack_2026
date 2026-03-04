@@ -12,7 +12,12 @@ group_tags = ["Signal Tools"]
 
 @router.get("/",
             tags=group_tags,
-            response_model=List[schemas.SignalTool])
+            response_model=List[schemas.SignalTool],
+            summary="List signal tools",
+            description=(
+                "Return all configured signal tools (indicators and confluences) "
+                "ordered by `type`, then `display_order`."
+            ))
 def get_signal_tools(
     db: Session = Depends(get_db)
 ) -> List[schemas.SignalTool]:

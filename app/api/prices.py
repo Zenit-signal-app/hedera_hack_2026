@@ -21,7 +21,13 @@ tables = get_tables(settings.SCHEMA_1)
 
 @router.get("/history",
             tags=group_tags,
-            response_model=List[schemas.PriceHistory])
+            response_model=List[schemas.PriceHistory],
+            summary="Get token price history",
+            description=(
+                "Return OHLCV candles for a token symbol from the configured price tables. "
+                "Supports `timeframe` (5m, 30m, 1h, 4h, 1d), optional unix time bounds, "
+                "and a clamped `limit` (1..1000)."
+            ))
 def get_price_history(
     symbol: str,
     timeframe: str = "5m",

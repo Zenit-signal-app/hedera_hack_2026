@@ -1,8 +1,8 @@
 from typing import List
 from pydantic import BaseModel, field_validator
-from app.schemas.my_base_model import CustormBaseModel
+from app.schemas.my_base_model import CustomBaseModel
 
-class LatestPrice(CustormBaseModel):
+class LatestPrice(CustomBaseModel):
     coin: str = ''
     price: float = 0
     price_change: float = 0
@@ -16,7 +16,7 @@ class LatestPrice(CustormBaseModel):
         return round(v, 2)
 
 
-class LatestPriceV1(CustormBaseModel):
+class LatestPriceV1(CustomBaseModel):
     coin: str = ''
     time: str = ''
     price: float = 0
@@ -32,11 +32,11 @@ class LatestPriceV1(CustormBaseModel):
         return round(v, 2)
 
 
-class Prices(CustormBaseModel):
+class Prices(CustomBaseModel):
     price: float = 0
     time: int = 0
     
-class CoinPrice(CustormBaseModel):
+class CoinPrice(CustomBaseModel):
     symbol: str = ''
     price: float = 0
     price_change: float = 0
@@ -46,7 +46,7 @@ class CoinPrice(CustormBaseModel):
     def round_pc(cls, v: float) -> float:
         return round(v, 2)
     
-class Indicators(CustormBaseModel):
+class Indicators(CustomBaseModel):
     timestamp: int = 0
     open: float = 0
     high: float = 0
@@ -71,7 +71,7 @@ class Indicators(CustormBaseModel):
     psar_trend: str = 0
 
 
-class Token(CustormBaseModel):
+class Token(CustomBaseModel):
     symbol: str = ''
     coin: str = ''
     price: float = 0
@@ -100,7 +100,7 @@ class Token(CustormBaseModel):
         return round(v, 2)
 
 
-class PriceHistory(CustormBaseModel):
+class PriceHistory(CustomBaseModel):
     symbol: str = ''
     time: int = 0
     time_readable: str = ''
@@ -119,7 +119,7 @@ class PriceHistory(CustormBaseModel):
         return round(v, 2)
 
 
-class Currency(CustormBaseModel):
+class Currency(CustomBaseModel):
     id: int = 0
     symbol: str = ''
     name: str = ''

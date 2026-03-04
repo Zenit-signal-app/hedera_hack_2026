@@ -116,6 +116,11 @@ def _sanitize_symbol(symbol: str) -> str:
     "/",
     tags=group_tags,
     response_model=List[schemas.Token],
+    summary="List tokens",
+    description=(
+        "List tokens with their latest cached price, optional symbol search (`key`), and pagination. "
+        "Also enriches results with 24h metrics from Binance when available."
+    ),
 )
 def list_all_tokens(
     key: Optional[str] = None,
@@ -196,6 +201,8 @@ def list_all_tokens(
     "/{symbol}",
     tags=group_tags,
     response_model=schemas.Token,
+    summary="Get token by symbol",
+    description="Return the latest cached price and 24h metrics (if available) for a single token symbol.",
 )
 def get_token(symbol: str, db: Session = Depends(get_db)) -> schemas.Token:
     """Fetch the latest price for a single token symbol."""

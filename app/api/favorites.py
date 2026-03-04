@@ -66,7 +66,12 @@ def _map_row_to_favorite(row: Any, added_at: Optional[datetime]) -> schemas.Favo
     )
 
 
-@router.get("/", response_model=List[schemas.FavoriteToken])
+@router.get(
+    "/",
+    response_model=List[schemas.FavoriteToken],
+    summary="List favorite tokens",
+    description="Return the authenticated user's favorite tokens (requires `Authorization: Bearer <access_token>`).",
+)
 def list_favorites(
     user_id: str = Depends(_extract_user_id),
     db: Session = Depends(get_db),
@@ -114,6 +119,11 @@ def _load_tokens_for_symbols(db: Session, symbols: List[str]) -> List[Any]:
     "/",
     response_model=List[schemas.FavoriteToken],
     status_code=status.HTTP_201_CREATED,
+    summary="Add favorite tokens",
+    description=(
+        "Add one or more tokens to the authenticated user's favorites by symbol. "
+        "Returns the created favorites with `added_at` timestamps."
+    ),
 )
 def add_favorite(
     body: schemas.FavoriteBulkCreateRequest,
@@ -182,6 +192,11 @@ def add_favorite(
 @router.delete(
     "/",
     response_model=schemas.FavoriteBulkDeleteResponse,
+    summary="Remove favorite tokens",
+    description=(
+        "Remove one or more tokens from the authenticated user's favorites by symbol. "
+        "Returns which symbols were deleted vs missing."
+    ),
 )
 def remove_favorite(
     body: schemas.FavoriteBulkDeleteRequest,

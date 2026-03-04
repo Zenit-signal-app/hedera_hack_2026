@@ -5,10 +5,10 @@ from typing import List, Optional
 
 from pydantic import Field, root_validator
 
-from app.schemas.my_base_model import CustormBaseModel
+from app.schemas.my_base_model import CustomBaseModel
 
 
-class FavoriteCreateRequest(CustormBaseModel):
+class FavoriteCreateRequest(CustomBaseModel):
     """Payload for marking a token as a favorite."""
 
     token_id: Optional[int] = None
@@ -32,7 +32,7 @@ class FavoriteCreateRequest(CustormBaseModel):
         return values
 
 
-class FavoriteToken(CustormBaseModel):
+class FavoriteToken(CustomBaseModel):
     """DTO representing a favorited token entry."""
 
     token_id: int
@@ -44,12 +44,12 @@ class FavoriteToken(CustormBaseModel):
     added_at: Optional[datetime] = None
 
 
-class FavoriteDeleteResponse(CustormBaseModel):
+class FavoriteDeleteResponse(CustomBaseModel):
     token_id: int
     removed: bool = False
 
 
-class FavoriteBulkCreateRequest(CustormBaseModel):
+class FavoriteBulkCreateRequest(CustomBaseModel):
     symbols: List[str] = Field(..., min_items=1)
 
     @root_validator(skip_on_failure=True)
@@ -61,7 +61,7 @@ class FavoriteBulkCreateRequest(CustormBaseModel):
         return values
 
 
-class FavoriteBulkDeleteRequest(CustormBaseModel):
+class FavoriteBulkDeleteRequest(CustomBaseModel):
     symbols: List[str] = Field(..., min_items=1)
 
     @root_validator(skip_on_failure=True)
@@ -73,12 +73,12 @@ class FavoriteBulkDeleteRequest(CustormBaseModel):
         return values
 
 
-class FavoriteBulkDeleteResponse(CustormBaseModel):
+class FavoriteBulkDeleteResponse(CustomBaseModel):
     deleted_symbols: List[str]
     missing_symbols: List[str]
 
 
-class FavoriteToken(CustormBaseModel):
+class FavoriteToken(CustomBaseModel):
     """DTO representing a favorited token entry."""
 
     token_id: int
@@ -90,6 +90,6 @@ class FavoriteToken(CustormBaseModel):
     added_at: Optional[datetime] = None
 
 
-class FavoriteDeleteResponse(CustormBaseModel):
+class FavoriteDeleteResponse(CustomBaseModel):
     token_id: int
     removed: bool = False

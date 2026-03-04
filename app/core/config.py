@@ -64,6 +64,11 @@ class Settings(BaseSettings):
      
     SYMBOL_MOBILE_SUPPORT: str | None
 
+    # Binance WebSocket (24/7 price stream)
+    BINANCE_WS_INTERVAL: str = "1m"
+    BINANCE_WS_POLL_INTERVAL_SECONDS: int = 60
+    BINANCE_WS_SYMBOL_REFRESH_MINUTES: int = 60
+
     class Config:
         env_file = ".env"
 

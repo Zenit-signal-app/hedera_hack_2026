@@ -1,14 +1,14 @@
 from pydantic import BaseModel, field_validator
-from app.schemas.my_base_model import CustormBaseModel
+from app.schemas.my_base_model import CustomBaseModel
 from typing import List
 
 
-class OriSymbol(CustormBaseModel):
+class OriSymbol(CustomBaseModel):
     symbol: str = ''
     discoveredOn: str = ''
 
 
-class RefSymbol(CustormBaseModel):
+class RefSymbol(CustomBaseModel):
     originalSymbol: str = ''
     originalStartDate: str = ''
     originalEndDate: str = ''
@@ -21,7 +21,7 @@ class RefSymbol(CustormBaseModel):
     similarFibonacci: List[List[float]] = [[0]]
 
 
-class HeatMap(CustormBaseModel):
+class HeatMap(CustomBaseModel):
     symbol: str = ''
     rsi: float = 0
     close: float = 0
@@ -37,7 +37,7 @@ class HeatMap(CustormBaseModel):
     def round_price(cls, v:float) -> float:
         return round(v, 9)
 
-class RSIHeatMap(CustormBaseModel):
+class RSIHeatMap(CustomBaseModel):
     symbol: str = ''
     rsi: float = 0
     close: float = 0
@@ -55,7 +55,7 @@ class RSIHeatMap(CustormBaseModel):
     def round_price(cls, v:float) -> float:
         return round(v, 9)
 
-class ChartData(CustormBaseModel):
+class ChartData(CustomBaseModel):
     symbol: str = ''
     rsi: float = 0
     percentage_change: float = 0
@@ -65,13 +65,13 @@ class ChartData(CustormBaseModel):
         return round(v, 2)
     
 
-class PredictedTrend(CustormBaseModel):
+class PredictedTrend(CustomBaseModel):
     open_time: int 
     symbol: str = ''
     predicted_trend: str = ''    
 
 
-class Candle(CustormBaseModel):
+class Candle(CustomBaseModel):
     time: int = 0
     open: float = 0
     close: float = 0
@@ -104,7 +104,7 @@ class CandlePSAR(Candle):
     def round_psar(cls, v:float) -> float:
         return round(v, 9)
 
-class TradeReport(CustormBaseModel):
+class TradeReport(CustomBaseModel):
     pair: str = ''
     revalue: float = 0
     total_volumn: float = 0
@@ -113,7 +113,7 @@ class TradeReport(CustormBaseModel):
     win_rate: float  
 
 
-class ValIndicator(CustormBaseModel):
+class ValIndicator(CustomBaseModel):
     indicator: str = ''
     revalue: float = 0
     total_volumn: float = 0
@@ -121,6 +121,6 @@ class ValIndicator(CustormBaseModel):
     roi:float = 0
     win_rate: float  
 
-class ValDetail(CustormBaseModel):
+class ValDetail(CustomBaseModel):
     pair: str = ''
     indicators: List[ValIndicator] = []

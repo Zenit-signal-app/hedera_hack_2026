@@ -1,8 +1,8 @@
 from typing import Optional, Dict, Any
-from app.schemas.my_base_model import CustormBaseModel
+from app.schemas.my_base_model import CustomBaseModel
 
 
-class SignalTool(CustormBaseModel):
+class SignalTool(CustomBaseModel):
     id: int = 0
     code: str = ''
     name: str = ''

@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Depends, HTTPException, status
 import uvicorn, secrets, os
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +10,17 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from app.middleware import CacheRequestMiddleware
 from app.core.config import settings
+from app.services.binance_websocket import get_binance_manager
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events."""
+    manager = get_binance_manager()
+    await manager.start()
+    yield
+    await manager.shutdown()
+
 
 # Define the FastAPI application instance
 app = FastAPI(
@@ -15,7 +28,18 @@ app = FastAPI(
     version=settings.VERSION,
     docs_url=None,
     redoc_url=None,
-    openapi_url = None,
+    openapi_url=None,
+    lifespan=lifespan,
+    openapi_tags=[
+        {
+            "name": "WebSocket",
+            "description": (
+                "Real-time OHLCV price stream. Connect to `/ohlcv` to receive one big message every time: "
+                "a full snapshot of all token data. Sent on connect and after each update cycle (~60s). "
+                "No client messages required."
+            ),
+        },
+    ],
 )
 
 # cache middleware (only if Redis is configured)
@@ -68,8 +92,10 @@ async def openapi(username: str = Depends(doc_auth)):
 
 # Include your API routers
 # Organized by functionality
-from app.api import auth, favorites, prices, signal_tools, token
+from app.api import admob, auth, favorites, prices, signal_tools, token, websocket
 
+app.include_router(websocket.router, tags=websocket.group_tags)
+app.include_router(admob.router, prefix="/admob", tags=admob.group_tags)
 app.include_router(prices.router, prefix="/prices", tags=prices.group_tags)
 app.include_router(token.router, prefix="/tokens", tags=token.group_tags)
 app.include_router(signal_tools.router, prefix="/signal-tools", tags=signal_tools.group_tags)
