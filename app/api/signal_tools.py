@@ -173,7 +173,7 @@ def get_signal_tools(
 
 
 @router.get(
-    "/rsi",
+    "/rsi_heatmap",
     tags=group_tags,
     response_model=schemas.RSIResponse,
     summary="Get RSI indicator",
@@ -225,7 +225,7 @@ def get_rsi(
 
 
 @router.get(
-    "/rsi/latest",
+    "/rsi_heatmap/latest",
     tags=group_tags,
     response_model=List[schemas.RSILatestRecord],
     summary="Get latest RSI for all tokens",

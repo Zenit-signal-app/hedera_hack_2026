@@ -71,3 +71,48 @@ def get_signal_strings(indicator_dict: dict[str, Any], timeframe: str) -> list[s
             out.append(f"{prefix}PSAR turn to {type_str}")
 
     return out
+
+
+def get_signals(indicator_dict: dict[str, Any], timeframe: str) -> list[tuple[str, str]]:
+    """
+    Like get_signal_strings, but returns stable (signal_id, message) tuples.
+
+    signal_id is designed for deduping notifications; it intentionally ignores the
+    precise numeric indicator values so "same candle, slightly different RSI" does
+    not produce a new notification.
+    """
+    out: list[tuple[str, str]] = []
+    prefix = f"{timeframe}: "
+
+    # RSI
+    rsi7 = _get(indicator_dict.get("rsi7"))
+    rsi14 = _get(indicator_dict.get("rsi14"))
+    if rsi7 is not None:
+        if rsi7 < RSI_OVERSOLD:
+            out.append((f"{timeframe}:rsi7:oversold", f"{prefix}RSI7 {rsi7:.2f} (oversold)"))
+        elif rsi7 > RSI_OVERBOUGHT:
+            out.append((f"{timeframe}:rsi7:overbought", f"{prefix}RSI7 {rsi7:.2f} (overbought)"))
+    if rsi14 is not None:
+        if rsi14 < RSI_OVERSOLD:
+            out.append((f"{timeframe}:rsi14:oversold", f"{prefix}RSI14 {rsi14:.2f} (oversold)"))
+        elif rsi14 > RSI_OVERBOUGHT:
+            out.append((f"{timeframe}:rsi14:overbought", f"{prefix}RSI14 {rsi14:.2f} (overbought)"))
+
+    # ADX
+    adx = _get(indicator_dict.get("adx"))
+    if adx is not None and adx >= ADX_STRONG_TREND:
+        out.append((f"{timeframe}:adx:strong", f"{prefix}ADX {adx:.2f} (strong trend)"))
+
+    # PSAR turn
+    psar_turn = indicator_dict.get("psar_turn")
+    if psar_turn == 1:
+        psar = _get(indicator_dict.get("psar"))
+        psar_type = indicator_dict.get("psar_type")
+        type_str = str(psar_type).strip() if psar_type is not None else "UP"
+        signal_id = f"{timeframe}:psar:turn:{type_str}"
+        if psar is not None:
+            out.append((signal_id, f"{prefix}PSAR turn to {type_str} at {psar:.2f}"))
+        else:
+            out.append((signal_id, f"{prefix}PSAR turn to {type_str}"))
+
+    return out
