@@ -14,6 +14,7 @@ import json
 import logging
 import time
 import uuid
+from collections import deque
 from typing import Final
 
 import websockets
@@ -22,12 +23,19 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.db.session import SessionLocal, get_tables
+from app.services import candle_engine, firebase_fcm, signal_detection
 
 LOGGER = logging.getLogger(__name__)
 
 BINANCE_ENDPOINT: Final[str] = "wss://ws-api.binance.com:443/ws-api/v3"
 KLINES_LIMIT: Final[int] = 1
 RECONNECT_DELAY_SECONDS: Final[int] = 5
+
+# Candle buffer sizes per plan
+MAX_1M_CANDLES: Final[int] = 1440
+MAX_HIGHER_TF_CANDLES: Final[int] = 250
+HIGHER_TIMEFRAMES: Final[tuple[str, ...]] = ("5m", "30m", "1h", "4h", "1d")
+ALL_TIMEFRAMES: Final[tuple[str, ...]] = ("1m",) + HIGHER_TIMEFRAMES
 
 # Binance kline array indices per https://developers.binance.com/docs/binance-spot-api-docs/websocket-api/market-data-requests#klines
 KLINE_OPEN_TIME = 0
@@ -113,6 +121,10 @@ class BinanceWebSocketManager:
         self._interval = getattr(settings, "BINANCE_WS_INTERVAL", "1m") or "1m"
         self._poll_interval = getattr(settings, "BINANCE_WS_POLL_INTERVAL_SECONDS", 60) or 60
         self._symbol_refresh_minutes = getattr(settings, "BINANCE_WS_SYMBOL_REFRESH_MINUTES", 60) or 60
+        # Per-symbol, per-timeframe candle buffers and indicators (candle_engine types)
+        self._candles: dict[str, dict[str, deque]] = {}
+        self._indicators: dict[str, dict[str, dict[int, dict]]] = {}
+        self._indicator_state: dict[str, dict[str, candle_engine.IndicatorState]] = {}
 
     def register_client(self, websocket: WebSocket) -> None:
         """Register a frontend client. Caller should send snapshot after."""
@@ -122,9 +134,129 @@ class BinanceWebSocketManager:
         """Remove a frontend client on disconnect."""
         self._clients.discard(websocket)
 
+    def _ensure_symbol_buffers(self, symbol: str) -> None:
+        """Initialize candle deques and indicator structures for a symbol if missing."""
+        if symbol in self._candles:
+            return
+        self._candles[symbol] = {
+            "1m": deque(maxlen=MAX_1M_CANDLES),
+            **{tf: deque(maxlen=MAX_HIGHER_TF_CANDLES) for tf in HIGHER_TIMEFRAMES},
+        }
+        self._indicators[symbol] = {tf: {} for tf in ALL_TIMEFRAMES}
+        self._indicator_state[symbol] = {
+            tf: candle_engine.IndicatorState() for tf in ALL_TIMEFRAMES
+        }
+
+    def _step_and_store_indicators(
+        self,
+        symbol: str,
+        tf: str,
+        candle: candle_engine.Candle,
+        prev_candle: candle_engine.Candle | None,
+        candle_count: int,
+    ) -> None:
+        """Run one indicator step for a candle and store result; trim indicator dict size."""
+        state = self._indicator_state[symbol][tf]
+        new_state, ind = candle_engine.step_indicators(state, candle, prev_candle, candle_count)
+        self._indicator_state[symbol][tf] = new_state
+        self._indicators[symbol][tf][candle.open_time] = ind
+        max_len = MAX_1M_CANDLES if tf == "1m" else MAX_HIGHER_TF_CANDLES
+        while len(self._indicators[symbol][tf]) > max_len:
+            oldest = min(self._indicators[symbol][tf].keys())
+            del self._indicators[symbol][tf][oldest]
+
+    def _ingest_1m_and_update(self, symbol: str, kline_dict: dict) -> None:
+        """Ingest one 1m kline, update 1m buffer, aggregate higher TFs, and step indicators."""
+        self._ensure_symbol_buffers(symbol)
+        candle_1m = candle_engine.candle_from_binance_kline(kline_dict)
+        dq_1m = self._candles[symbol]["1m"]
+        if dq_1m and dq_1m[-1].open_time == candle_1m.open_time:
+            dq_1m.pop()
+        dq_1m.append(candle_1m)
+
+        prev_1m = dq_1m[-2] if len(dq_1m) >= 2 else None
+        self._step_and_store_indicators(symbol, "1m", candle_1m, prev_1m, len(dq_1m))
+
+        for tf in HIGHER_TIMEFRAMES:
+            bucket = candle_engine.bucket_open_time(candle_1m.open_time, tf)
+            in_bucket = [
+                c for c in dq_1m
+                if candle_engine.bucket_open_time(c.open_time, tf) == bucket
+            ]
+            agg = candle_engine.aggregate_candles(in_bucket, bucket)
+            if agg is None:
+                continue
+            dq_tf = self._candles[symbol][tf]
+            found = False
+            for i in range(len(dq_tf)):
+                if dq_tf[i].open_time == bucket:
+                    dq_tf[i] = agg
+                    found = True
+                    break
+            if not found:
+                dq_tf.append(agg)
+
+            idx = next(
+                (i for i in range(len(dq_tf)) if dq_tf[i].open_time == bucket),
+                None,
+            )
+            prev_tf = dq_tf[idx - 1] if idx is not None and idx >= 1 else None
+            self._step_and_store_indicators(symbol, tf, agg, prev_tf, len(dq_tf))
+
+    def _check_signals_and_notify(self) -> None:
+        """
+        After all symbols updated: for each symbol with any RSI/ADX/PSAR signal,
+        send one FCM notification to the signals topic (notification + data for all app states).
+        """
+        topic = getattr(settings, "FCM_TOPIC_SIGNALS", None) or "signals"
+        for symbol in list(self._candles.keys()):
+            if symbol not in self._indicators:
+                continue
+            signals: list[str] = []
+            for tf in HIGHER_TIMEFRAMES:
+                dq = self._candles[symbol].get(tf)
+                ind_dict = self._indicators[symbol].get(tf, {})
+                if not dq or not ind_dict:
+                    continue
+                latest_open_time = dq[-1].open_time
+                if latest_open_time not in ind_dict:
+                    continue
+                ind = ind_dict[latest_open_time]
+                signals.extend(signal_detection.get_signal_strings(ind, tf))
+            if not signals:
+                continue
+            title = f"{symbol}: {len(signals)} signal(s)"
+            body = "\n".join(signals)
+            data = {"symbol": symbol, "signals": body}
+            try:
+                firebase_fcm.send_to_topic(topic, title=title, body=body, data=data)
+            except Exception as e:
+                LOGGER.exception("FCM signal notification failed for %s: %s", symbol, e)
+
     def get_snapshot(self) -> dict:
-        """Return full cache as snapshot payload for new clients."""
-        return {"type": "snapshot", "data": dict(self._cache)}
+        """Return full cache as snapshot payload (all-in-one: timestamp + candles + indicators per symbol; symbol is the key)."""
+        payload_data: dict = {}
+        for symbol, entry in self._cache.items():
+            out: dict = {"timestamp": entry["timestamp"]}
+            payload_data[symbol] = out
+            if symbol not in self._candles:
+                continue
+            candles_for_symbol: dict[str, dict] = {}
+            indicators_for_symbol: dict[str, dict] = {}
+            for tf in ALL_TIMEFRAMES:
+                dq = self._candles[symbol].get(tf)
+                if dq:
+                    candles_for_symbol[tf] = dq[-1].to_dict()
+                ind_dict = self._indicators[symbol].get(tf, {})
+                if dq and ind_dict:
+                    latest_open_time = dq[-1].open_time
+                    if latest_open_time in ind_dict:
+                        indicators_for_symbol[tf] = dict(ind_dict[latest_open_time])
+            if candles_for_symbol:
+                out["candles"] = candles_for_symbol
+            if indicators_for_symbol:
+                out["indicators"] = indicators_for_symbol
+        return {"type": "snapshot", "data": payload_data}
 
     async def start(self) -> None:
         """Start the 24/7 all-tokens loop. Call from lifespan startup."""
@@ -187,9 +319,12 @@ class BinanceWebSocketManager:
                                     "data": data,
                                     "timestamp": time.time(),
                                 }
+                                if data and self._interval == "1m":
+                                    self._ingest_1m_and_update(symbol, data[0])
                             else:
                                 LOGGER.debug("Binance klines skip %s: %s", symbol, msg.get("error", msg))
 
+                        self._check_signals_and_notify()
                         # After full cycle: send one big message (full snapshot) to all clients
                         payload = self.get_snapshot()
                         await self._broadcast(payload)
@@ -227,6 +362,9 @@ class BinanceWebSocketManager:
                 pass
         self._task = None
         self._cache.clear()
+        self._candles.clear()
+        self._indicators.clear()
+        self._indicator_state.clear()
         self._clients.clear()
         LOGGER.info("BinanceWebSocketManager shutdown complete")
 

@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     FIREBASE_PROJECT_ID: str | None = None
     FIREBASE_SERVICE_ACCOUNT_PATH: str | None = None
     FIREBASE_SERVICE_ACCOUNT_JSON: str | None = None
+    FCM_TOPIC_SIGNALS: str = "signals"
 
     # Settings for session login
     GOOGLE_CLIENT_ID: str | None
