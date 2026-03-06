@@ -432,7 +432,8 @@ class BinanceWebSocketManager:
                             else:
                                 LOGGER.debug("Binance klines skip %s: %s", symbol, msg.get("error", msg))
 
-                        self._check_signals_and_notify()
+                        # Temporarily disabled: push signal notifications to FCM
+                        # self._check_signals_and_notify()
                         # After full cycle: send one big message (full snapshot) to all clients
                         payload = self.get_snapshot()
                         await self._broadcast(payload)
