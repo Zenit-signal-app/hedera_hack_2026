@@ -65,11 +65,16 @@ WEBSOCKET_INSTRUCTIONS: dict[str, Any] = {
     "/ws",
     tags=group_tags,
     summary="WebSocket OHLCV stream (instructions)",
-    description=WEBSOCKET_INSTRUCTIONS["behavior"],
+    description=(
+        "**Input:** None. Documentation-only HTTP endpoint. "
+        "**Output:** JSON with `endpoint`, `connection` (url, url_secure, description, example_urls), "
+        "`behavior` (on connect: full snapshot; server pushes new snapshot each cycle; no client messages required), "
+        "`message_format` (type: snapshot, data keyed by symbol with timestamp, candles, indicators), and `example_message`. "
+        "To stream data, connect via WebSocket to the same path (e.g. ws://host/ws or wss://host/ws)."
+    ),
     response_model=None,
 )
 def websocket_ohlcv_docs() -> dict[str, Any]:
-    """Documentation-only endpoint: returns connection URL, message format, and example. Use WebSocket protocol on the same path to connect."""
     return WEBSOCKET_INSTRUCTIONS
 
 

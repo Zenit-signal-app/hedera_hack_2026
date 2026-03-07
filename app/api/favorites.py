@@ -70,7 +70,11 @@ def _map_row_to_favorite(row: Any, added_at: Optional[datetime]) -> schemas.Favo
     "/",
     response_model=List[schemas.FavoriteToken],
     summary="List favorite tokens",
-    description="Return the authenticated user's favorite tokens (requires `Authorization: Bearer <access_token>`).",
+    description=(
+        "**Input:** None (query/body). Requires `Authorization: Bearer <access_token>` (user extracted from JWT). "
+        "**Output:** List of `FavoriteToken`: token_id, symbol, name, chain, contract_address, is_active, added_at. "
+        "Returns the authenticated user's favorite tokens ordered by symbol."
+    ),
 )
 def list_favorites(
     user_id: str = Depends(_extract_user_id),
@@ -121,8 +125,10 @@ def _load_tokens_for_symbols(db: Session, symbols: List[str]) -> List[Any]:
     status_code=status.HTTP_201_CREATED,
     summary="Add favorite tokens",
     description=(
-        "Add one or more tokens to the authenticated user's favorites by symbol. "
-        "Returns the created favorites with `added_at` timestamps."
+        "**Input:** Body `FavoriteBulkCreateRequest`: `symbols` (list of strings, at least one; case-insensitive). "
+        "Requires `Authorization: Bearer <access_token>`. "
+        "**Output:** List of `FavoriteToken` (token_id, symbol, name, chain, contract_address, is_active, added_at) for each added token. "
+        "404 if any symbol is not found; 409 if any symbol is already favorited."
     ),
 )
 def add_favorite(
@@ -194,8 +200,10 @@ def add_favorite(
     response_model=schemas.FavoriteBulkDeleteResponse,
     summary="Remove favorite tokens",
     description=(
-        "Remove one or more tokens from the authenticated user's favorites by symbol. "
-        "Returns which symbols were deleted vs missing."
+        "**Input:** Body `FavoriteBulkDeleteRequest`: `symbols` (list of strings, at least one). "
+        "Requires `Authorization: Bearer <access_token>`. "
+        "**Output:** `FavoriteBulkDeleteResponse`: `deleted_symbols` (list of symbols that were removed), "
+        "`missing_symbols` (list of requested symbols that were not in favorites or not found)."
     ),
 )
 def remove_favorite(

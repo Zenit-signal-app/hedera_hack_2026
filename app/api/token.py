@@ -118,8 +118,9 @@ def _sanitize_symbol(symbol: str) -> str:
     response_model=List[schemas.Token],
     summary="List tokens",
     description=(
-        "List tokens with their latest cached price, optional symbol search (`key`), and pagination. "
-        "Also enriches results with 24h metrics from Binance when available."
+        "**Input:** Query: `key` (optional search term for symbol), `offset` (≥0, default 0), `limit` (1–500, default 100). "
+        "**Output:** List of `Token`: symbol, coin, price, time, time_readable, image, priceChange, priceChangePercent, volume, quoteVolume. "
+        "Latest cached price from DB; 24h metrics from Binance when available."
     ),
 )
 def list_all_tokens(
@@ -128,12 +129,6 @@ def list_all_tokens(
     limit: int = 100,
     db: Session = Depends(get_db),
 ) -> List[schemas.Token]:
-    """List or search available tokens
-    
-    - key: str: optional search term for symbols
-    - offset: int: number of records to skip, default 0, min 0
-    - limit: int: number of records to return, default 100, min 1, max 500
-    """
     offset = max(0, offset)
     limit = max(1, min(500, limit))
     
@@ -202,10 +197,13 @@ def list_all_tokens(
     tags=group_tags,
     response_model=schemas.Token,
     summary="Get token by symbol",
-    description="Return the latest cached price and 24h metrics (if available) for a single token symbol.",
+    description=(
+        "**Input:** Path `symbol` (required, e.g. BTCUSDT). "
+        "**Output:** Single `Token`: symbol, coin, price, time, time_readable, image, priceChange, priceChangePercent, volume, quoteVolume. "
+        "404 if symbol not found."
+    ),
 )
 def get_token(symbol: str, db: Session = Depends(get_db)) -> schemas.Token:
-    """Fetch the latest price for a single token symbol."""
     symbol_clean = _sanitize_symbol(symbol)
     table_5m = tables["p5m"]
     query = f"""

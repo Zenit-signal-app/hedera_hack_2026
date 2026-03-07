@@ -150,8 +150,11 @@ def _upsert_user(
     status_code=status.HTTP_200_OK,
     summary="Exchange Firebase ID token for backend tokens",
     description=(
-        "Validate the Firebase ID token issued by Google/Apple, upsert the corresponding "
-        "`production.users` record, and issue backend access/refresh tokens."
+        "**Input:** Body with `token` (string, required) — Firebase ID token from Google/Apple sign-in. "
+        "**Output:** `FirebaseLoginResponse`: `tokens` (access_token, refresh_token, token_type, expires_in, issued_at) "
+        "and `user` (id, firebase_uid, email, display_name, photo_url, provider, role). "
+        "Validates the token via Firebase Admin, upserts `production.users`, and issues backend access + refresh tokens. "
+        "400 if token is empty or missing email; 401 if token is invalid."
     ),
 )
 def firebase_login(body: FirebaseLoginRequest, db: Session = Depends(get_db)) -> FirebaseLoginResponse:
@@ -197,7 +200,10 @@ def firebase_login(body: FirebaseLoginRequest, db: Session = Depends(get_db)) ->
     status_code=status.HTTP_200_OK,
     summary="Rotate refresh token for existing session",
     description=(
-        "Accept the existing refresh token, revoke it, and return a new access + refresh pair."
+        "**Input:** Body with `refresh_token` (string, required). "
+        "**Output:** `RefreshResponse`: `tokens` (access_token, refresh_token, token_type, expires_in, issued_at). "
+        "Revokes the supplied refresh token and issues a new access + refresh pair. "
+        "401 if token is invalid, revoked, or expired."
     ),
 )
 def refresh_tokens(body: RefreshRequest, db: Session = Depends(get_db)) -> RefreshResponse:
@@ -265,7 +271,11 @@ def refresh_tokens(body: RefreshRequest, db: Session = Depends(get_db)) -> Refre
     response_model=LogoutResponse,
     status_code=status.HTTP_200_OK,
     summary="Revoke refresh token",
-    description="Mark the supplied refresh token as revoked so it can no longer be used.",
+    description=(
+        "**Input:** Body with `refresh_token` (string, required). "
+        "**Output:** `LogoutResponse`: `revoked` (boolean) — true if the token was found and revoked. "
+        "Marks the refresh token as revoked so it cannot be used for /refresh."
+    ),
 )
 def logout(body: LogoutRequest, db: Session = Depends(get_db)) -> LogoutResponse:
     refresh_token = body.refresh_token.strip()

@@ -21,7 +21,11 @@ def _config_path() -> Path:
 @router.get(
     "/config",
     summary="Get Admob config",
-    description="Return admob IDs",
+    description=(
+        "Returns the AdMob configuration as a JSON object (e.g. app IDs, ad unit IDs). "
+        "No request parameters or body. Response: key-value map from admob-config.json. "
+        "404 if config file is missing; 500 if JSON is invalid."
+    ),
 )
 def get_admob_config() -> Dict[str, Any]:
     path = _config_path()

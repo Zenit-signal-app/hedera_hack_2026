@@ -132,17 +132,13 @@ def _compute_all_indicators(candles: List[Candle]) -> List[Dict[str, Any]]:
             response_model=List[schemas.SignalTool],
             summary="List signal tools",
             description=(
-                "Return all configured signal tools (indicators and confluences) "
-                "ordered by `type`, then `display_order`."
+                "**Input:** None (no query or body). "
+                "**Output:** List of `SignalTool`: id, code, name, type, description, icon_path, display_order, metadata, created_at, updated_at. "
+                "Ordered by type then display_order; includes both indicators and confluences from production.signal_tools."
             ))
 def get_signal_tools(
     db: Session = Depends(get_db)
 ) -> List[schemas.SignalTool]:
-    """Get all signal tools (both indicators and confluences)
-    
-    Returns a list of all signal tools (indicators and confluences),
-    ordered by type, then display_order.
-    """
     query = f"""
         SELECT 
             id,

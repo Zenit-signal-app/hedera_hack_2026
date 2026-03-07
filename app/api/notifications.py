@@ -30,8 +30,9 @@ def _sql_esc(value: str) -> str:
     response_model=List[SignalNotification],
     summary="List signal notifications",
     description=(
-        "Return saved signals (notifications) from the database, newest first. "
-        "Optional filter by symbol; supports limit and offset for pagination."
+        "**Input:** Query params: `symbol` (optional, e.g. BTCUSDT), `limit` (1–200, default 50), `offset` (≥0, default 0). "
+        "**Output:** List of `SignalNotification`: id, symbol, timeframe, signal (JSONB), open_time, created_at; newest first. "
+        "Returns saved signals from the signals table with optional symbol filter and pagination."
     ),
 )
 def list_notifications(

@@ -116,3 +116,22 @@ def get_signals(indicator_dict: dict[str, Any], timeframe: str) -> list[tuple[st
             out.append((signal_id, f"{prefix}PSAR turn to {type_str}"))
 
     return out
+
+
+def get_signal_payload(signal_id: str, indicator_dict: dict[str, Any]) -> dict[str, Any]:
+    """
+    Return a dict with only the indicator key(s) that triggered this signal.
+    Used when persisting a signal to the DB so we store only the relevant indicators, not all.
+    """
+    if not signal_id or not indicator_dict:
+        return {}
+    # signal_id format: "30m:rsi7:oversold", "30m:rsi14:overbought", "30m:adx:strong", "30m:psar:turn:UP"
+    if ":rsi7:" in signal_id:
+        return {k: indicator_dict[k] for k in ("rsi7",) if k in indicator_dict}
+    if ":rsi14:" in signal_id:
+        return {k: indicator_dict[k] for k in ("rsi14",) if k in indicator_dict}
+    if ":adx:" in signal_id:
+        return {k: indicator_dict[k] for k in ("adx",) if k in indicator_dict}
+    if ":psar:turn:" in signal_id:
+        return {k: indicator_dict[k] for k in ("psar", "psar_turn", "psar_type") if k in indicator_dict}
+    return {}

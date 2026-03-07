@@ -373,11 +373,13 @@ class BinanceWebSocketManager:
             LOGGER.exception("Notification workflow: failed to create DB session: %s", e)
             return
         try:
-            for symbol, tf, open_time, _signal_id, ind_dict in batch:
+            for symbol, tf, open_time, signal_id, ind_dict in batch:
                 row_id = str(uuid.uuid4())
                 sym_esc = symbol.replace("'", "''")
                 tf_esc = tf.replace("'", "''")
-                json_str = json.dumps(ind_dict)
+                # Only persist the indicator(s) that triggered this signal, not all indicators
+                signal_payload = signal_detection.get_signal_payload(signal_id, ind_dict)
+                json_str = json.dumps(signal_payload)
                 json_esc = json_str.replace("'", "''")
                 stmt = f"INSERT INTO {table} (id, symbol, timeframe, signal, open_time, created_at) VALUES ('{row_id}', '{sym_esc}', '{tf_esc}', '{json_esc}'::jsonb, {int(open_time)}, '{created_iso}')"
                 db.execute(text(stmt))

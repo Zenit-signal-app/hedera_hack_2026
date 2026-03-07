@@ -24,9 +24,9 @@ tables = get_tables(settings.SCHEMA_1)
             response_model=List[schemas.PriceHistory],
             summary="Get token price history",
             description=(
-                "Return OHLCV candles for a token symbol from the configured price tables. "
-                "Supports `timeframe` (5m, 30m, 1h, 4h, 1d), optional unix time bounds, "
-                "and a clamped `limit` (1..1000)."
+                "**Input:** Query: `symbol` (required), `timeframe` (5m, 30m, 1h, 4h, 1d; default 5m), "
+                "`limit` (1–1000, default 100), `from_time` (optional Unix seconds), `to_time` (optional Unix seconds). "
+                "**Output:** List of `PriceHistory`: symbol, time, time_readable, open, high, low, close, volume; ordered by time descending."
             ))
 def get_price_history(
     symbol: str,
