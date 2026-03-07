@@ -132,8 +132,18 @@ def _compute_all_indicators(candles: List[Candle]) -> List[Dict[str, Any]]:
             response_model=List[schemas.SignalTool],
             summary="List signal tools",
             description=(
-                "**Input:** None (no query or body). "
-                "**Output:** List of `SignalTool`: id, code, name, type, description, icon_path, display_order, metadata, created_at, updated_at. "
+                "**Input:** None (no query or body).\n\n"
+                "**Output:** List of `SignalTool`, each with:\n"
+                "- **id**: Tool ID.\n"
+                "- **code**: Tool code identifier.\n"
+                "- **name**: Display name.\n"
+                "- **type**: Type (e.g. indicator, confluence).\n"
+                "- **description**: Tool description text.\n"
+                "- **icon_path**: Path to icon asset.\n"
+                "- **display_order**: Order for UI display.\n"
+                "- **metadata**: Optional JSON metadata.\n"
+                "- **created_at**: When created (ISO timestamp).\n"
+                "- **updated_at**: When last updated (ISO timestamp).\n"
                 "Ordered by type then display_order; includes both indicators and confluences from production.signal_tools."
             ))
 def get_signal_tools(

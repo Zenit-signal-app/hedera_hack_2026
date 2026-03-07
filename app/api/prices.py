@@ -25,8 +25,17 @@ tables = get_tables(settings.SCHEMA_1)
             summary="Get token price history",
             description=(
                 "**Input:** Query: `symbol` (required), `timeframe` (5m, 30m, 1h, 4h, 1d; default 5m), "
-                "`limit` (1–1000, default 100), `from_time` (optional Unix seconds), `to_time` (optional Unix seconds). "
-                "**Output:** List of `PriceHistory`: symbol, time, time_readable, open, high, low, close, volume; ordered by time descending."
+                "`limit` (1–1000, default 100), `from_time` (optional Unix seconds), `to_time` (optional Unix seconds).\n\n"
+                "**Output:** List of `PriceHistory`, each with:\n"
+                "- **symbol**: Trading pair (e.g. BTCUSDT).\n"
+                "- **time**: Candle open time (Unix seconds).\n"
+                "- **time_readable**: Human-readable time.\n"
+                "- **open**: Open price for the candle.\n"
+                "- **high**: High price for the candle.\n"
+                "- **low**: Low price for the candle.\n"
+                "- **close**: Close price for the candle.\n"
+                "- **volume**: Volume for the candle.\n"
+                "Ordered by time descending."
             ))
 def get_price_history(
     symbol: str,

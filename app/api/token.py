@@ -118,9 +118,19 @@ def _sanitize_symbol(symbol: str) -> str:
     response_model=List[schemas.Token],
     summary="List tokens",
     description=(
-        "**Input:** Query: `key` (optional search term for symbol), `offset` (≥0, default 0), `limit` (1–500, default 100). "
-        "**Output:** List of `Token`: symbol, coin, price, time, time_readable, image, priceChange, priceChangePercent, volume, quoteVolume. "
-        "Latest cached price from DB; 24h metrics from Binance when available."
+        "**Input:** Query: `key` (optional search term for symbol), `offset` (≥0, default 0), `limit` (1–500, default 100).\n\n"
+        "**Output:** List of `Token`, each with:\n"
+        "- **symbol**: Trading pair (e.g. BTCUSDT).\n"
+        "- **coin**: Base coin (e.g. BTC).\n"
+        "- **price**: Latest cached price.\n"
+        "- **time**: Unix timestamp of the price.\n"
+        "- **time_readable**: Human-readable time (e.g. YYYY-MM-DD HH:MM:SS UTC).\n"
+        "- **image**: Coin image URL.\n"
+        "- **priceChange**: 24h price change (from Binance when available).\n"
+        "- **priceChangePercent**: 24h price change percentage.\n"
+        "- **volume**: 24h volume in base asset.\n"
+        "- **quoteVolume**: 24h volume in quote asset (e.g. USDT).\n"
+        "Latest price from DB; 24h metrics from Binance when available."
     ),
 )
 def list_all_tokens(
@@ -198,8 +208,18 @@ def list_all_tokens(
     response_model=schemas.Token,
     summary="Get token by symbol",
     description=(
-        "**Input:** Path `symbol` (required, e.g. BTCUSDT). "
-        "**Output:** Single `Token`: symbol, coin, price, time, time_readable, image, priceChange, priceChangePercent, volume, quoteVolume. "
+        "**Input:** Path `symbol` (required, e.g. BTCUSDT).\n\n"
+        "**Output:** Single `Token` with:\n"
+        "- **symbol**: Trading pair (e.g. BTCUSDT).\n"
+        "- **coin**: Base coin (e.g. BTC).\n"
+        "- **price**: Latest cached price.\n"
+        "- **time**: Unix timestamp of the price.\n"
+        "- **time_readable**: Human-readable time (e.g. YYYY-MM-DD HH:MM:SS UTC).\n"
+        "- **image**: Coin image URL.\n"
+        "- **priceChange**: 24h price change (from Binance when available).\n"
+        "- **priceChangePercent**: 24h price change percentage.\n"
+        "- **volume**: 24h volume in base asset.\n"
+        "- **quoteVolume**: 24h volume in quote asset (e.g. USDT).\n"
         "404 if symbol not found."
     ),
 )

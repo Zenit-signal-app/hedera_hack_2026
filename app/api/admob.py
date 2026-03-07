@@ -23,7 +23,8 @@ def _config_path() -> Path:
     summary="Get Admob config",
     description=(
         "Returns the AdMob configuration as a JSON object (e.g. app IDs, ad unit IDs). "
-        "No request parameters or body. Response: key-value map from admob-config.json. "
+        "No request parameters or body.\n\n"
+        "**Response:** Key-value map from admob-config.json (e.g. app IDs, ad unit IDs).\n\n"
         "404 if config file is missing; 500 if JSON is invalid."
     ),
 )

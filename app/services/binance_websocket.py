@@ -314,8 +314,8 @@ class BinanceWebSocketManager:
         in one batch (same created_at), send one FCM summary, update cache.
         """
         try:
-            # 1. Collect all new signals (symbol, timeframe, open_time, signal_id, ind_dict)
-            batch: list[tuple[str, str, int, str, dict[str, Any]]] = []
+            # 1. Collect all new signals (symbol, timeframe, open_time, signal_id, ind_dict, message)
+            batch: list[tuple[str, str, int, str, dict[str, Any], str]] = []
             for symbol in list(self._candles.keys()):
                 if symbol not in self._indicators:
                     continue
@@ -325,14 +325,14 @@ class BinanceWebSocketManager:
                         continue
                     latest_open_time = max(ind_dict.keys())
                     ind = ind_dict[latest_open_time]
-                    for signal_id, _msg in signal_detection.get_signals(ind, tf):
+                    for signal_id, msg in signal_detection.get_signals(ind, tf):
                         if self._should_send_signal(
                             symbol=symbol,
                             tf=tf,
                             open_time=latest_open_time,
                             signal_id=signal_id,
                         ):
-                            batch.append((symbol, tf, latest_open_time, signal_id, dict(ind)))
+                            batch.append((symbol, tf, latest_open_time, signal_id, dict(ind), msg))
         except Exception as e:
             LOGGER.exception("Notification workflow: error collecting signals: %s", e)
             return
@@ -359,30 +359,50 @@ class BinanceWebSocketManager:
             Y,
         )
 
-        # 3. Save all signals in one transaction with same created_at
+        # 3. Save: ensure each message exists in notifications, then save signals with notification_id (same created_at per batch)
         batch_created_at = datetime.now(timezone.utc)
         created_iso = batch_created_at.isoformat()
         try:
             tables = get_tables(settings.SCHEMA_1)
-            table = tables["signals"]
+            tbl_notifications = tables["notifications"]
+            tbl_signals = tables["signals"]
         except Exception as e:
-            LOGGER.exception("Notification workflow: failed to get signals table config: %s", e)
+            LOGGER.exception("Notification workflow: failed to get table config: %s", e)
             return
         try:
             db = SessionLocal()
         except Exception as e:
             LOGGER.exception("Notification workflow: failed to create DB session: %s", e)
             return
+        message_to_id: dict[str, int] = {}
         try:
-            for symbol, tf, open_time, signal_id, ind_dict in batch:
+            for symbol, tf, open_time, signal_id, ind_dict, msg in batch:
+                msg_trimmed = (msg or "")[:256]
+                msg_esc = msg_trimmed.replace("'", "''")
+                if msg_trimmed not in message_to_id:
+                    # Get or insert notification row for this message
+                    row_existing = db.execute(
+                        text(f"SELECT id FROM {tbl_notifications} WHERE message = '{msg_esc}'")
+                    ).fetchone()
+                    if row_existing:
+                        message_to_id[msg_trimmed] = int(row_existing.id)
+                    else:
+                        row_new = db.execute(
+                            text(f"INSERT INTO {tbl_notifications} (message) VALUES ('{msg_esc}') RETURNING id")
+                        ).fetchone()
+                        if row_new:
+                            message_to_id[msg_trimmed] = int(row_new.id)
+                        else:
+                            LOGGER.error("Notification workflow: failed to get notification id for message (len=%s)", len(msg_trimmed))
+                            continue
+                notif_id = message_to_id[msg_trimmed]
                 row_id = str(uuid.uuid4())
                 sym_esc = symbol.replace("'", "''")
                 tf_esc = tf.replace("'", "''")
-                # Only persist the indicator(s) that triggered this signal, not all indicators
                 signal_payload = signal_detection.get_signal_payload(signal_id, ind_dict)
                 json_str = json.dumps(signal_payload)
                 json_esc = json_str.replace("'", "''")
-                stmt = f"INSERT INTO {table} (id, symbol, timeframe, signal, open_time, created_at) VALUES ('{row_id}', '{sym_esc}', '{tf_esc}', '{json_esc}'::jsonb, {int(open_time)}, '{created_iso}')"
+                stmt = f"INSERT INTO {tbl_signals} (id, symbol, timeframe, notification_id, signal, open_time, created_at) VALUES ('{row_id}', '{sym_esc}', '{tf_esc}', {notif_id}, '{json_esc}'::jsonb, {int(open_time)}, '{created_iso}')"
                 db.execute(text(stmt))
             db.commit()
             LOGGER.info("Notification workflow: saved %d signal(s) to DB (batch created_at=%s)", X, created_iso)

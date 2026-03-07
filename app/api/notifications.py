@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import List, Optional
+from typing import List
 
-from fastapi import Depends, HTTPException, Query, status
+from fastapi import Body, Depends, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.router_decorated import APIRouter
 from app.db.session import get_db, get_tables
-from app.schemas.notifications import SignalNotification
+from app.schemas.notifications import ListNotificationsBody, SignalNotification
 
 LOGGER = logging.getLogger(__name__)
 
@@ -30,42 +30,62 @@ def _sql_esc(value: str) -> str:
     response_model=List[SignalNotification],
     summary="List signal notifications",
     description=(
-        "**Input:** Query params: `symbol` (optional, e.g. BTCUSDT), `limit` (1–200, default 50), `offset` (≥0, default 0). "
-        "**Output:** List of `SignalNotification`: id, symbol, timeframe, signal (JSONB), open_time, created_at; newest first. "
-        "Returns saved signals from the signals table with optional symbol filter and pagination."
+        "Returns all saved signals (joined with their notification message), newest first.\n\n"
+        "**Body (optional):** `message` (string) – when provided, the API looks up the notification id for that exact message text, then returns only signals linked to that notification_id.\n\n"
+        "**Response:** List of `SignalNotification`, each with:\n"
+        "- **id**: UUID of the signal.\n"
+        "- **symbol**: Trading pair (e.g. BTCUSDT).\n"
+        "- **timeframe**: Candle interval (e.g. 30m, 1h).\n"
+        "- **notification_id**: Foreign key to notifications.id.\n"
+        "- **message**: Notification message text (from notifications.message).\n"
+        "- **signal**: Indicators and values as JSONB.\n"
+        "- **open_time**: Candle open time (Unix epoch seconds).\n"
+        "- **created_at**: When the signal was stored (ISO timestamp)."
     ),
 )
 def list_notifications(
-    symbol: Optional[str] = Query(None, description="Filter by symbol (e.g. BTCUSDT)."),
-    limit: int = Query(50, ge=1, le=200, description="Max number of records."),
-    offset: int = Query(0, ge=0, description="Number of records to skip."),
+    body: ListNotificationsBody | None = Body(None, description="Optional body with `message` to filter by notification message text."),
     db: Session = Depends(get_db),
 ) -> List[SignalNotification]:
     try:
         tables = get_tables(settings.SCHEMA_1)
-        table = tables["signals"]
+        tbl_signals = tables["signals"]
+        tbl_notifications = tables["notifications"]
     except Exception as e:
-        LOGGER.exception("Notifications API: failed to get signals table config: %s", e)
+        LOGGER.exception("Notifications API: failed to get table config: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Configuration error",
         ) from e
-    if symbol is not None and symbol.strip():
-        sym_esc = _sql_esc(symbol.strip().upper())
-        where = f"WHERE symbol = '{sym_esc}'"
-    else:
-        where = ""
+    conditions: List[str] = []
+    if body is not None and body.message is not None and body.message.strip():
+        msg_esc = _sql_esc(body.message.strip())
+        try:
+            notif_row = db.execute(
+                text(f"SELECT id FROM {tbl_notifications} WHERE message = '{msg_esc}'")
+            ).fetchone()
+            if notif_row:
+                conditions.append(f"s.notification_id = {int(notif_row.id)}")
+            else:
+                return []
+        except Exception as e:
+            LOGGER.exception("Notifications API: failed to look up notification by message: %s", e)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to look up notification by message",
+            ) from e
+    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     query = f"""
-        SELECT id, symbol, timeframe, signal, open_time, created_at
-        FROM {table}
+        SELECT s.id, s.symbol, s.timeframe, s.notification_id, n.message, s.signal, s.open_time, s.created_at
+        FROM {tbl_signals} s
+        JOIN {tbl_notifications} n ON n.id = s.notification_id
         {where}
-        ORDER BY created_at DESC
-        LIMIT {int(limit)} OFFSET {int(offset)}
+        ORDER BY s.created_at DESC
     """
     try:
         rows = db.execute(text(query)).fetchall()
     except Exception as e:
-        LOGGER.exception("Notifications API: failed to query signals (symbol=%s, limit=%s, offset=%s): %s", symbol, limit, offset, e)
+        LOGGER.exception("Notifications API: failed to query signals: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to load notifications",
@@ -89,6 +109,8 @@ def list_notifications(
                 id=str(row.id),
                 symbol=str(row.symbol or ""),
                 timeframe=str(row.timeframe or ""),
+                notification_id=int(row.notification_id) if row.notification_id is not None else 0,
+                message=str(row.message or ""),
                 signal=sig,
                 open_time=int(row.open_time) if row.open_time is not None else 0,
                 created_at=created_at_str,

@@ -71,9 +71,16 @@ def _map_row_to_favorite(row: Any, added_at: Optional[datetime]) -> schemas.Favo
     response_model=List[schemas.FavoriteToken],
     summary="List favorite tokens",
     description=(
-        "**Input:** None (query/body). Requires `Authorization: Bearer <access_token>` (user extracted from JWT). "
-        "**Output:** List of `FavoriteToken`: token_id, symbol, name, chain, contract_address, is_active, added_at. "
-        "Returns the authenticated user's favorite tokens ordered by symbol."
+        "**Input:** None (query/body). Requires `Authorization: Bearer <access_token>` (user extracted from JWT).\n\n"
+        "**Output:** List of `FavoriteToken`, each with:\n"
+        "- **token_id**: ID of the token in production.tokens.\n"
+        "- **symbol**: Token symbol.\n"
+        "- **name**: Token name.\n"
+        "- **chain**: Chain identifier.\n"
+        "- **contract_address**: Contract address (if applicable).\n"
+        "- **is_active**: Whether the token is active.\n"
+        "- **added_at**: When the token was added to the user's favorites.\n"
+        "Returns the authenticated user's favorites ordered by symbol."
     ),
 )
 def list_favorites(
@@ -126,8 +133,8 @@ def _load_tokens_for_symbols(db: Session, symbols: List[str]) -> List[Any]:
     summary="Add favorite tokens",
     description=(
         "**Input:** Body `FavoriteBulkCreateRequest`: `symbols` (list of strings, at least one; case-insensitive). "
-        "Requires `Authorization: Bearer <access_token>`. "
-        "**Output:** List of `FavoriteToken` (token_id, symbol, name, chain, contract_address, is_active, added_at) for each added token. "
+        "Requires `Authorization: Bearer <access_token>`.\n\n"
+        "**Output:** List of `FavoriteToken` for each added token (same fields as list: token_id, symbol, name, chain, contract_address, is_active, added_at).\n"
         "404 if any symbol is not found; 409 if any symbol is already favorited."
     ),
 )
@@ -201,9 +208,10 @@ def add_favorite(
     summary="Remove favorite tokens",
     description=(
         "**Input:** Body `FavoriteBulkDeleteRequest`: `symbols` (list of strings, at least one). "
-        "Requires `Authorization: Bearer <access_token>`. "
-        "**Output:** `FavoriteBulkDeleteResponse`: `deleted_symbols` (list of symbols that were removed), "
-        "`missing_symbols` (list of requested symbols that were not in favorites or not found)."
+        "Requires `Authorization: Bearer <access_token>`.\n\n"
+        "**Output:** `FavoriteBulkDeleteResponse` with:\n"
+        "- **deleted_symbols**: List of symbols that were removed from favorites.\n"
+        "- **missing_symbols**: List of requested symbols that were not in favorites or not found in production.tokens."
     ),
 )
 def remove_favorite(
