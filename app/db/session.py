@@ -52,4 +52,5 @@ def get_tables(schema: str = settings.SCHEMA_2) -> dict:
     'predict': schema+'coin_predictions',
     'app_quote': schema+'app_quote',
     'currency': schema+'currency',
+    'signals': schema+'signals',
     }

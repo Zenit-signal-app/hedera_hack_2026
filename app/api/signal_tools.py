@@ -4,6 +4,7 @@ from app.db.session import get_db, get_tables
 from fastapi import Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 import json
 import app.schemas.signal_tools as schemas
@@ -16,6 +17,31 @@ from app.services.candle_engine import (
 
 router = APIRouter()
 group_tags = ["Signal Tools"]
+
+# Coin image URLs from coins_data.json (same as GET /tokens)
+COINS_DATA_PATH = Path(__file__).resolve().parents[2] / "coins_data.json"
+
+
+def _load_coin_images(path: Path) -> Dict[str, str]:
+    """Load symbol -> image URL from coins_data.json. Key is coin (e.g. btc) lowercase."""
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    images: Dict[str, str] = {}
+    for item in data:
+        symbol = (item.get("symbol") or "").strip().lower()
+        image = item.get("image") or ""
+        if symbol:
+            images[symbol] = image
+    return images
+
+
+COIN_IMAGE_MAP = _load_coin_images(COINS_DATA_PATH)
 
 # Minimum candles needed for each indicator (from candle_engine warmup)
 MIN_CANDLES_RSI = 15
@@ -225,67 +251,6 @@ def get_rsi(
 
 
 @router.get(
-    "/rsi_heatmap/latest",
-    tags=group_tags,
-    response_model=List[schemas.RSILatestRecord],
-    summary="Get latest RSI for all tokens",
-    description=(
-        "Returns the latest RSI values (RSI7 and RSI14) for all tokens in a given timeframe. "
-        "Data is read from the database (SCHEMA_1, f_coin_signal_* table for the requested timeframe). "
-        "For each symbol, the record with the maximum open_time is returned.\n\n"
-        "**Request (query parameters):**\n"
-        "- **timeframe** (optional): Candle interval; one of 5m, 30m, 1h, 4h, 1d. Default: 5m.\n\n"
-        "**Response:**\n"
-        "- Array of objects, one per symbol, each containing:\n"
-        "  - **symbol**: Trading pair symbol (e.g. BTCUSDT).\n"
-        "  - **timeframe**: Candle interval used (5m, 30m, 1h, 4h, 1d).\n"
-        "  - **open_time**: Unix timestamp (seconds) of the latest candle for this symbol.\n"
-        "  - **rsi7**: RSI 7-period at the latest candle; may be null if warmup is not met.\n"
-        "  - **rsi14**: RSI 14-period at the latest candle; may be null if warmup is not met."
-    ),
-)
-def get_rsi_latest_all_tokens(
-    timeframe: str = Query("5m", description="Candle interval: 5m, 30m, 1h, 4h, or 1d. Default 5m."),
-    db: Session = Depends(get_db),
-) -> List[schemas.RSILatestRecord]:
-    """
-    Get the latest RSI record (RSI7 and RSI14) for all tokens in the given timeframe.
-    Uses a single SQL query against the appropriate f_coin_signal_* table.
-    """
-    tf = timeframe.strip().lower() or "5m"
-    table_name = _table_for_timeframe(tf)
-
-    query = f"""
-        SELECT s.symbol, s.open_time, s.rsi7, s.rsi14
-        FROM {table_name} s
-        JOIN (
-            SELECT symbol, MAX(open_time) AS open_time
-            FROM {table_name}
-            GROUP BY symbol
-        ) latest
-        ON s.symbol = latest.symbol AND s.open_time = latest.open_time
-        ORDER BY s.symbol ASC
-    """
-
-    try:
-        rows = db.execute(text(query)).fetchall()
-    except Exception as e:
-        print(f"Error querying latest RSI for all tokens: {e}")
-        raise HTTPException(status_code=500, detail="Query data error")
-
-    return [
-        schemas.RSILatestRecord(
-            symbol=row.symbol,
-            timeframe=tf,
-            open_time=row.open_time if hasattr(row, "open_time") else getattr(row, "open_time", None),
-            rsi7=getattr(row, "rsi7", None),
-            rsi14=getattr(row, "rsi14", None),
-        )
-        for row in rows
-    ]
-
-
-@router.get(
     "/adx",
     tags=group_tags,
     response_model=schemas.ADXResponse,
@@ -397,3 +362,282 @@ def get_psar(
             for o in all_ind
         ],
     )
+
+
+@router.get(
+    "/rsi_heatmap/latest",
+    tags=group_tags,
+    response_model=List[schemas.RSILatestRecord],
+    summary="Get latest RSI for all tokens",
+    description=(
+        "Returns the latest RSI values (RSI7 and RSI14) for all tokens in a given timeframe. "
+        "Data is read from the database (SCHEMA_1, f_coin_signal_* table for the requested timeframe). "
+        "For each symbol, the record with the maximum open_time is returned.\n\n"
+        "**Request (query parameters):**\n"
+        "- **timeframe** (optional): Candle interval; one of 5m, 30m, 1h, 4h, 1d. Default: 5m.\n\n"
+        "**Response:**\n"
+        "- Array of objects, one per symbol, each containing:\n"
+        "  - **symbol**: Trading pair symbol (e.g. BTCUSDT).\n"
+        "  - **timeframe**: Candle interval used (5m, 30m, 1h, 4h, 1d).\n"
+        "  - **open_time**: Unix timestamp (seconds) of the latest candle for this symbol.\n"
+        "  - **rsi7**: RSI 7-period at the latest candle; may be null if warmup is not met.\n"
+        "  - **rsi14**: RSI 14-period at the latest candle; may be null if warmup is not met.\n"
+        "  - **image**: Coin image URL from coins_data.json (same source as GET /tokens)."
+    ),
+)
+def get_rsi_latest_all_tokens(
+    timeframe: str = Query("5m", description="Candle interval: 5m, 30m, 1h, 4h, or 1d. Default 5m."),
+    db: Session = Depends(get_db),
+) -> List[schemas.RSILatestRecord]:
+    """
+    Get the latest RSI record (RSI7 and RSI14) for all tokens in the given timeframe.
+    Uses a single SQL query against the appropriate f_coin_signal_* table.
+    """
+    tf = timeframe.strip().lower() or "5m"
+    table_name = _table_for_timeframe(tf)
+
+    query = f"""
+        SELECT s.symbol, s.open_time, s.rsi7, s.rsi14
+        FROM {table_name} s
+        JOIN (
+            SELECT symbol, MAX(open_time) AS open_time
+            FROM {table_name}
+            GROUP BY symbol
+        ) latest
+        ON s.symbol = latest.symbol AND s.open_time = latest.open_time
+        ORDER BY s.symbol ASC
+    """
+
+    try:
+        rows = db.execute(text(query)).fetchall()
+    except Exception as e:
+        print(f"Error querying latest RSI for all tokens: {e}")
+        raise HTTPException(status_code=500, detail="Query data error")
+
+    def _rsi_signal(val: Optional[float]) -> str:
+        if val is None:
+            return ""
+        if val >= 70:
+            return "over bought"
+        if val <= 30:
+            return "over sold"
+        return ""
+
+    out = []
+    for row in rows:
+        sym = row.symbol or ""
+        coin_key = (sym[:-4] if sym.upper().endswith("USDT") else sym).strip().lower()
+        image = COIN_IMAGE_MAP.get(coin_key, "")
+        rsi7_val = getattr(row, "rsi7", None)
+        rsi14_val = getattr(row, "rsi14", None)
+        out.append(
+            schemas.RSILatestRecord(
+                symbol=sym,
+                timeframe=tf,
+                open_time=row.open_time if hasattr(row, "open_time") else getattr(row, "open_time", None),
+                rsi7=rsi7_val,
+                rsi14=rsi14_val,
+                rsi7_signal=_rsi_signal(rsi7_val),
+                rsi14_signal=_rsi_signal(rsi14_val),
+                image=image,
+            )
+        )
+    return out
+
+
+@router.get(
+    "/adx/latest",
+    tags=group_tags,
+    response_model=List[schemas.ADXLatestRecord],
+    summary="Get latest ADX for all tokens",
+    description=(
+        "Returns the latest ADX and directional indicators (+DI, -DI) for all tokens in a given timeframe. "
+        "Data is read from the database (SCHEMA_1, f_coin_signal_* table for the requested timeframe). "
+        "For each symbol, the record with the maximum open_time is returned.\n\n"
+        "**Request (query parameters):**\n"
+        "- **timeframe** (optional): Candle interval; one of 5m, 30m, 1h, 4h, 1d. Default: 5m.\n\n"
+        "**Response:**\n"
+        "- Array of objects, one per symbol, each containing:\n"
+        "  - **symbol**: Trading pair symbol (e.g. BTCUSDT).\n"
+        "  - **timeframe**: Candle interval used (5m, 30m, 1h, 4h, 1d).\n"
+        "  - **open_time**: Unix timestamp (seconds) of the latest candle for this symbol.\n"
+        "  - **adx**: ADX 14-period at the latest candle; may be null if warmup is not met.\n"
+        "  - **di_plus**: +DI14 at the latest candle; may be null if warmup is not met.\n"
+        "  - **di_minus**: -DI14 at the latest candle; may be null if warmup is not met.\n"
+        "  - **image**: Coin image URL from coins_data.json (same source as GET /tokens)."
+    ),
+)
+def get_adx_latest_all_tokens(
+    timeframe: str = Query("5m", description="Candle interval: 5m, 30m, 1h, 4h, or 1d. Default 5m."),
+    db: Session = Depends(get_db),
+) -> List[schemas.ADXLatestRecord]:
+    """
+    Get the latest ADX record for all tokens in the given timeframe.
+    Uses a single SQL query against the appropriate f_coin_signal_* table.
+    """
+    tf = timeframe.strip().lower() or "5m"
+    table_name = _table_for_timeframe(tf)
+
+    query = f"""
+        WITH latest_five AS (
+            SELECT
+                symbol,
+                open_time,
+                close,
+                adx,
+                di14_p,
+                di14_n,
+                ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY open_time DESC) AS rn
+            FROM {table_name}
+        ),
+        latest_row AS (
+            SELECT * FROM latest_five WHERE rn = 1
+        ),
+        average_close AS (
+            SELECT symbol, AVG(close) AS avg_close
+            FROM latest_five
+            WHERE rn <= 5
+            GROUP BY symbol
+        ),
+        fifth_close AS (
+            SELECT symbol, close AS fifth_close
+            FROM latest_five
+            WHERE rn = 5
+        )
+        SELECT
+            row.symbol,
+            row.open_time,
+            row.adx,
+            row.di14_p,
+            row.di14_n,
+            row.close AS latest_close,
+            avg.avg_close,
+            fifth.fifth_close
+        FROM latest_row row
+        LEFT JOIN average_close avg ON avg.symbol = row.symbol
+        LEFT JOIN fifth_close fifth ON fifth.symbol = row.symbol
+        ORDER BY row.symbol ASC
+    """
+
+    try:
+        rows = db.execute(text(query)).fetchall()
+    except Exception as e:
+        print(f"Error querying latest ADX for all tokens: {e}")
+        raise HTTPException(status_code=500, detail="Query data error")
+
+    out: List[schemas.ADXLatestRecord] = []
+    for row in rows:
+        sym = row.symbol or ""
+        coin_key = (sym[:-4] if sym.upper().endswith("USDT") else sym).strip().lower()
+        image = COIN_IMAGE_MAP.get(coin_key, "")
+        latest_adx = getattr(row, "adx", None)
+        trend = ""
+        if latest_adx is not None and latest_adx >= 50:
+            latest_close = getattr(row, "latest_close", None)
+            avg_close = getattr(row, "avg_close", None)
+            fifth_close = getattr(row, "fifth_close", None)
+            if (
+                latest_close is not None
+                and avg_close is not None
+                and fifth_close is not None
+            ):
+                if latest_close > avg_close and latest_close > fifth_close:
+                    trend = "uptrend"
+                elif latest_close < avg_close and latest_close < fifth_close:
+                    trend = "downtrend"
+        out.append(
+            schemas.ADXLatestRecord(
+                symbol=sym,
+                timeframe=tf,
+                open_time=getattr(row, "open_time", None),
+                adx=latest_adx,
+                di_plus=getattr(row, "di14_p", None),
+                di_minus=getattr(row, "di14_n", None),
+                trend=trend,
+                image=image,
+            )
+        )
+    return out
+
+
+@router.get(
+    "/psar/latest",
+    tags=group_tags,
+    response_model=List[schemas.PSARLatestRecord],
+    summary="Get latest PSAR for all tokens",
+    description=(
+        "Returns the latest Parabolic SAR (PSAR) values for all tokens in a given timeframe. "
+        "Data is read from the database (SCHEMA_1, f_coin_signal_* table for the requested timeframe). "
+        "For each symbol, the record with the maximum open_time is returned.\n\n"
+        "**Request (query parameters):**\n"
+        "- **timeframe** (optional): Candle interval; one of 5m, 30m, 1h, 4h, 1d. Default: 5m.\n\n"
+        "**Response:**\n"
+        "- Array of objects, one per symbol, each containing:\n"
+        "  - **symbol**: Trading pair symbol (e.g. BTCUSDT).\n"
+        "  - **timeframe**: Candle interval used (5m, 30m, 1h, 4h, 1d).\n"
+        "  - **open_time**: Unix timestamp (seconds) of the latest candle for this symbol.\n"
+        "  - **psar**: PSAR value at the latest candle; may be null if warmup is not met.\n"
+        "  - **psar_type**: Trend direction at the latest candle: UP or DOWN.\n"
+        "  - **ep**: Extreme point at the latest candle.\n"
+        "  - **af**: Acceleration factor at the latest candle.\n"
+        "  - **psar_turn**: 1 if a reversal occurred on the latest candle, 0 otherwise.\n"
+        "  - **image**: Coin image URL from coins_data.json (same source as GET /tokens)."
+    ),
+)
+def get_psar_latest_all_tokens(
+    timeframe: str = Query("5m", description="Candle interval: 5m, 30m, 1h, 4h, or 1d. Default 5m."),
+    db: Session = Depends(get_db),
+) -> List[schemas.PSARLatestRecord]:
+    """
+    Get the latest PSAR record for all tokens in the given timeframe.
+    Uses a single SQL query against the appropriate f_coin_signal_* table.
+    """
+    tf = timeframe.strip().lower() or "5m"
+    table_name = _table_for_timeframe(tf)
+
+    query = f"""
+        WITH latest_two AS (
+            SELECT symbol, open_time, psar, psar_type, ep, af,
+                ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY open_time DESC) AS rn
+            FROM {table_name}
+        )
+        SELECT lt.symbol, lt.open_time, lt.psar, lt.psar_type, lt.ep, lt.af, lt2.psar_type AS prev_psar_type
+        FROM latest_two lt
+        LEFT JOIN latest_two lt2 ON lt.symbol = lt2.symbol AND lt2.rn = 2
+        WHERE lt.rn = 1
+        ORDER BY lt.symbol ASC
+    """
+
+    try:
+        rows = db.execute(text(query)).fetchall()
+    except Exception as e:
+        print(f"Error querying latest PSAR for all tokens: {e}")
+        raise HTTPException(status_code=500, detail="Query data error")
+
+    out: List[schemas.PSARLatestRecord] = []
+    for row in rows:
+        sym = row.symbol or ""
+        coin_key = (sym[:-4] if sym.upper().endswith("USDT") else sym).strip().lower()
+        image = COIN_IMAGE_MAP.get(coin_key, "")
+        latest_type = getattr(row, "psar_type", None)
+        prev_type = getattr(row, "prev_psar_type", None)
+        trend = ""
+        if latest_type and prev_type and latest_type != prev_type:
+            if latest_type == "UP":
+                trend = "uptrend"
+            elif latest_type == "DOWN":
+                trend = "downtrend"
+        out.append(
+            schemas.PSARLatestRecord(
+                symbol=sym,
+                timeframe=tf,
+                open_time=getattr(row, "open_time", None),
+                psar=getattr(row, "psar", None),
+                psar_type=latest_type,
+                ep=getattr(row, "ep", None),
+                af=getattr(row, "af", None),
+                trend=trend,
+                image=image,
+            )
+        )
+    return out

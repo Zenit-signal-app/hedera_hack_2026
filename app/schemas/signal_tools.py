@@ -56,6 +56,34 @@ class RSILatestRecord(CustomBaseModel):
     open_time: Optional[int] = Field(None, description="Unix timestamp (seconds) of the latest candle for this symbol.")
     rsi7: Optional[float] = Field(None, description="RSI 7-period (Wilder smoothing) at the latest candle.")
     rsi14: Optional[float] = Field(None, description="RSI 14-period (Wilder smoothing) at the latest candle.")
+    rsi7_signal: str = Field("", description="Signal from rsi7: 'over bought' if >= 70, 'over sold' if <= 30, else ''.")
+    rsi14_signal: str = Field("", description="Signal from rsi14: 'over bought' if >= 70, 'over sold' if <= 30, else ''.")
+    image: str = Field("", description="Coin image URL from coins_data.json (same as GET /tokens).")
+
+
+class ADXLatestRecord(CustomBaseModel):
+    """Latest ADX record per token for a given timeframe."""
+    symbol: str = Field("", description="Trading pair symbol (e.g. BTCUSDT).")
+    timeframe: str = Field("", description="Candle interval used (5m, 30m, 1h, 4h, 1d).")
+    open_time: Optional[int] = Field(None, description="Unix timestamp (seconds) of the latest candle for this symbol.")
+    adx: Optional[float] = Field(None, description="Average Directional Index (14-period) at the latest candle.")
+    di_plus: Optional[float] = Field(None, description="Plus Directional Indicator (+DI14) at the latest candle.")
+    di_minus: Optional[float] = Field(None, description="Minus Directional Indicator (-DI14) at the latest candle.")
+    trend: str = Field("", description="Trend direction based on ADX and price action: uptrend, downtrend, or ''.")
+    image: str = Field("", description="Coin image URL from coins_data.json (same as GET /tokens).")
+
+
+class PSARLatestRecord(CustomBaseModel):
+    """Latest PSAR record per token for a given timeframe."""
+    symbol: str = Field("", description="Trading pair symbol (e.g. BTCUSDT).")
+    timeframe: str = Field("", description="Candle interval used (5m, 30m, 1h, 4h, 1d).")
+    open_time: Optional[int] = Field(None, description="Unix timestamp (seconds) of the latest candle for this symbol.")
+    psar: Optional[float] = Field(None, description="Parabolic SAR value at the latest candle.")
+    psar_type: Optional[str] = Field(None, description="Trend direction at the latest candle: UP or DOWN.")
+    ep: Optional[float] = Field(None, description="Extreme point at the latest candle.")
+    af: Optional[float] = Field(None, description="Acceleration factor (0.02–0.2) at the latest candle.")
+    trend: str = Field("", description="Trend compared to previous candle: uptrend, downtrend, or ''.")
+    image: str = Field("", description="Coin image URL from coins_data.json (same as GET /tokens).")
 
 
 class SignalTool(CustomBaseModel):

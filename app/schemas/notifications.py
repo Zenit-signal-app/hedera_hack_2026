@@ -33,3 +33,14 @@ class SendFCMBatchResponse(CustomBaseModel):
     success_count: int = Field(..., description="Number of messages sent successfully.")
     failure_count: int = Field(..., description="Number of failed sends.")
     message_ids: list[str | None] = Field(default_factory=list, description="Message ID per token, or null for failures.")
+
+
+class SignalNotification(CustomBaseModel):
+    """One signal/notification row for the FE (from the signals table)."""
+
+    id: str = Field(..., description="UUID of the signal.")
+    symbol: str = Field(..., description="Symbol (e.g. BTCUSDT).")
+    timeframe: str = Field(..., description="Timeframe (e.g. 30m, 1h).")
+    signal: dict[str, Any] = Field(..., description="Indicators and values (JSONB).")
+    open_time: int = Field(..., description="Candle open time (epoch).")
+    created_at: str = Field(..., description="When the signal was stored (ISO timestamp).")

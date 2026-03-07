@@ -92,10 +92,11 @@ async def openapi(username: str = Depends(doc_auth)):
 
 # Include your API routers
 # Organized by functionality
-from app.api import admob, auth, favorites, prices, signal_tools, token, websocket
+from app.api import admob, auth, favorites, notifications, prices, signal_tools, token, websocket
 
 app.include_router(websocket.router, tags=websocket.group_tags)
 app.include_router(admob.router, prefix="/admob", tags=admob.group_tags)
+app.include_router(notifications.router, prefix="/notifications", tags=notifications.group_tags)
 app.include_router(prices.router, prefix="/prices", tags=prices.group_tags)
 app.include_router(token.router, prefix="/tokens", tags=token.group_tags)
 app.include_router(signal_tools.router, prefix="/signal-tools", tags=signal_tools.group_tags)

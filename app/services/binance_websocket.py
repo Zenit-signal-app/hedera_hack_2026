@@ -15,7 +15,10 @@ import logging
 import time
 import uuid
 from collections import deque
-from typing import Final
+from datetime import datetime, timezone
+from typing import Any, Final
+
+FCM_THROTTLE_SECONDS: Final[int] = 1800  # 30 minutes
 
 import websockets
 from fastapi import WebSocket
@@ -169,6 +172,8 @@ class BinanceWebSocketManager:
         # Prefer Redis if configured; otherwise fall back to in-memory TTL map.
         self._notify_pool: ConnectionPool | None = None
         self._notify_mem: dict[str, float] = {}
+        # When we last sent an FCM summary; throttle to once per 30 minutes.
+        self._last_fcm_sent_at: float = 0.0
         if settings.REDIS_HOST is not None and str(settings.REDIS_HOST).strip():
             try:
                 self._notify_pool = ConnectionPool(
@@ -305,39 +310,106 @@ class BinanceWebSocketManager:
 
     def _check_signals_and_notify(self) -> None:
         """
-        After all symbols updated: for each symbol with any RSI/ADX/PSAR signal,
-        send one FCM notification to the signals topic (notification + data for all app states).
+        Collect new signals; if any and 30 min since last FCM: summarize, save all to DB
+        in one batch (same created_at), send one FCM summary, update cache.
         """
-        topic = getattr(settings, "FCM_TOPIC_SIGNALS", None) or "signals"
-        for symbol in list(self._candles.keys()):
-            if symbol not in self._indicators:
-                continue
-            notify_lines: list[str] = []
-            for tf in HIGHER_TIMEFRAMES:
-                ind_dict = self._indicators[symbol].get(tf, {})
-                if not ind_dict:
+        try:
+            # 1. Collect all new signals (symbol, timeframe, open_time, signal_id, ind_dict)
+            batch: list[tuple[str, str, int, str, dict[str, Any]]] = []
+            for symbol in list(self._candles.keys()):
+                if symbol not in self._indicators:
                     continue
-                # Use the latest finalized indicator candle for this timeframe
-                latest_open_time = max(ind_dict.keys())
-                ind = ind_dict[latest_open_time]
-                for signal_id, msg in signal_detection.get_signals(ind, tf):
-                    if self._should_send_signal(
-                        symbol=symbol,
-                        tf=tf,
-                        open_time=latest_open_time,
-                        signal_id=signal_id,
-                    ):
-                        notify_lines.append(msg)
+                for tf in HIGHER_TIMEFRAMES:
+                    ind_dict = self._indicators[symbol].get(tf, {})
+                    if not ind_dict:
+                        continue
+                    latest_open_time = max(ind_dict.keys())
+                    ind = ind_dict[latest_open_time]
+                    for signal_id, _msg in signal_detection.get_signals(ind, tf):
+                        if self._should_send_signal(
+                            symbol=symbol,
+                            tf=tf,
+                            open_time=latest_open_time,
+                            signal_id=signal_id,
+                        ):
+                            batch.append((symbol, tf, latest_open_time, signal_id, dict(ind)))
+        except Exception as e:
+            LOGGER.exception("Notification workflow: error collecting signals: %s", e)
+            return
 
-            if not notify_lines:
-                continue
-            title = f"{symbol}: {len(notify_lines)} signal(s)"
-            body = "\n".join(notify_lines)
-            data = {"symbol": symbol, "signals": body}
+        if not batch:
+            LOGGER.debug("Notification workflow: no new signals this cycle, skipping")
+            return
+        now = time.time()
+        if now - self._last_fcm_sent_at < FCM_THROTTLE_SECONDS:
+            LOGGER.debug(
+                "Notification workflow: throttle active (last FCM %.0fs ago), skipping %d signal(s)",
+                now - self._last_fcm_sent_at,
+                len(batch),
+            )
+            return
+
+        # 2. Summarize
+        X = len(batch)
+        Y = len({s for s, *_ in batch})
+        LOGGER.info(
+            "Notification workflow: starting notify sequence for %d signal(s) across %d token(s)",
+            X,
+            Y,
+        )
+
+        # 3. Save all signals in one transaction with same created_at
+        batch_created_at = datetime.now(timezone.utc)
+        created_iso = batch_created_at.isoformat()
+        try:
+            tables = get_tables(settings.SCHEMA_1)
+            table = tables["signals"]
+        except Exception as e:
+            LOGGER.exception("Notification workflow: failed to get signals table config: %s", e)
+            return
+        try:
+            db = SessionLocal()
+        except Exception as e:
+            LOGGER.exception("Notification workflow: failed to create DB session: %s", e)
+            return
+        try:
+            for symbol, tf, open_time, _signal_id, ind_dict in batch:
+                row_id = str(uuid.uuid4())
+                sym_esc = symbol.replace("'", "''")
+                tf_esc = tf.replace("'", "''")
+                json_str = json.dumps(ind_dict)
+                json_esc = json_str.replace("'", "''")
+                stmt = f"INSERT INTO {table} (id, symbol, timeframe, signal, open_time, created_at) VALUES ('{row_id}', '{sym_esc}', '{tf_esc}', '{json_esc}'::jsonb, {int(open_time)}, '{created_iso}')"
+                db.execute(text(stmt))
+            db.commit()
+            LOGGER.info("Notification workflow: saved %d signal(s) to DB (batch created_at=%s)", X, created_iso)
+        except Exception as e:
+            LOGGER.exception("Notification workflow: failed to save signals batch: %s", e)
             try:
-                firebase_fcm.send_to_topic(topic, title=title, body=body, data=data)
+                db.rollback()
+            except Exception as rollback_e:
+                LOGGER.error("Notification workflow: rollback failed: %s", rollback_e)
+            return
+        finally:
+            try:
+                db.close()
             except Exception as e:
-                LOGGER.exception("FCM signal notification failed for %s: %s", symbol, e)
+                LOGGER.warning("Notification workflow: error closing DB session: %s", e)
+
+        # 4. Notify
+        topic = getattr(settings, "FCM_TOPIC_SIGNALS", None) or "signals"
+        title = f"You have {X} notifications across {Y} tokens"
+        body = title
+        data = {"count": str(X), "tokens": str(Y)}
+        try:
+            firebase_fcm.send_to_topic(topic, title=title, body=body, data=data)
+            LOGGER.info("Notification workflow: FCM summary sent to topic=%s (count=%s, tokens=%s)", topic, X, Y)
+        except Exception as e:
+            LOGGER.exception("Notification workflow: FCM summary notification failed: %s", e)
+            return
+
+        # 5. Update cache
+        self._last_fcm_sent_at = time.time()
 
     def get_snapshot(self) -> dict:
         """Return full cache as snapshot payload (all-in-one: timestamp + candles + indicators per symbol; symbol is the key)."""
@@ -432,8 +504,7 @@ class BinanceWebSocketManager:
                             else:
                                 LOGGER.debug("Binance klines skip %s: %s", symbol, msg.get("error", msg))
 
-                        # Temporarily disabled: push signal notifications to FCM
-                        # self._check_signals_and_notify()
+                        self._check_signals_and_notify()
                         # After full cycle: send one big message (full snapshot) to all clients
                         payload = self.get_snapshot()
                         await self._broadcast(payload)
