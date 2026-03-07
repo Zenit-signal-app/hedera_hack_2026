@@ -47,6 +47,7 @@ WEBSOCKET_INSTRUCTIONS: dict[str, Any] = {
             "indicator_warmup": "Minimum candles needed before each indicator is non-null: tr 2; rsi7 8; rsi14 15; dm14_p/dm14_n/atr14/di14_p/di14_n/dx14/psar 15; atr28/adx 29; di14_line_cross 16.",
             },
         },
+        "signals": "Array of signals last saved to the DB (when a batch was saved and FCM sent). Each item: { id (UUID), symbol, timeframe, message (summary string), image (optional URL), created_at }. Empty array when no batch was saved this cycle. Use GET /notifications with query params symbol and timeframe to filter saved signals.",
     },
     "example_message": {
         "type": "snapshot",
@@ -57,6 +58,9 @@ WEBSOCKET_INSTRUCTIONS: dict[str, Any] = {
                 "indicators": {"1m": {"open_time": 1709568000, "rsi7": 55.2, "rsi14": 52.1, "atr14": 150, "adx": 25, "psar": 49800, "psar_type": "UP"}, "5m": {"open_time": 1709568000, "rsi7": 54.1, "rsi14": 51.0, "atr14": 180, "adx": 22, "psar": 49900, "psar_type": "UP"}},
             },
         },
+        "signals": [
+            {"id": "uuid-1", "symbol": "BTCUSDT", "timeframe": "30m", "message": "30m: RSI14 28.50 (oversold)", "image": None, "created_at": "2025-03-07T12:00:00+00:00"},
+        ],
     },
 }
 
@@ -71,7 +75,7 @@ WEBSOCKET_INSTRUCTIONS: dict[str, Any] = {
         "- **endpoint**: WebSocket path name.\n"
         "- **connection**: url, url_secure, description, example_urls for connecting.\n"
         "- **behavior**: On connect: full snapshot; server pushes new snapshot each cycle; no client messages required.\n"
-        "- **message_format**: type (snapshot), data keyed by symbol with timestamp, candles (OHLCV per timeframe), indicators (RSI, ADX, PSAR, etc.).\n"
+        "- **message_format**: type (snapshot), data keyed by symbol with timestamp, candles (OHLCV per timeframe), indicators (RSI, ADX, PSAR, etc.); signals array (id, symbol, timeframe, message, image, created_at) for last saved batch. Use GET /notifications?symbol=...&timeframe=... to query all saved signals.\n"
         "- **example_message**: Sample snapshot payload.\n\n"
         "To stream data, connect via WebSocket to the same path (e.g. ws://host/ws or wss://host/ws)."
     ),

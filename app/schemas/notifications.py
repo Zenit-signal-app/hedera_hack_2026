@@ -35,20 +35,12 @@ class SendFCMBatchResponse(CustomBaseModel):
     message_ids: list[str | None] = Field(default_factory=list, description="Message ID per token, or null for failures.")
 
 
-class ListNotificationsBody(CustomBaseModel):
-    """Optional request body for GET /notifications to filter by message text."""
-
-    message: str | None = Field(None, description="Filter to signals that have this exact notification message. The API finds the notification id for this message and returns all signals with that notification_id.")
-
-
 class SignalNotification(CustomBaseModel):
-    """One signal/notification row for the FE (signals joined with notifications)."""
+    """One signal row for the FE (signals table: id, symbol, timeframe, message, image, created_at)."""
 
     id: str = Field(..., description="UUID of the signal.")
     symbol: str = Field(..., description="Symbol (e.g. BTCUSDT).")
     timeframe: str = Field(..., description="Timeframe (e.g. 30m, 1h).")
-    notification_id: int = Field(..., description="FK to notifications.id.")
-    message: str = Field(..., description="Notification message text (from notifications.message).")
-    signal: dict[str, Any] = Field(..., description="Indicators and values (JSONB).")
-    open_time: int = Field(..., description="Candle open time (epoch).")
+    message: str = Field(..., description="Summary string for the signal (unknown length).")
+    image: str | None = Field(None, description="Optional image URL for the notification.")
     created_at: str = Field(..., description="When the signal was stored (ISO timestamp).")

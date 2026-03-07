@@ -174,6 +174,8 @@ class BinanceWebSocketManager:
         self._notify_mem: dict[str, float] = {}
         # When we last sent an FCM summary; throttle to once per 30 minutes.
         self._last_fcm_sent_at: float = 0.0
+        # Last batch of signals saved to DB (for WebSocket snapshot): list of {id, symbol, timeframe, message, open_time, created_at}.
+        self._last_saved_signals: list[dict] = []
         if settings.REDIS_HOST is not None and str(settings.REDIS_HOST).strip():
             try:
                 self._notify_pool = ConnectionPool(
@@ -338,10 +340,12 @@ class BinanceWebSocketManager:
             return
 
         if not batch:
+            self._last_saved_signals = []
             LOGGER.debug("Notification workflow: no new signals this cycle, skipping")
             return
         now = time.time()
         if now - self._last_fcm_sent_at < FCM_THROTTLE_SECONDS:
+            self._last_saved_signals = []
             LOGGER.debug(
                 "Notification workflow: throttle active (last FCM %.0fs ago), skipping %d signal(s)",
                 now - self._last_fcm_sent_at,
@@ -359,12 +363,11 @@ class BinanceWebSocketManager:
             Y,
         )
 
-        # 3. Save: ensure each message exists in notifications, then save signals with notification_id (same created_at per batch)
+        # 3. Save: each signal row has id, symbol, timeframe, message (summary string), image (optional), created_at
         batch_created_at = datetime.now(timezone.utc)
         created_iso = batch_created_at.isoformat()
         try:
             tables = get_tables(settings.SCHEMA_1)
-            tbl_notifications = tables["notifications"]
             tbl_signals = tables["signals"]
         except Exception as e:
             LOGGER.exception("Notification workflow: failed to get table config: %s", e)
@@ -374,40 +377,25 @@ class BinanceWebSocketManager:
         except Exception as e:
             LOGGER.exception("Notification workflow: failed to create DB session: %s", e)
             return
-        message_to_id: dict[str, int] = {}
+        saved_for_ws: list[dict] = []
         try:
-            for symbol, tf, open_time, signal_id, ind_dict, msg in batch:
-                msg_trimmed = (msg or "")[:256]
-                msg_esc = msg_trimmed.replace("'", "''")
-                if msg_trimmed not in message_to_id:
-                    # Get or insert notification row for this message
-                    row_existing = db.execute(
-                        text(f"SELECT id FROM {tbl_notifications} WHERE message = '{msg_esc}'")
-                    ).fetchone()
-                    if row_existing:
-                        message_to_id[msg_trimmed] = int(row_existing.id)
-                    else:
-                        row_new = db.execute(
-                            text(f"INSERT INTO {tbl_notifications} (message) VALUES ('{msg_esc}') RETURNING id")
-                        ).fetchone()
-                        if row_new:
-                            message_to_id[msg_trimmed] = int(row_new.id)
-                        else:
-                            LOGGER.error("Notification workflow: failed to get notification id for message (len=%s)", len(msg_trimmed))
-                            continue
-                notif_id = message_to_id[msg_trimmed]
+            for symbol, tf, _open_time, _signal_id, _ind_dict, msg in batch:
                 row_id = str(uuid.uuid4())
                 sym_esc = symbol.replace("'", "''")
                 tf_esc = tf.replace("'", "''")
-                signal_payload = signal_detection.get_signal_payload(signal_id, ind_dict)
-                json_str = json.dumps(signal_payload)
-                json_esc = json_str.replace("'", "''")
-                stmt = f"INSERT INTO {tbl_signals} (id, symbol, timeframe, notification_id, signal, open_time, created_at) VALUES ('{row_id}', '{sym_esc}', '{tf_esc}', {notif_id}, '{json_esc}'::jsonb, {int(open_time)}, '{created_iso}')"
+                msg_esc = (msg or "").replace("'", "''")
+                stmt = f"INSERT INTO {tbl_signals} (id, symbol, timeframe, message, image, created_at) VALUES ('{row_id}', '{sym_esc}', '{tf_esc}', '{msg_esc}', NULL, '{created_iso}')"
                 db.execute(text(stmt))
+                saved_for_ws.append({
+                    "id": row_id, "symbol": symbol, "timeframe": tf, "message": (msg or ""),
+                    "image": None, "created_at": created_iso,
+                })
             db.commit()
+            self._last_saved_signals = saved_for_ws
             LOGGER.info("Notification workflow: saved %d signal(s) to DB (batch created_at=%s)", X, created_iso)
         except Exception as e:
             LOGGER.exception("Notification workflow: failed to save signals batch: %s", e)
+            self._last_saved_signals = []
             try:
                 db.rollback()
             except Exception as rollback_e:
@@ -461,7 +449,9 @@ class BinanceWebSocketManager:
                 out["candles"] = candles_for_symbol
             if indicators_for_symbol:
                 out["indicators"] = indicators_for_symbol
-        return {"type": "snapshot", "data": payload_data}
+        result: dict = {"type": "snapshot", "data": payload_data}
+        result["signals"] = self._last_saved_signals
+        return result
 
     async def start(self) -> None:
         """Start the 24/7 all-tokens loop. Call from lifespan startup."""

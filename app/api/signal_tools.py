@@ -277,7 +277,8 @@ def get_rsi(
         "- **open_time**: Unix timestamp (seconds) of the candle this record refers to.\n"
         "- **adx**: Average Directional Index (14-period smoothed); higher values indicate a stronger trend; null until 29 candles of warmup.\n"
         "- **di_plus**: Plus Directional Indicator (+DI14); null until warmup.\n"
-        "- **di_minus**: Minus Directional Indicator (-DI14); null until warmup."
+        "- **di_minus**: Minus Directional Indicator (-DI14); null until warmup.\n"
+        "- **trend**: Either \"uptrend\", \"downtrend\", or empty string; computed from the latest 5 candles when adx >= 50; only set on the newest record."
     ),
 )
 def get_adx(
@@ -299,14 +300,31 @@ def get_adx(
             detail=f"Not enough candles for ADX (need at least {MIN_CANDLES_ADX})",
         )
     all_ind = _compute_all_indicators(candles)
-    return schemas.ADXResponse(
-        symbol=symbol,
-        timeframe=timeframe,
-        data=[
-            schemas.ADXDataPoint(open_time=o.get("open_time"), adx=o.get("adx"), di_plus=o.get("di14_p"), di_minus=o.get("di14_n"))
-            for o in all_ind
-        ],
-    )
+    trend = ""
+    if all_ind:
+        latest_adx = all_ind[0].get("adx")
+        if latest_adx is not None and latest_adx >= 50 and len(candles) >= 5:
+            last_closes = [c.close for c in candles[-5:]]
+            if len(last_closes) == 5 and all(close is not None for close in last_closes):
+                latest_close = last_closes[-1]
+                fifth_close = last_closes[0]
+                avg_close = sum(last_closes) / 5
+                if latest_close > avg_close and latest_close > fifth_close:
+                    trend = "uptrend"
+                elif latest_close < avg_close and latest_close < fifth_close:
+                    trend = "downtrend"
+    data = []
+    for idx, o in enumerate(all_ind):
+        data.append(
+            schemas.ADXDataPoint(
+                open_time=o.get("open_time"),
+                adx=o.get("adx"),
+                di_plus=o.get("di14_p"),
+                di_minus=o.get("di14_n"),
+                trend=trend if idx == 0 else "",
+            )
+        )
+    return schemas.ADXResponse(symbol=symbol, timeframe=timeframe, data=data)
 
 
 @router.get(
@@ -331,7 +349,8 @@ def get_adx(
         "- **psar_type**: Trend direction: UP or DOWN; null until warmup.\n"
         "- **ep**: Extreme point (highest high in uptrend, lowest low in downtrend); null until warmup.\n"
         "- **af**: Acceleration factor, typically between 0.02 and 0.2; null until warmup.\n"
-        "- **psar_turn**: 1 if a reversal occurred on this candle, 0 otherwise; null until warmup."
+        "- **psar_turn**: 1 if a reversal occurred on this candle, 0 otherwise; null until warmup.\n"
+        "- **trend**: Either \"uptrend\", \"downtrend\", or empty string; computed by comparing the latest two psar_type values; only set on the newest record."
     ),
 )
 def get_psar(
@@ -353,10 +372,18 @@ def get_psar(
             detail=f"Not enough candles for PSAR (need at least {MIN_CANDLES_PSAR})",
         )
     all_ind = _compute_all_indicators(candles)
-    return schemas.PSARResponse(
-        symbol=symbol,
-        timeframe=timeframe,
-        data=[
+    trend = ""
+    if len(all_ind) >= 2:
+        latest_type = all_ind[0].get("psar_type")
+        prev_type = all_ind[1].get("psar_type")
+        if latest_type and prev_type and latest_type != prev_type:
+            if latest_type == "UP":
+                trend = "uptrend"
+            elif latest_type == "DOWN":
+                trend = "downtrend"
+    data = []
+    for idx, o in enumerate(all_ind):
+        data.append(
             schemas.PSARDataPoint(
                 open_time=o.get("open_time"),
                 psar=o.get("psar"),
@@ -364,10 +391,10 @@ def get_psar(
                 ep=o.get("ep"),
                 af=o.get("af"),
                 psar_turn=o.get("psar_turn"),
+                trend=trend if idx == 0 else "",
             )
-            for o in all_ind
-        ],
-    )
+        )
+    return schemas.PSARResponse(symbol=symbol, timeframe=timeframe, data=data)
 
 
 @router.get(
@@ -445,204 +472,6 @@ def get_rsi_latest_all_tokens(
                 rsi14=rsi14_val,
                 rsi7_signal=_rsi_signal(rsi7_val),
                 rsi14_signal=_rsi_signal(rsi14_val),
-                image=image,
-            )
-        )
-    return out
-
-
-@router.get(
-    "/adx/latest",
-    tags=group_tags,
-    response_model=List[schemas.ADXLatestRecord],
-    summary="Get latest ADX for all tokens",
-    description=(
-        "Returns the latest ADX and directional indicators (+DI, -DI) for all tokens in a given timeframe. "
-        "Data is read from the database (SCHEMA_1, f_coin_signal_* table for the requested timeframe). "
-        "For each symbol, the record with the maximum open_time is returned.\n\n"
-        "**Request (query parameters):**\n"
-        "- **timeframe** (optional): Candle interval; one of 5m, 30m, 1h, 4h, 1d. Default: 5m.\n\n"
-        "**Response:**\n"
-        "- Array of objects, one per symbol, each containing:\n"
-        "  - **symbol**: Trading pair symbol (e.g. BTCUSDT).\n"
-        "  - **timeframe**: Candle interval used (5m, 30m, 1h, 4h, 1d).\n"
-        "  - **open_time**: Unix timestamp (seconds) of the latest candle for this symbol.\n"
-        "  - **adx**: ADX 14-period at the latest candle; may be null if warmup is not met.\n"
-        "  - **di_plus**: +DI14 at the latest candle; may be null if warmup is not met.\n"
-        "  - **di_minus**: -DI14 at the latest candle; may be null if warmup is not met.\n"
-        "  - **image**: Coin image URL from coins_data.json (same source as GET /tokens)."
-    ),
-)
-def get_adx_latest_all_tokens(
-    timeframe: str = Query("5m", description="Candle interval: 5m, 30m, 1h, 4h, or 1d. Default 5m."),
-    db: Session = Depends(get_db),
-) -> List[schemas.ADXLatestRecord]:
-    """
-    Get the latest ADX record for all tokens in the given timeframe.
-    Uses a single SQL query against the appropriate f_coin_signal_* table.
-    """
-    tf = timeframe.strip().lower() or "5m"
-    table_name = _table_for_timeframe(tf)
-
-    query = f"""
-        WITH latest_five AS (
-            SELECT
-                symbol,
-                open_time,
-                close,
-                adx,
-                di14_p,
-                di14_n,
-                ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY open_time DESC) AS rn
-            FROM {table_name}
-        ),
-        latest_row AS (
-            SELECT * FROM latest_five WHERE rn = 1
-        ),
-        average_close AS (
-            SELECT symbol, AVG(close) AS avg_close
-            FROM latest_five
-            WHERE rn <= 5
-            GROUP BY symbol
-        ),
-        fifth_close AS (
-            SELECT symbol, close AS fifth_close
-            FROM latest_five
-            WHERE rn = 5
-        )
-        SELECT
-            row.symbol,
-            row.open_time,
-            row.adx,
-            row.di14_p,
-            row.di14_n,
-            row.close AS latest_close,
-            avg.avg_close,
-            fifth.fifth_close
-        FROM latest_row row
-        LEFT JOIN average_close avg ON avg.symbol = row.symbol
-        LEFT JOIN fifth_close fifth ON fifth.symbol = row.symbol
-        ORDER BY row.symbol ASC
-    """
-
-    try:
-        rows = db.execute(text(query)).fetchall()
-    except Exception as e:
-        print(f"Error querying latest ADX for all tokens: {e}")
-        raise HTTPException(status_code=500, detail="Query data error")
-
-    out: List[schemas.ADXLatestRecord] = []
-    for row in rows:
-        sym = row.symbol or ""
-        coin_key = (sym[:-4] if sym.upper().endswith("USDT") else sym).strip().lower()
-        image = COIN_IMAGE_MAP.get(coin_key, "")
-        latest_adx = getattr(row, "adx", None)
-        trend = ""
-        if latest_adx is not None and latest_adx >= 50:
-            latest_close = getattr(row, "latest_close", None)
-            avg_close = getattr(row, "avg_close", None)
-            fifth_close = getattr(row, "fifth_close", None)
-            if (
-                latest_close is not None
-                and avg_close is not None
-                and fifth_close is not None
-            ):
-                if latest_close > avg_close and latest_close > fifth_close:
-                    trend = "uptrend"
-                elif latest_close < avg_close and latest_close < fifth_close:
-                    trend = "downtrend"
-        out.append(
-            schemas.ADXLatestRecord(
-                symbol=sym,
-                timeframe=tf,
-                open_time=getattr(row, "open_time", None),
-                adx=latest_adx,
-                di_plus=getattr(row, "di14_p", None),
-                di_minus=getattr(row, "di14_n", None),
-                trend=trend,
-                image=image,
-            )
-        )
-    return out
-
-
-@router.get(
-    "/psar/latest",
-    tags=group_tags,
-    response_model=List[schemas.PSARLatestRecord],
-    summary="Get latest PSAR for all tokens",
-    description=(
-        "Returns the latest Parabolic SAR (PSAR) values for all tokens in a given timeframe. "
-        "Data is read from the database (SCHEMA_1, f_coin_signal_* table for the requested timeframe). "
-        "For each symbol, the record with the maximum open_time is returned.\n\n"
-        "**Request (query parameters):**\n"
-        "- **timeframe** (optional): Candle interval; one of 5m, 30m, 1h, 4h, 1d. Default: 5m.\n\n"
-        "**Response:**\n"
-        "- Array of objects, one per symbol, each containing:\n"
-        "  - **symbol**: Trading pair symbol (e.g. BTCUSDT).\n"
-        "  - **timeframe**: Candle interval used (5m, 30m, 1h, 4h, 1d).\n"
-        "  - **open_time**: Unix timestamp (seconds) of the latest candle for this symbol.\n"
-        "  - **psar**: PSAR value at the latest candle; may be null if warmup is not met.\n"
-        "  - **psar_type**: Trend direction at the latest candle: UP or DOWN.\n"
-        "  - **ep**: Extreme point at the latest candle.\n"
-        "  - **af**: Acceleration factor at the latest candle.\n"
-        "  - **psar_turn**: 1 if a reversal occurred on the latest candle, 0 otherwise.\n"
-        "  - **image**: Coin image URL from coins_data.json (same source as GET /tokens)."
-    ),
-)
-def get_psar_latest_all_tokens(
-    timeframe: str = Query("5m", description="Candle interval: 5m, 30m, 1h, 4h, or 1d. Default 5m."),
-    db: Session = Depends(get_db),
-) -> List[schemas.PSARLatestRecord]:
-    """
-    Get the latest PSAR record for all tokens in the given timeframe.
-    Uses a single SQL query against the appropriate f_coin_signal_* table.
-    """
-    tf = timeframe.strip().lower() or "5m"
-    table_name = _table_for_timeframe(tf)
-
-    query = f"""
-        WITH latest_two AS (
-            SELECT symbol, open_time, psar, psar_type, ep, af,
-                ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY open_time DESC) AS rn
-            FROM {table_name}
-        )
-        SELECT lt.symbol, lt.open_time, lt.psar, lt.psar_type, lt.ep, lt.af, lt2.psar_type AS prev_psar_type
-        FROM latest_two lt
-        LEFT JOIN latest_two lt2 ON lt.symbol = lt2.symbol AND lt2.rn = 2
-        WHERE lt.rn = 1
-        ORDER BY lt.symbol ASC
-    """
-
-    try:
-        rows = db.execute(text(query)).fetchall()
-    except Exception as e:
-        print(f"Error querying latest PSAR for all tokens: {e}")
-        raise HTTPException(status_code=500, detail="Query data error")
-
-    out: List[schemas.PSARLatestRecord] = []
-    for row in rows:
-        sym = row.symbol or ""
-        coin_key = (sym[:-4] if sym.upper().endswith("USDT") else sym).strip().lower()
-        image = COIN_IMAGE_MAP.get(coin_key, "")
-        latest_type = getattr(row, "psar_type", None)
-        prev_type = getattr(row, "prev_psar_type", None)
-        trend = ""
-        if latest_type and prev_type and latest_type != prev_type:
-            if latest_type == "UP":
-                trend = "uptrend"
-            elif latest_type == "DOWN":
-                trend = "downtrend"
-        out.append(
-            schemas.PSARLatestRecord(
-                symbol=sym,
-                timeframe=tf,
-                open_time=getattr(row, "open_time", None),
-                psar=getattr(row, "psar", None),
-                psar_type=latest_type,
-                ep=getattr(row, "ep", None),
-                af=getattr(row, "af", None),
-                trend=trend,
                 image=image,
             )
         )
