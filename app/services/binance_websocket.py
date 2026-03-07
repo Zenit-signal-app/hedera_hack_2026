@@ -349,9 +349,10 @@ class BinanceWebSocketManager:
             )
             return
 
-        # 2. Summarize
+        # 2. Summarize (only tokens that have at least one signal in this batch)
         X = len(batch)
-        Y = len({s for s, *_ in batch})
+        symbols_with_signals = sorted({s for s, *_ in batch})
+        Y = len(symbols_with_signals)
         LOGGER.info(
             "Notification workflow: starting notify sequence for %d signal(s) across %d token(s)",
             X,
@@ -398,11 +399,15 @@ class BinanceWebSocketManager:
             except Exception as e:
                 LOGGER.warning("Notification workflow: error closing DB session: %s", e)
 
-        # 4. Notify
+        # 4. Notify (only tokens with at least one signal — no full token list)
         topic = getattr(settings, "FCM_TOPIC_SIGNALS", None) or "signals"
         title = f"You have {X} notifications across {Y} tokens"
         body = title
-        data = {"count": str(X), "tokens": str(Y)}
+        data = {
+            "count": str(X),
+            "tokens": str(Y),
+            "symbols": ",".join(symbols_with_signals),
+        }
         try:
             firebase_fcm.send_to_topic(topic, title=title, body=body, data=data)
             LOGGER.info("Notification workflow: FCM summary sent to topic=%s (count=%s, tokens=%s)", topic, X, Y)
