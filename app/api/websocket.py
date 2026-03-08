@@ -59,7 +59,7 @@ WEBSOCKET_INSTRUCTIONS: dict[str, Any] = {
             },
         },
         "signals": [
-            {"id": "uuid-1", "symbol": "BTCUSDT", "timeframe": "30m", "message": "30m: RSI14 28.50 (oversold)", "image": None, "created_at": "2025-03-07T12:00:00+00:00"},
+            {"id": "uuid-1", "symbol": "BTCUSDT", "timeframe": "30m", "message": "30m: RSI14 28.50 (oversold)", "image": "", "created_at": "2025-03-07T12:00:00+00:00"},
         ],
     },
 }

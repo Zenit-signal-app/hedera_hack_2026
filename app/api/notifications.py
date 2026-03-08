@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+from pathlib import Path
 from typing import List, Optional
 
 from fastapi import Depends, HTTPException, Query, status
@@ -19,6 +21,30 @@ LOGGER = logging.getLogger(__name__)
 router = APIRouter()
 group_tags = ["Notifications"]
 
+COINS_DATA_PATH = Path(__file__).resolve().parents[2] / "coins_data.json"
+
+
+def _load_coin_images(path: Path) -> dict[str, str]:
+    """Load coin symbol -> image URL from coins_data.json (same as GET /tokens). Key is coin lowercase (e.g. btc)."""
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    images: dict[str, str] = {}
+    for item in data:
+        symbol = (item.get("symbol") or "").strip().lower()
+        image = item.get("image") or ""
+        if symbol:
+            images[symbol] = image
+    return images
+
+
+COIN_IMAGE_MAP = _load_coin_images(COINS_DATA_PATH)
+
 
 def _sql_esc(value: str) -> str:
     return str(value).replace("'", "''")
@@ -29,7 +55,7 @@ def _sql_esc(value: str) -> str:
     response_model=List[SignalNotification],
     summary="List signal notifications",
     description=(
-        "Returns all saved signals, newest first. Each row has id, symbol, timeframe, message (summary string), image (optional URL), created_at.\n\n"
+        "Returns all saved signals, newest first. Each row has id, symbol, timeframe, message (summary string), image (coin image URL from coins_data.json, same as GET /tokens; or from DB when stored), created_at.\n\n"
         "**Query params (optional):**\n"
         "- **symbol**: Filter by symbol (e.g. BTCUSDT).\n"
         "- **timeframe**: Filter by timeframe (e.g. 30m, 1h).\n\n"
@@ -76,14 +102,23 @@ def list_notifications(
     for row in rows:
         created = row.created_at
         created_at_str = created.isoformat() if hasattr(created, "isoformat") else str(created)
-        image_val = getattr(row, "image", None)
+        db_image = getattr(row, "image", None)
+        if db_image and str(db_image).strip():
+            image_url = str(db_image).strip()
+        else:
+            coin_key = (row.symbol or "").strip()
+            if len(coin_key) > 4:
+                coin_key = coin_key[:-4].strip().lower()
+            else:
+                coin_key = coin_key.lower()
+            image_url = COIN_IMAGE_MAP.get(coin_key, "")
         out.append(
             SignalNotification(
                 id=str(row.id),
                 symbol=str(row.symbol or ""),
                 timeframe=str(row.timeframe or ""),
                 message=str(row.message or ""),
-                image=str(image_val) if image_val else None,
+                image=image_url,
                 created_at=created_at_str,
             )
         )

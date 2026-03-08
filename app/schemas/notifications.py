@@ -42,5 +42,5 @@ class SignalNotification(CustomBaseModel):
     symbol: str = Field(..., description="Symbol (e.g. BTCUSDT).")
     timeframe: str = Field(..., description="Timeframe (e.g. 30m, 1h).")
     message: str = Field(..., description="Summary string for the signal (unknown length).")
-    image: str | None = Field(None, description="Optional image URL for the notification.")
+    image: str = Field("", description="Coin image URL (from coins_data.json like GET /tokens, or from DB when stored).")
     created_at: str = Field(..., description="When the signal was stored (ISO timestamp).")

@@ -388,7 +388,7 @@ class BinanceWebSocketManager:
                 db.execute(text(stmt))
                 saved_for_ws.append({
                     "id": row_id, "symbol": symbol, "timeframe": tf, "message": (msg or ""),
-                    "image": None, "created_at": created_iso,
+                    "image": "", "created_at": created_iso,
                 })
             db.commit()
             self._last_saved_signals = saved_for_ws
