@@ -30,7 +30,7 @@ def get_db() -> Session  |  HTTPException:
         db.close()
 
 
-def get_tables(schema: str = settings.SCHEMA_2) -> dict:
+def get_tables(schema: str = settings.SCHEMA_1) -> dict:
     if schema is None or schema == "":
         schema = ''
     else:
