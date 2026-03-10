@@ -29,6 +29,7 @@
     const themeParam = urlParams.get( 'theme' ) || 'Dark';
     const apiUrlParam = urlParams.get( 'apiUrl' ) || 'https://zenit-api.seerbot.io';
     const indicatorsParam = urlParams.get( 'indicators' ) || '';
+    const timeframeParam = urlParams.get( 'timeframe' ) || '1';
 
     // WebSocket connection
     let ws = null;
@@ -251,15 +252,51 @@
       }
     };
 
+    // Helper: map indicator key sang TradingView study name + params
+    function applyIndicator( activeChart, indicator ) {
+      const upper = indicator.toUpperCase();
+      const parts = upper.split( /(\d+)/ );
+      const name = parts[ 0 ];
+      const param = parts[ 1 ] ? parseInt( parts[ 1 ] ) : undefined;
+
+      try {
+        switch ( name ) {
+          case 'RSI':
+            activeChart.createStudy( 'Relative Strength Index', false, false, { length: param || 14 } );
+            break;
+          case 'MACD':
+            activeChart.createStudy( 'MACD', false, false );
+            break;
+          case 'PSAR':
+            activeChart.createStudy( 'Parabolic SAR', false, false );
+            break;
+          case 'EMA':
+            activeChart.createStudy( 'Moving Average Exponential', false, false, { length: param || 20 } );
+            break;
+          case 'ADX':
+            activeChart.createStudy( 'Average Directional Index', false, false, { length: param || 14 } );
+            break;
+          case 'BB':
+            activeChart.createStudy( 'Bollinger Bands', false, false );
+            break;
+          default:
+            // Fallback: thử dùng thẳng tên (dành cho message ADD_INDICATOR truyền tên đầy đủ)
+            activeChart.createStudy( indicator, false, false );
+        }
+      } catch ( error ) {
+        console.error( 'Failed to create indicator ' + indicator + ':', error );
+      }
+    }
+
     // 3. Khởi tạo Widget
     window.tvWidget = new TradingView.widget( {
       symbol: symbolParam,
-      interval: '1',
+      interval: timeframeParam,
       container: 'tv_chart_container',
       datafeed: Datafeed,
       library_path: './public/static/charting_library/',
       locale: 'vi',
-      disabled_features: [ 'use_localstorage_for_settings', 'left_toolbar' ],
+      disabled_features: [ 'use_localstorage_for_settings', 'left_toolbar', 'header_widget', 'timeframes_toolbar' ],
       enabled_features: [ 'hide_left_toolbar_by_default', 'header_symbol_search' ],
       fullscreen: false,
       autosize: true,
@@ -269,22 +306,40 @@
         "paneProperties.vertGridProperties.color": themeParam === 'Dark' ? '#363c4e' : '#e1e3eb',
         "paneProperties.horzGridProperties.color": themeParam === 'Dark' ? '#363c4e' : '#e1e3eb',
       },
+    } );
 
+    // Apply indicators từ URL sau khi chart sẵn sàng
+    window.tvWidget.onChartReady( () => {
+      if ( indicatorsParam ) {
+        const activeChart = window.tvWidget.activeChart();
+        indicatorsParam.split( ',' ).forEach( indicator => {
+          const trimmed = indicator.trim();
+          if ( trimmed ) {
+            applyIndicator( activeChart, trimmed );
+          }
+        } );
+      }
     } );
 
     window.addEventListener( "message", ( event ) => {
       try {
         const data = JSON.parse( event.data );
         if ( data.type === 'ADD_INDICATOR' && window.tvWidget ) {
-          window.tvWidget.activeChart().createStudy( data.value, false, false );
+          window.tvWidget.onChartReady( () => {
+            applyIndicator( window.tvWidget.activeChart(), data.value );
+          } );
         }
 
         if ( data.type === 'REMOVE_ALL_STUDIES' && window.tvWidget ) {
-          window.tvWidget.activeChart().removeAllStudies();
+          window.tvWidget.onChartReady( () => {
+            window.tvWidget.activeChart().removeAllStudies();
+          } );
         }
 
         if ( data.type === 'SET_TIMEFRAME' && window.tvWidget ) {
-          window.tvWidget.activeChart().setResolution( data.value );
+          window.tvWidget.onChartReady( () => {
+            window.tvWidget.activeChart().setResolution( data.value );
+          } );
         }
 
       } catch ( e ) {
