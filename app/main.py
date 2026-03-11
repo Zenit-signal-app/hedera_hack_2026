@@ -102,6 +102,8 @@ from app.api import (
     prices,
     signal_tools,
     token,
+    user,
+    vault,
     websocket,
 )
 
@@ -111,6 +113,8 @@ app.include_router(admob.router, prefix="/admob", tags=admob.group_tags)
 app.include_router(notifications.router, prefix="/notifications", tags=notifications.group_tags)
 app.include_router(prices.router, prefix="/prices", tags=prices.group_tags)
 app.include_router(token.router, prefix="/tokens", tags=token.group_tags)
+app.include_router(vault.router, prefix="/vaults", tags=vault.group_tags)
+app.include_router(user.router, tags=user.group_tags)
 app.include_router(signal_tools.router, prefix="/signal-tools", tags=signal_tools.group_tags)
 app.include_router(favorites.router, prefix="/favorites", tags=favorites.group_tags)
 app.include_router(auth.router, prefix="/auth", tags=auth.group_tags)

@@ -156,6 +156,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.cursor/
 
 # Spyder project settings
 .spyderproject
@@ -217,8 +218,12 @@ __marimo__/
 
 # development file
 ecosystem.config.js
-
 confidential/
+.python-version
+AGENTS.md
+main.py
+pyproject.toml
+docs/
 
 # ploc - scratch folder
 scratch/
