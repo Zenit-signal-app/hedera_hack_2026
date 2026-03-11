@@ -94,7 +94,7 @@ def _upsert_user(
     row = db.execute(
         text(
             f"""
-            SELECT id, firebase_uid, email, display_name, photo_url, provider, role
+            SELECT id, firebase_uid, email, display_name, photo_url, provider, role, chain_id
             FROM production.users
             WHERE email = {_sql(email)}
             LIMIT 1
@@ -113,7 +113,7 @@ def _upsert_user(
                     provider = {_sql(provider)},
                     updated_at = now()
                 WHERE id = {_sql(str(row.id))}
-                RETURNING id, firebase_uid, email, display_name, photo_url, provider, role
+                RETURNING id, firebase_uid, email, display_name, photo_url, provider, role, chain_id
                 """
             )
         ).fetchone()
@@ -124,7 +124,7 @@ def _upsert_user(
                 f"""
                 INSERT INTO production.users (firebase_uid, email, display_name, photo_url, provider, role)
                 VALUES ({_sql(firebase_uid)}, {_sql(email)}, {_sql(display_name)}, {_sql(photo_url)}, {_sql(provider)}, 'user')
-                RETURNING id, firebase_uid, email, display_name, photo_url, provider, role
+                RETURNING id, firebase_uid, email, display_name, photo_url, provider, role, chain_id
                 """
             )
         ).fetchone()
@@ -141,6 +141,7 @@ def _upsert_user(
         photo_url=row.photo_url,
         provider=row.provider,
         role=str(row.role or "user"),
+        chain_id=int(row.chain_id) if row.chain_id is not None else 1,
     )
 
 
@@ -153,7 +154,7 @@ def _upsert_user(
         "**Input:** Body with `token` (string, required) — Firebase ID token from Google/Apple sign-in.\n\n"
         "**Output:** `FirebaseLoginResponse` with:\n"
         "- **tokens**: access_token (JWT for API calls), refresh_token (for rotating session), token_type (e.g. bearer), expires_in (seconds), issued_at (ISO timestamp).\n"
-        "- **user**: id (backend user ID), firebase_uid, email, display_name, photo_url, provider (sign-in provider), role.\n"
+        "- **user**: id (backend user ID), firebase_uid, email, display_name, photo_url, provider (sign-in provider), role, chain_id.\n"
         "Validates the token via Firebase Admin, upserts `production.users`, and issues backend access + refresh tokens.\n\n"
         "400 if token is empty or missing email; 401 if token is invalid."
     ),
@@ -202,7 +203,9 @@ def firebase_login(body: FirebaseLoginRequest, db: Session = Depends(get_db)) ->
     summary="Rotate refresh token for existing session",
     description=(
         "**Input:** Body with `refresh_token` (string, required).\n\n"
-        "**Output:** `RefreshResponse` with **tokens**: access_token (new JWT), refresh_token (new refresh token), token_type (e.g. bearer), expires_in (seconds), issued_at (ISO timestamp). "
+        "**Output:** `RefreshResponse` with:\n"
+        "- **tokens**: access_token (new JWT), refresh_token (new refresh token), token_type (e.g. bearer), expires_in (seconds), issued_at (ISO timestamp).\n"
+        "- **user**: authenticated user info (same shape as /auth/firebase/login).\n"
         "Revokes the supplied refresh token and issues a new access + refresh pair.\n\n"
         "401 if token is invalid, revoked, or expired."
     ),
@@ -248,7 +251,7 @@ def refresh_tokens(body: RefreshRequest, db: Session = Depends(get_db)) -> Refre
     user_row = db.execute(
         text(
             f"""
-            SELECT email, provider
+            SELECT id, firebase_uid, email, display_name, photo_url, provider, role, chain_id
             FROM production.users
             WHERE id = {_sql(str(row.user_id))}
             LIMIT 1
@@ -264,7 +267,17 @@ def refresh_tokens(body: RefreshRequest, db: Session = Depends(get_db)) -> Refre
         email=str(user_row.email),
         provider=user_row.provider,
     )
-    return RefreshResponse(tokens=tokens)
+    user = UserResponse(
+        id=str(user_row.id),
+        firebase_uid=str(user_row.firebase_uid or ""),
+        email=str(user_row.email or ""),
+        display_name=user_row.display_name,
+        photo_url=user_row.photo_url,
+        provider=user_row.provider,
+        role=str(user_row.role or "user"),
+        chain_id=int(getattr(user_row, "chain_id", 1) or 1),
+    )
+    return RefreshResponse(tokens=tokens, user=user)
 
 
 @router.post(

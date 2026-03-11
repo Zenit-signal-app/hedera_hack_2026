@@ -74,6 +74,7 @@ def _fetch_candles(
     symbol: str,
     timeframe: str = "5m",
     limit: int = 100,
+    chain_id: Optional[int] = None,
 ) -> List[Candle]:
     """
     Fetch OHLCV from the database: SCHEMA_1 and the f_coin_signal_* table
@@ -82,11 +83,12 @@ def _fetch_candles(
     table_name = _table_for_timeframe(timeframe)
     symbol_safe = symbol.strip().upper()
     limit = max(MIN_CANDLES_ADX, min(1000, limit))
+    chain_filter = f"AND chain_id = {int(chain_id)}" if chain_id is not None else ""
     # Fetch latest N candles (DESC), then reverse so we have chronological order for the engine
     query = f"""
         SELECT open_time as time, open, high, low, close, volume
         FROM {table_name}
-        WHERE symbol = '{symbol_safe}'
+        WHERE symbol = '{symbol_safe}' {chain_filter}
         ORDER BY open_time DESC
         LIMIT {limit}
     """
@@ -230,6 +232,7 @@ def get_signal_tools(
 def get_rsi(
     symbol: str = Query(..., description="Trading pair symbol (e.g. BTCUSDT, ETHUSDT). Required."),
     timeframe: str = Query("5m", description="Candle interval: 5m, 30m, 1h, 4h, or 1d. Default 5m."),
+    chain_id: Optional[int] = Query(None, description="Optional chain id filter."),
     limit: int = Query(100, ge=29, le=1000, description="Number of candles to load (29–1000). Default 100. Response data length equals this."),
     db: Session = Depends(get_db),
 ) -> schemas.RSIResponse:
@@ -239,7 +242,7 @@ def get_rsi(
     if any(c in symbol for c in ["'", '"', ";", "--", "/*", "*/", "\\"]):
         raise HTTPException(status_code=400, detail="Invalid symbol format")
     timeframe = timeframe.strip().lower() or "5m"
-    candles = _fetch_candles(db, symbol, timeframe, limit)
+    candles = _fetch_candles(db, symbol, timeframe, limit, chain_id=chain_id)
     if len(candles) < MIN_CANDLES_RSI:
         raise HTTPException(
             status_code=422,
@@ -248,6 +251,7 @@ def get_rsi(
     all_ind = _compute_all_indicators(candles)
     return schemas.RSIResponse(
         symbol=symbol,
+        chain_id=int(chain_id) if chain_id is not None else 1,
         timeframe=timeframe,
         data=[
             schemas.RSIDataPoint(open_time=o.get("open_time"), rsi7=o.get("rsi7"), rsi14=o.get("rsi14"))
@@ -284,6 +288,7 @@ def get_rsi(
 def get_adx(
     symbol: str = Query(..., description="Trading pair symbol (e.g. BTCUSDT, ETHUSDT). Required."),
     timeframe: str = Query("5m", description="Candle interval: 5m, 30m, 1h, 4h, or 1d. Default 5m."),
+    chain_id: Optional[int] = Query(None, description="Optional chain id filter."),
     limit: int = Query(100, ge=29, le=1000, description="Number of candles to load (29–1000). Default 100. Response data length equals this."),
     db: Session = Depends(get_db),
 ) -> schemas.ADXResponse:
@@ -293,7 +298,7 @@ def get_adx(
     if any(c in symbol for c in ["'", '"', ";", "--", "/*", "*/", "\\"]):
         raise HTTPException(status_code=400, detail="Invalid symbol format")
     timeframe = timeframe.strip().lower() or "5m"
-    candles = _fetch_candles(db, symbol, timeframe, limit)
+    candles = _fetch_candles(db, symbol, timeframe, limit, chain_id=chain_id)
     if len(candles) < MIN_CANDLES_ADX:
         raise HTTPException(
             status_code=422,
@@ -324,7 +329,12 @@ def get_adx(
                 trend=trend if idx == 0 else "",
             )
         )
-    return schemas.ADXResponse(symbol=symbol, timeframe=timeframe, data=data)
+    return schemas.ADXResponse(
+        symbol=symbol,
+        chain_id=int(chain_id) if chain_id is not None else 1,
+        timeframe=timeframe,
+        data=data,
+    )
 
 
 @router.get(
@@ -356,6 +366,7 @@ def get_adx(
 def get_psar(
     symbol: str = Query(..., description="Trading pair symbol (e.g. BTCUSDT, ETHUSDT). Required."),
     timeframe: str = Query("5m", description="Candle interval: 5m, 30m, 1h, 4h, or 1d. Default 5m."),
+    chain_id: Optional[int] = Query(None, description="Optional chain id filter."),
     limit: int = Query(100, ge=29, le=1000, description="Number of candles to load (29–1000). Default 100. Response data length equals this."),
     db: Session = Depends(get_db),
 ) -> schemas.PSARResponse:
@@ -365,7 +376,7 @@ def get_psar(
     if any(c in symbol for c in ["'", '"', ";", "--", "/*", "*/", "\\"]):
         raise HTTPException(status_code=400, detail="Invalid symbol format")
     timeframe = timeframe.strip().lower() or "5m"
-    candles = _fetch_candles(db, symbol, timeframe, limit)
+    candles = _fetch_candles(db, symbol, timeframe, limit, chain_id=chain_id)
     if len(candles) < MIN_CANDLES_PSAR:
         raise HTTPException(
             status_code=422,
@@ -394,7 +405,12 @@ def get_psar(
                 trend=trend if idx == 0 else "",
             )
         )
-    return schemas.PSARResponse(symbol=symbol, timeframe=timeframe, data=data)
+    return schemas.PSARResponse(
+        symbol=symbol,
+        chain_id=int(chain_id) if chain_id is not None else 1,
+        timeframe=timeframe,
+        data=data,
+    )
 
 
 @router.get(
@@ -420,6 +436,7 @@ def get_psar(
 )
 def get_rsi_latest_all_tokens(
     timeframe: str = Query("5m", description="Candle interval: 5m, 30m, 1h, 4h, or 1d. Default 5m."),
+    chain_id: Optional[int] = Query(None, description="Optional chain id filter."),
     db: Session = Depends(get_db),
 ) -> List[schemas.RSILatestRecord]:
     """
@@ -428,16 +445,19 @@ def get_rsi_latest_all_tokens(
     """
     tf = timeframe.strip().lower() or "5m"
     table_name = _table_for_timeframe(tf)
+    chain_filter = f"AND chain_id = {int(chain_id)}" if chain_id is not None else ""
 
     query = f"""
-        SELECT s.symbol, s.open_time, s.rsi7, s.rsi14
+        SELECT s.symbol, s.open_time, s.rsi7, s.rsi14, s.chain_id
         FROM {table_name} s
         JOIN (
             SELECT symbol, MAX(open_time) AS open_time
             FROM {table_name}
+            WHERE 1=1 {chain_filter}
             GROUP BY symbol
         ) latest
         ON s.symbol = latest.symbol AND s.open_time = latest.open_time
+        {f"WHERE s.chain_id = {int(chain_id)}" if chain_id is not None else ""}
         ORDER BY s.symbol ASC
     """
 
@@ -467,6 +487,7 @@ def get_rsi_latest_all_tokens(
             schemas.RSILatestRecord(
                 symbol=sym,
                 timeframe=tf,
+                chain_id=int(getattr(row, "chain_id", 1) or 1),
                 open_time=row.open_time if hasattr(row, "open_time") else getattr(row, "open_time", None),
                 rsi7=rsi7_val,
                 rsi14=rsi14_val,

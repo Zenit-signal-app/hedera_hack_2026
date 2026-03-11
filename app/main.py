@@ -96,6 +96,7 @@ from app.api import (
     admob,
     ai_assistant,
     auth,
+    chains,
     favorites,
     notifications,
     prices,
@@ -105,6 +106,7 @@ from app.api import (
 )
 
 app.include_router(websocket.router, tags=websocket.group_tags)
+app.include_router(chains.router, prefix="/chains", tags=chains.group_tags)
 app.include_router(admob.router, prefix="/admob", tags=admob.group_tags)
 app.include_router(notifications.router, prefix="/notifications", tags=notifications.group_tags)
 app.include_router(prices.router, prefix="/prices", tags=prices.group_tags)

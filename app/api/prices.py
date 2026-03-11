@@ -24,10 +24,11 @@ tables = get_tables(settings.SCHEMA_1)
             response_model=List[schemas.PriceHistory],
             summary="Get token price history",
             description=(
-                "**Input:** Query: `symbol` (required), `timeframe` (5m, 30m, 1h, 4h, 1d; default 5m), "
+                "**Input:** Query: `symbol` (required), `chain_id` (optional filter by chain), `timeframe` (5m, 30m, 1h, 4h, 1d; default 5m), "
                 "`limit` (1–1000, default 100), `from_time` (optional Unix seconds), `to_time` (optional Unix seconds).\n\n"
                 "**Output:** List of `PriceHistory`, each with:\n"
                 "- **symbol**: Trading pair (e.g. BTCUSDT).\n"
+                "- **chain_id**: Chain/network id (references `chains.id`).\n"
                 "- **time**: Candle open time (Unix seconds).\n"
                 "- **time_readable**: Human-readable time.\n"
                 "- **open**: Open price for the candle.\n"
@@ -39,6 +40,7 @@ tables = get_tables(settings.SCHEMA_1)
             ))
 def get_price_history(
     symbol: str,
+    chain_id: Optional[int] = None,
     timeframe: str = "5m",
     limit: int = 100,
     from_time: Optional[int] = None,
@@ -98,6 +100,8 @@ def get_price_history(
     
     # Build dynamic WHERE clause
     where_conditions = [f"symbol = '{symbol}'"]
+    if chain_id is not None:
+        where_conditions.append(f"chain_id = {int(chain_id)}")
     if from_time is not None:
         where_conditions.append(f"{time_column} >= {from_time}")
     if to_time is not None:
@@ -105,7 +109,7 @@ def get_price_history(
     where_clause = " AND ".join(where_conditions)
 
     query = f"""
-        SELECT symbol, {time_column} as time, open, high, low, close, volume
+        SELECT symbol, chain_id, {time_column} as time, open, high, low, close, volume
         FROM {table_name}
         WHERE {where_clause}
         ORDER BY {time_column} DESC
@@ -124,6 +128,7 @@ def get_price_history(
     return [
         schemas.PriceHistory(
             symbol=row.symbol,
+            chain_id=getattr(row, "chain_id", 1) or 1,
             time=row.time,
             time_readable=datetime.fromtimestamp(row.time).strftime('%Y-%m-%d %H:%M:%S UTC') if row.time else '',
             open=row.open,

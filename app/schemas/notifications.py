@@ -36,11 +36,12 @@ class SendFCMBatchResponse(CustomBaseModel):
 
 
 class SignalNotification(CustomBaseModel):
-    """One signal row for the FE (signals table: id, symbol, timeframe, message, image, created_at)."""
+    """One signal row for the FE (signals table: id, symbol, timeframe, message, image, chain_id, created_at)."""
 
-    id: str = Field(..., description="UUID of the signal.")
-    symbol: str = Field(..., description="Symbol (e.g. BTCUSDT).")
-    timeframe: str = Field(..., description="Timeframe (e.g. 30m, 1h).")
-    message: str = Field(..., description="Summary string for the signal (unknown length).")
+    id: str = Field("", description="UUID of the signal.")
+    symbol: str = Field("", description="Symbol (e.g. BTCUSDT).")
+    timeframe: str = Field("", description="Timeframe (e.g. 30m, 1h).")
+    message: str = Field("", description="Summary string for the signal (unknown length).")
+    chain_id: int = Field(1, description="Chain/network id (references chains.id).")
     image: str = Field("", description="Coin image URL (from coins_data.json like GET /tokens, or from DB when stored).")
-    created_at: str = Field(..., description="When the signal was stored (ISO timestamp).")
+    created_at: str = Field("", description="When the signal was stored (ISO timestamp).")

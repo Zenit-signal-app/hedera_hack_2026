@@ -13,6 +13,7 @@ class RSIDataPoint(CustomBaseModel):
 class RSIResponse(CustomBaseModel):
     """Response for GET /signal-tools/rsi. data is newest-first (latest candle first)."""
     symbol: str = Field("", description="Trading pair symbol (e.g. BTCUSDT).")
+    chain_id: int = Field(1, description="Chain/network id (references chains.id).")
     timeframe: str = Field("", description="Candle interval used (5m, 30m, 1h, 4h, 1d).")
     data: List[RSIDataPoint] = Field(default_factory=list, description="List of RSI values per candle; newest first. Length equals limit (up to 100).")
 
@@ -29,6 +30,7 @@ class ADXDataPoint(CustomBaseModel):
 class ADXResponse(CustomBaseModel):
     """Response for GET /signal-tools/adx. data is newest-first (latest candle first)."""
     symbol: str = Field("", description="Trading pair symbol (e.g. BTCUSDT).")
+    chain_id: int = Field(1, description="Chain/network id (references chains.id).")
     timeframe: str = Field("", description="Candle interval used (5m, 30m, 1h, 4h, 1d).")
     data: List[ADXDataPoint] = Field(default_factory=list, description="List of ADX values per candle; newest first. Length equals limit (up to 100).")
 
@@ -47,6 +49,7 @@ class PSARDataPoint(CustomBaseModel):
 class PSARResponse(CustomBaseModel):
     """Response for GET /signal-tools/psar. data is newest-first (latest candle first)."""
     symbol: str = Field("", description="Trading pair symbol (e.g. BTCUSDT).")
+    chain_id: int = Field(1, description="Chain/network id (references chains.id).")
     timeframe: str = Field("", description="Candle interval used (5m, 30m, 1h, 4h, 1d).")
     data: List[PSARDataPoint] = Field(default_factory=list, description="List of PSAR values per candle; newest first. Length equals limit (up to 100).")
 
@@ -55,6 +58,7 @@ class RSILatestRecord(CustomBaseModel):
     """Latest RSI record per token for a given timeframe."""
     symbol: str = Field("", description="Trading pair symbol (e.g. BTCUSDT).")
     timeframe: str = Field("", description="Candle interval used (5m, 30m, 1h, 4h, 1d).")
+    chain_id: int = Field(1, description="Chain/network id (references chains.id).")
     open_time: Optional[int] = Field(None, description="Unix timestamp (seconds) of the latest candle for this symbol.")
     rsi7: Optional[float] = Field(None, description="RSI 7-period (Wilder smoothing) at the latest candle.")
     rsi14: Optional[float] = Field(None, description="RSI 14-period (Wilder smoothing) at the latest candle.")

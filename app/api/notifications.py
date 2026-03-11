@@ -55,16 +55,20 @@ def _sql_esc(value: str) -> str:
     response_model=List[SignalNotification],
     summary="List signal notifications",
     description=(
-        "Returns all saved signals, newest first. Each row has id, symbol, timeframe, message (summary string), image (coin image URL from coins_data.json, same as GET /tokens; or from DB when stored), created_at.\n\n"
+        "Returns all saved signals, newest first. Each row has id, symbol, timeframe, message (summary string), image (coin image URL from coins_data.json, same as GET /tokens; or from DB when stored), chain_id, created_at.\n\n"
         "**Query params (optional):**\n"
         "- **symbol**: Filter by symbol (e.g. BTCUSDT).\n"
-        "- **timeframe**: Filter by timeframe (e.g. 30m, 1h).\n\n"
+        "- **timeframe**: Filter by timeframe (e.g. 30m, 1h).\n"
+        "- **chain_id**: Filter by chain id.\n"
+        "- **limit**: Max notifications to return (1–500, default 100).\n\n"
         "**Response:** List of `SignalNotification`."
     ),
 )
 def list_notifications(
     symbol: Optional[str] = Query(None, description="Filter by symbol (e.g. BTCUSDT)."),
     timeframe: Optional[str] = Query(None, description="Filter by timeframe (e.g. 30m, 1h)."),
+    chain_id: Optional[int] = Query(None, description="Filter by chain id."),
+    limit: int = Query(100, ge=1, le=500, description="Max number of notifications to return (default 100)."),
     db: Session = Depends(get_db),
 ) -> List[SignalNotification]:
     try:
@@ -83,12 +87,15 @@ def list_notifications(
     if timeframe is not None and timeframe.strip():
         tf_esc = _sql_esc(timeframe.strip().lower())
         conditions.append(f"timeframe = '{tf_esc}'")
+    if chain_id is not None:
+        conditions.append(f"chain_id = {int(chain_id)}")
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     query = f"""
-        SELECT id, symbol, timeframe, message, image, created_at
+        SELECT id, symbol, timeframe, message, image, chain_id, created_at
         FROM {tbl_signals}
         {where}
         ORDER BY created_at DESC
+        LIMIT {limit}
     """
     try:
         rows = db.execute(text(query)).fetchall()
@@ -100,8 +107,11 @@ def list_notifications(
         ) from e
     out: List[SignalNotification] = []
     for row in rows:
-        created = row.created_at
-        created_at_str = created.isoformat() if hasattr(created, "isoformat") else str(created)
+        created = getattr(row, "created_at", None)
+        if created is not None and hasattr(created, "isoformat"):
+            created_at_str = created.isoformat()
+        else:
+            created_at_str = str(created) if created is not None else ""
         db_image = getattr(row, "image", None)
         if db_image and str(db_image).strip():
             image_url = str(db_image).strip()
@@ -118,6 +128,7 @@ def list_notifications(
                 symbol=str(row.symbol or ""),
                 timeframe=str(row.timeframe or ""),
                 message=str(row.message or ""),
+                chain_id=getattr(row, "chain_id", 1) or 1,
                 image=image_url,
                 created_at=created_at_str,
             )

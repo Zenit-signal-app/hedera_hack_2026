@@ -118,10 +118,11 @@ def _sanitize_symbol(symbol: str) -> str:
     response_model=List[schemas.Token],
     summary="List tokens",
     description=(
-        "**Input:** Query: `key` (optional search term for symbol), `offset` (≥0, default 0), `limit` (1–500, default 100).\n\n"
+        "**Input:** Query: `key` (optional search term for symbol), `chain_id` (optional filter by chain), `offset` (≥0, default 0), `limit` (1–500, default 100).\n\n"
         "**Output:** List of `Token`, each with:\n"
         "- **symbol**: Trading pair (e.g. BTCUSDT).\n"
         "- **coin**: Base coin (e.g. BTC).\n"
+        "- **chain_id**: Chain/network id (references chains.id).\n"
         "- **price**: Latest cached price.\n"
         "- **time**: Unix timestamp of the price.\n"
         "- **time_readable**: Human-readable time (e.g. YYYY-MM-DD HH:MM:SS UTC).\n"
@@ -135,6 +136,7 @@ def _sanitize_symbol(symbol: str) -> str:
 )
 def list_all_tokens(
     key: Optional[str] = None,
+    chain_id: Optional[int] = None,
     offset: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -144,24 +146,28 @@ def list_all_tokens(
     
     table_5m = tables['p5m']
     key_filter = _build_key_filter(key)
+    chain_filter = f"AND chain_id = {int(chain_id)}" if chain_id is not None else ""
     
-    # Query distinct symbols with their latest prices
+    # Query distinct symbols with their latest prices (per chain when chain_id filtered)
     # Using f-string as per project requirements (no parameterized queries)
     query = f"""
         SELECT 
             symbol,
+            chain_id,
             left(symbol, char_length(symbol) - 4) as coin,
             close as price,
             open_time as time
         FROM (
             SELECT 
                 symbol,
+                chain_id,
                 close,
                 open_time,
-                row_number() over (PARTITION by symbol order by open_time desc) AS r
+                row_number() over (PARTITION by symbol, chain_id order by open_time desc) AS r
             FROM {table_5m}
             WHERE open_time > extract(epoch from now())::bigint - 1800
             {key_filter}
+            {chain_filter}
         ) latest_prices
         WHERE r = 1
         ORDER BY symbol
@@ -187,6 +193,7 @@ def list_all_tokens(
             schemas.Token(
                 symbol=row.symbol,
                 coin=row.coin,
+                chain_id=getattr(row, "chain_id", 1) or 1,
                 price=row.price if row.price else 0,
                 time=row.time if row.time else 0,
                 time_readable=datetime.fromtimestamp(row.time).strftime('%Y-%m-%d %H:%M:%S UTC')
@@ -208,10 +215,11 @@ def list_all_tokens(
     response_model=schemas.Token,
     summary="Get token by symbol",
     description=(
-        "**Input:** Path `symbol` (required, e.g. BTCUSDT).\n\n"
+        "**Input:** Path `symbol` (required, e.g. BTCUSDT). Query: `chain_id` (optional filter by chain).\n\n"
         "**Output:** Single `Token` with:\n"
         "- **symbol**: Trading pair (e.g. BTCUSDT).\n"
         "- **coin**: Base coin (e.g. BTC).\n"
+        "- **chain_id**: Chain/network id (references chains.id).\n"
         "- **price**: Latest cached price.\n"
         "- **time**: Unix timestamp of the price.\n"
         "- **time_readable**: Human-readable time (e.g. YYYY-MM-DD HH:MM:SS UTC).\n"
@@ -223,23 +231,31 @@ def list_all_tokens(
         "404 if symbol not found."
     ),
 )
-def get_token(symbol: str, db: Session = Depends(get_db)) -> schemas.Token:
+def get_token(
+    symbol: str,
+    chain_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+) -> schemas.Token:
     symbol_clean = _sanitize_symbol(symbol)
     table_5m = tables["p5m"]
+    chain_filter = f"AND chain_id = {int(chain_id)}" if chain_id is not None else ""
     query = f"""
         SELECT
             symbol,
+            chain_id,
             left(symbol, char_length(symbol) - 4) as coin,
             close as price,
             open_time as time
         FROM (
             SELECT
                 symbol,
+                chain_id,
                 close,
                 open_time,
-                row_number() over (PARTITION by symbol order by open_time desc) AS r
+                row_number() over (PARTITION by symbol, chain_id order by open_time desc) AS r
             FROM {table_5m}
             WHERE symbol = '{symbol_clean}'
+            {chain_filter}
         ) latest_prices
         WHERE r = 1
         LIMIT 1
@@ -258,6 +274,7 @@ def get_token(symbol: str, db: Session = Depends(get_db)) -> schemas.Token:
     return schemas.Token(
         symbol=row.symbol,
         coin=row.coin,
+        chain_id=getattr(row, "chain_id", 1) or 1,
         price=row.price if row.price else 0,
         time=row.time if row.time else 0,
         time_readable=datetime.fromtimestamp(row.time).strftime("%Y-%m-%d %H:%M:%S UTC")
