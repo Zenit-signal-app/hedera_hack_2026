@@ -32,7 +32,7 @@ PRICE_WINDOW_SECONDS = 3600
 
 
 router = APIRouter()
-group_tags: List[str | Enum] = ["user"]
+group_tags: List[str | Enum] = ["User"]
 
 
 def _normalize_symbol(symbol: str) -> str:

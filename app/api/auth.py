@@ -25,6 +25,7 @@ from app.schemas.auth import (
     TokenResponse,
     UserResponse,
 )
+from app.db.chain_resolve import get_slug_for_chain_id
 from app.services.firebase_auth import verify_id_token
 
 router = APIRouter()
@@ -133,6 +134,8 @@ def _upsert_user(
     if not row:
         raise HTTPException(status_code=500, detail="Could not upsert user")
 
+    cid = int(row.chain_id) if row.chain_id is not None else 1
+    chain = get_slug_for_chain_id(db, cid)
     return UserResponse(
         id=str(row.id),
         firebase_uid=str(row.firebase_uid),
@@ -141,7 +144,7 @@ def _upsert_user(
         photo_url=row.photo_url,
         provider=row.provider,
         role=str(row.role or "user"),
-        chain_id=int(row.chain_id) if row.chain_id is not None else 1,
+        chain=chain,
     )
 
 
@@ -154,7 +157,7 @@ def _upsert_user(
         "**Input:** Body with `token` (string, required) — Firebase ID token from Google/Apple sign-in.\n\n"
         "**Output:** `FirebaseLoginResponse` with:\n"
         "- **tokens**: access_token (JWT for API calls), refresh_token (for rotating session), token_type (e.g. bearer), expires_in (seconds), issued_at (ISO timestamp).\n"
-        "- **user**: id (backend user ID), firebase_uid, email, display_name, photo_url, provider (sign-in provider), role, chain_id.\n"
+        "- **user**: id (backend user ID), firebase_uid, email, display_name, photo_url, provider (sign-in provider), role, chain (slug value from chains table).\n"
         "Validates the token via Firebase Admin, upserts `production.users`, and issues backend access + refresh tokens.\n\n"
         "400 if token is empty or missing email; 401 if token is invalid."
     ),
@@ -267,6 +270,8 @@ def refresh_tokens(body: RefreshRequest, db: Session = Depends(get_db)) -> Refre
         email=str(user_row.email),
         provider=user_row.provider,
     )
+    cid = int(getattr(user_row, "chain_id", 1) or 1)
+    chain = get_slug_for_chain_id(db, cid)
     user = UserResponse(
         id=str(user_row.id),
         firebase_uid=str(user_row.firebase_uid or ""),
@@ -275,7 +280,7 @@ def refresh_tokens(body: RefreshRequest, db: Session = Depends(get_db)) -> Refre
         photo_url=user_row.photo_url,
         provider=user_row.provider,
         role=str(user_row.role or "user"),
-        chain_id=int(getattr(user_row, "chain_id", 1) or 1),
+        chain=chain,
     )
     return RefreshResponse(tokens=tokens, user=user)
 

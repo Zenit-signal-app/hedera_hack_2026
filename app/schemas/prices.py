@@ -74,7 +74,7 @@ class Indicators(CustomBaseModel):
 class Token(CustomBaseModel):
     symbol: str = ''
     coin: str = ''
-    chain_id: int = 1
+    chain: str = ''
     price: float = 0
     time: int = 0
     time_readable: str = ''
@@ -103,7 +103,7 @@ class Token(CustomBaseModel):
 
 class PriceHistory(CustomBaseModel):
     symbol: str = ''
-    chain_id: int = 1
+    chain: str = ''
     time: int = 0
     time_readable: str = ''
     open: float = 0

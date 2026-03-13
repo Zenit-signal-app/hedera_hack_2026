@@ -1,5 +1,6 @@
 from app.core.router_decorated import APIRouter
 from app.core.config import settings
+from app.db.chain_resolve import get_chain_id_for_slug, get_slug_for_chain_id
 from app.db.session import get_db, get_tables
 from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -24,11 +25,11 @@ tables = get_tables(settings.SCHEMA_1)
             response_model=List[schemas.PriceHistory],
             summary="Get token price history",
             description=(
-                "**Input:** Query: `symbol` (required), `chain_id` (optional filter by chain), `timeframe` (5m, 30m, 1h, 4h, 1d; default 5m), "
+                "**Input:** Query: `symbol` (required), `chain` (optional chain string, treated as slug), `timeframe` (5m, 30m, 1h, 4h, 1d; default 5m), "
                 "`limit` (1–1000, default 100), `from_time` (optional Unix seconds), `to_time` (optional Unix seconds).\n\n"
                 "**Output:** List of `PriceHistory`, each with:\n"
                 "- **symbol**: Trading pair (e.g. BTCUSDT).\n"
-                "- **chain_id**: Chain/network id (references `chains.id`).\n"
+                "- **chain**: Slug value from chains table.\n"
                 "- **time**: Candle open time (Unix seconds).\n"
                 "- **time_readable**: Human-readable time.\n"
                 "- **open**: Open price for the candle.\n"
@@ -40,12 +41,12 @@ tables = get_tables(settings.SCHEMA_1)
             ))
 def get_price_history(
     symbol: str,
-    chain_id: Optional[int] = None,
+    chain: Optional[str] = None,
     timeframe: str = "5m",
     limit: int = 100,
     from_time: Optional[int] = None,
     to_time: Optional[int] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> List[schemas.PriceHistory]:
     """Get price history for a token
     
@@ -98,7 +99,9 @@ def get_price_history(
         table_name = tables['p5m']
         timeframe = "5m"
     
-    # Build dynamic WHERE clause
+    chain_id = get_chain_id_for_slug(db, chain) if (chain and chain.strip()) else None
+    if chain and chain.strip() and chain_id == 0:
+        raise HTTPException(status_code=400, detail="Chain not found")
     where_conditions = [f"symbol = '{symbol}'"]
     if chain_id is not None:
         where_conditions.append(f"chain_id = {int(chain_id)}")
@@ -124,18 +127,22 @@ def get_price_history(
     
     if not result:
         return []
-    
-    return [
-        schemas.PriceHistory(
-            symbol=row.symbol,
-            chain_id=getattr(row, "chain_id", 1) or 1,
-            time=row.time,
-            time_readable=datetime.fromtimestamp(row.time).strftime('%Y-%m-%d %H:%M:%S UTC') if row.time else '',
-            open=row.open,
-            high=row.high,
-            low=row.low,
-            close=row.close,
-            volume=row.volume
+
+    out = []
+    for row in result:
+        cid = getattr(row, "chain_id", 1) or 1
+        chain_val = get_slug_for_chain_id(db, int(cid))
+        out.append(
+            schemas.PriceHistory(
+                symbol=row.symbol,
+                chain=chain_val,
+                time=row.time,
+                time_readable=datetime.fromtimestamp(row.time).strftime('%Y-%m-%d %H:%M:%S UTC') if row.time else '',
+                open=row.open,
+                high=row.high,
+                low=row.low,
+                close=row.close,
+                volume=row.volume
+            )
         )
-        for row in result
-    ]
+    return out

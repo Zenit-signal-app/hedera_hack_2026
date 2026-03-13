@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.core.router_decorated import APIRouter
 from app.core.config import settings
+from app.db.chain_resolve import get_chain_id_for_slug, get_slug_for_chain_id
 from app.db.session import get_db, get_tables
 import app.schemas.prices as schemas
 
@@ -118,11 +119,11 @@ def _sanitize_symbol(symbol: str) -> str:
     response_model=List[schemas.Token],
     summary="List tokens",
     description=(
-        "**Input:** Query: `key` (optional search term for symbol), `chain_id` (optional filter by chain), `offset` (≥0, default 0), `limit` (1–500, default 100).\n\n"
+        "**Input:** Query: `key` (optional), `chain` (optional chain string, treated as slug), `offset` (≥0, default 0), `limit` (1–500, default 100).\n\n"
         "**Output:** List of `Token`, each with:\n"
         "- **symbol**: Trading pair (e.g. BTCUSDT).\n"
         "- **coin**: Base coin (e.g. BTC).\n"
-        "- **chain_id**: Chain/network id (references chains.id).\n"
+        "- **chain**: Slug value from chains table.\n"
         "- **price**: Latest cached price.\n"
         "- **time**: Unix timestamp of the price.\n"
         "- **time_readable**: Human-readable time (e.g. YYYY-MM-DD HH:MM:SS UTC).\n"
@@ -136,14 +137,16 @@ def _sanitize_symbol(symbol: str) -> str:
 )
 def list_all_tokens(
     key: Optional[str] = None,
-    chain_id: Optional[int] = None,
+    chain: Optional[str] = None,
     offset: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
 ) -> List[schemas.Token]:
+    chain_id = get_chain_id_for_slug(db, chain) if (chain and chain.strip()) else None
+    if chain and chain.strip() and chain_id == 0:
+        raise HTTPException(status_code=400, detail="Chain not found")
     offset = max(0, offset)
     limit = max(1, min(500, limit))
-    
     table_5m = tables['p5m']
     key_filter = _build_key_filter(key)
     chain_filter = f"AND chain_id = {int(chain_id)}" if chain_id is not None else ""
@@ -189,11 +192,13 @@ def list_all_tokens(
     tokens = []
     for row in result:
         coin_key = (row.coin or "").strip().lower()
+        cid = getattr(row, "chain_id", 1) or 1
+        chain_val = get_slug_for_chain_id(db, int(cid))
         tokens.append(
             schemas.Token(
                 symbol=row.symbol,
                 coin=row.coin,
-                chain_id=getattr(row, "chain_id", 1) or 1,
+                chain=chain_val,
                 price=row.price if row.price else 0,
                 time=row.time if row.time else 0,
                 time_readable=datetime.fromtimestamp(row.time).strftime('%Y-%m-%d %H:%M:%S UTC')
@@ -215,11 +220,11 @@ def list_all_tokens(
     response_model=schemas.Token,
     summary="Get token by symbol",
     description=(
-        "**Input:** Path `symbol` (required, e.g. BTCUSDT). Query: `chain_id` (optional filter by chain).\n\n"
+        "**Input:** Path `symbol` (required). Query: `chain` (optional chain string, treated as slug).\n\n"
         "**Output:** Single `Token` with:\n"
         "- **symbol**: Trading pair (e.g. BTCUSDT).\n"
         "- **coin**: Base coin (e.g. BTC).\n"
-        "- **chain_id**: Chain/network id (references chains.id).\n"
+        "- **chain**: Slug value from chains table.\n"
         "- **price**: Latest cached price.\n"
         "- **time**: Unix timestamp of the price.\n"
         "- **time_readable**: Human-readable time (e.g. YYYY-MM-DD HH:MM:SS UTC).\n"
@@ -233,9 +238,12 @@ def list_all_tokens(
 )
 def get_token(
     symbol: str,
-    chain_id: Optional[int] = None,
+    chain: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> schemas.Token:
+    chain_id = get_chain_id_for_slug(db, chain) if (chain and chain.strip()) else None
+    if chain and chain.strip() and chain_id == 0:
+        raise HTTPException(status_code=400, detail="Chain not found")
     symbol_clean = _sanitize_symbol(symbol)
     table_5m = tables["p5m"]
     chain_filter = f"AND chain_id = {int(chain_id)}" if chain_id is not None else ""
@@ -271,10 +279,12 @@ def get_token(
 
     coin_key = (row.coin or "").strip().lower()
     binance_metrics = _fetch_binance_tickers([symbol_clean]).get(symbol_clean, {})
+    cid = getattr(row, "chain_id", 1) or 1
+    chain_val = get_slug_for_chain_id(db, int(cid))
     return schemas.Token(
         symbol=row.symbol,
         coin=row.coin,
-        chain_id=getattr(row, "chain_id", 1) or 1,
+        chain=chain_val,
         price=row.price if row.price else 0,
         time=row.time if row.time else 0,
         time_readable=datetime.fromtimestamp(row.time).strftime("%Y-%m-%d %H:%M:%S UTC")

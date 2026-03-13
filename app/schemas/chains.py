@@ -16,4 +16,4 @@ class Chain(CustomBaseModel):
 class SetChainRequest(CustomBaseModel):
     """Body for POST /chains – set the authenticated user's chain."""
 
-    chain_id: int = 1
+    chain: str

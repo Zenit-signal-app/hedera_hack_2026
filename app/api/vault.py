@@ -17,7 +17,7 @@ from app.services import price_cache
 SCHEMA = settings.SCHEMA_2
 
 router = APIRouter()
-group_tags: List[str] = ["vault"]
+group_tags: List[str] = ["Vault"]
 
 
 def _get_vaults(

@@ -25,7 +25,7 @@ class UserResponse(BaseModel):
     photo_url: Optional[str] = None
     provider: Optional[str] = None
     role: str
-    chain_id: int = 1
+    chain: str = ""
 
 
 class FirebaseLoginResponse(BaseModel):

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.router_decorated import APIRouter
+from app.db.chain_resolve import get_chain_id_for_slug, get_slug_for_chain_id
 from app.db.session import get_db, get_tables
 from app.schemas.notifications import SignalNotification
 
@@ -55,11 +56,11 @@ def _sql_esc(value: str) -> str:
     response_model=List[SignalNotification],
     summary="List signal notifications",
     description=(
-        "Returns all saved signals, newest first. Each row has id, symbol, timeframe, message (summary string), image (coin image URL from coins_data.json, same as GET /tokens; or from DB when stored), chain_id, created_at.\n\n"
+        "Returns all saved signals, newest first. Each row has id, symbol, timeframe, message, image, chain (slug from chains table), created_at.\n\n"
         "**Query params (optional):**\n"
         "- **symbol**: Filter by symbol (e.g. BTCUSDT).\n"
         "- **timeframe**: Filter by timeframe (e.g. 30m, 1h).\n"
-        "- **chain_id**: Filter by chain id.\n"
+        "- **chain**: Filter by chain string (treated as slug).\n"
         "- **limit**: Max notifications to return (1–500, default 100).\n\n"
         "**Response:** List of `SignalNotification`."
     ),
@@ -67,7 +68,7 @@ def _sql_esc(value: str) -> str:
 def list_notifications(
     symbol: Optional[str] = Query(None, description="Filter by symbol (e.g. BTCUSDT)."),
     timeframe: Optional[str] = Query(None, description="Filter by timeframe (e.g. 30m, 1h)."),
-    chain_id: Optional[int] = Query(None, description="Filter by chain id."),
+    chain: Optional[str] = Query(None, description="Filter by chain string (treated as slug from chains table)."),
     limit: int = Query(100, ge=1, le=500, description="Max number of notifications to return (default 100)."),
     db: Session = Depends(get_db),
 ) -> List[SignalNotification]:
@@ -87,8 +88,11 @@ def list_notifications(
     if timeframe is not None and timeframe.strip():
         tf_esc = _sql_esc(timeframe.strip().lower())
         conditions.append(f"timeframe = '{tf_esc}'")
-    if chain_id is not None:
-        conditions.append(f"chain_id = {int(chain_id)}")
+    if chain is not None and chain.strip():
+        cid = get_chain_id_for_slug(db, chain)
+        if cid == 0:
+            raise HTTPException(status_code=400, detail="Chain not found")
+        conditions.append(f"chain_id = {cid}")
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     query = f"""
         SELECT id, symbol, timeframe, message, image, chain_id, created_at
@@ -122,13 +126,15 @@ def list_notifications(
             else:
                 coin_key = coin_key.lower()
             image_url = COIN_IMAGE_MAP.get(coin_key, "")
+        cid = getattr(row, "chain_id", 1) or 1
+        chain_val = get_slug_for_chain_id(db, int(cid))
         out.append(
             SignalNotification(
                 id=str(row.id),
                 symbol=str(row.symbol or ""),
                 timeframe=str(row.timeframe or ""),
                 message=str(row.message or ""),
-                chain_id=getattr(row, "chain_id", 1) or 1,
+                chain=chain_val,
                 image=image_url,
                 created_at=created_at_str,
             )

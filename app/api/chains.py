@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.jwt_auth import verify_access_token
 from app.core.router_decorated import APIRouter
+from app.db.chain_resolve import get_chain_id_for_slug
 from app.db.session import get_db
 from app.schemas.chains import Chain, SetChainRequest
 from app.schemas.my_base_model import Message
@@ -61,7 +62,7 @@ def _extract_user_id(
 
 
 @router.get(
-    "/",
+    "/chains",
     tags=group_tags,
     response_model=List[Chain],
     summary="List chains",
@@ -92,45 +93,8 @@ def list_chains(db: Session = Depends(get_db)) -> List[Chain]:
     ) for row in rows]
 
 
-@router.get(
-    "/{chain_id}",
-    tags=group_tags,
-    response_model=Chain,
-    summary="Get chain by id",
-    description="Returns a single chain by its id. 404 if not found.",
-)
-def get_chain_by_id(chain_id: int, db: Session = Depends(get_db)) -> Chain:
-    table = _chains_table()
-    try:
-        row = db.execute(
-            text(
-                f"""
-                SELECT id, name, slug, native_token,
-                       to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at
-                FROM {table}
-                WHERE id = {chain_id}
-                LIMIT 1
-                """
-            )
-        ).fetchone()
-    except Exception as e:
-        print(f"Error querying chain by id: {e}")
-        raise HTTPException(status_code=500, detail="Query data error")
-
-    if not row:
-        raise HTTPException(status_code=404, detail="Chain not found")
-
-    return Chain(
-        id=row.id,
-        name=row.name or "",
-        slug=row.slug,
-        native_token=row.native_token,
-        created_at=row.created_at,
-    )
-
-
 @router.post(
-    "/",
+    "/user/choose-chain",
     tags=group_tags,
     response_model=Message,
     status_code=status.HTTP_200_OK,
@@ -138,8 +102,8 @@ def get_chain_by_id(chain_id: int, db: Session = Depends(get_db)) -> Chain:
     description=(
         "Requires **Authorization: Bearer &lt;access_token&gt;** (JWT). "
         "Updates the authenticated user's chain_id to the given value. "
-        "**Body:** `chain_id` (int, required) – must exist in the chains table. "
-        "Returns `{ \"message\": \"success\" }` on success. 400 if chain_id is invalid; 401 if not authenticated."
+        "**Body:** `chain` (string, required) – treated as slug, must exist in the chains table. "
+        "Returns `{ \"message\": \"success\" }` on success. 400 if chain not found; 401 if not authenticated."
     ),
 )
 def set_user_chain(
@@ -147,23 +111,19 @@ def set_user_chain(
     user_id: str = Depends(_extract_user_id),
     db: Session = Depends(get_db),
 ) -> Message:
-    chain_id = body.chain_id
+    chain = body.chain
     chains_t = _chains_table()
     users_t = _users_table()
 
-    check = db.execute(
-        text(f"SELECT id FROM {chains_t} WHERE id = {chain_id} LIMIT 1")
-    ).fetchone()
-    if not check:
+    chain_id = get_chain_id_for_slug(db, chain)
+    if chain_id == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="chain_id not found",
+            detail="chain not found",
         )
 
     db.execute(
-        text(
-            f"UPDATE {users_t} SET chain_id = {chain_id} WHERE id = {_sql(user_id)}"
-        )
+        text(f"UPDATE {users_t} SET chain_id = {chain_id} WHERE id = {_sql(user_id)}")
     )
     db.commit()
     return Message(message="success")
