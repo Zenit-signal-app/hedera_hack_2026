@@ -5,6 +5,7 @@ import { useWalletStore } from "@/store/walletStore";
 import DepositModal from "./DepositModal";
 import RedeemModal from "./RedeemModal";
 import { vaultApi } from "@/services/vaultServices";
+import { getServerChainId } from "@/services/chainServices";
 import { UserVaultEarningInfoResponse, VaultState } from "@/types/vault";
 import { useVaultSocket } from "@/hooks/useVaultSocket";
 import { useVaultSocketStore } from "@/store/vaultSocketStore";
@@ -28,7 +29,11 @@ const MyDeposits = ({
 	onDepositSuccess,
 	onRedeemSuccess,
 }: MyDepositsProps) => {
-	const walletAddress = useWalletStore((state) => state.usedAddress);
+	const walletAddress = useWalletStore((state) => {
+		const chain = state.activeChain;
+		return chain ? state.chainConnections[chain]?.address : undefined;
+	});
+	const activeChain = useWalletStore((state) => state.activeChain);
 	const [showDepositModal, setShowDepositModal] = useState(false);
 	const [showRedeemModal, setShowRedeemModal] = useState(false);
 	const [earningInfo, setEarningInfo] =
@@ -128,6 +133,7 @@ const MyDeposits = ({
 			const data = await vaultApi.getUserVaultEarningInfo(
 				vaultId,
 				walletAddress,
+				await getServerChainId(activeChain ?? ""),
 			);
 			setEarningInfo(data);
 
@@ -151,7 +157,7 @@ const MyDeposits = ({
 		} finally {
 			setIsEarningLoading(false);
 		}
-	}, [vaultId, walletAddress, clearPersistedTxId]);
+	}, [vaultId, walletAddress, clearPersistedTxId, activeChain]);
 
 	useEffect(() => {
 		fetchEarningInfo();

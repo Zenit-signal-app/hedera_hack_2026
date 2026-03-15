@@ -30,6 +30,7 @@
     const apiUrlParam = urlParams.get( 'apiUrl' ) || 'https://zenit-api.seerbot.io';
     const indicatorsParam = urlParams.get( 'indicators' ) || '';
     const timeframeParam = urlParams.get( 'timeframe' ) || '1';
+    const chainParam = urlParams.get( 'chain' ) || '';
 
     // WebSocket connection
     let ws = null;
@@ -124,14 +125,14 @@
         try {
           if ( !userInput || userInput.trim() === '' ) {
             // Nếu không có input, lấy danh sách token mặc định
-            const url = `${ apiUrlParam }/tokens?limit=50`;
+            const url = `${ apiUrlParam }/tokens?limit=50${ chainParam ? '&chain=' + encodeURIComponent( chainParam ) : '' }`;
             const response = await fetch( url );
             const data = await response.json();
 
             const symbols = data.map( token => ( {
               symbol: token.symbol,
               full_name: token.symbol,
-              description: `${ token.name || token.symbol } - $${ Number( token.price || 0 ).toFixed( 6 ) }`,
+              description: `${ token.coin || token.symbol } - $${ Number( token.price || 0 ).toFixed( 6 ) }`,
               exchange: 'Seerbot',
               type: 'crypto'
             } ) );
@@ -139,14 +140,14 @@
             onResultReadyCallback( symbols );
           } else {
             // Tìm kiếm token theo keyword
-            const url = `${ apiUrlParam }/tokens?key=${ encodeURIComponent( userInput ) }&limit=50`;
+            const url = `${ apiUrlParam }/tokens?key=${ encodeURIComponent( userInput ) }&limit=50${ chainParam ? '&chain=' + encodeURIComponent( chainParam ) : '' }`;
             const response = await fetch( url );
             const data = await response.json();
 
             const symbols = data.map( token => ( {
               symbol: token.symbol,
               full_name: token.symbol,
-              description: `${ token.name || token.symbol } - $${ Number( token.price || 0 ).toFixed( 6 ) }`,
+              description: `${ token.coin || token.symbol } - $${ Number( token.price || 0 ).toFixed( 6 ) }`,
               exchange: 'Seerbot',
               type: 'crypto'
             } ) );
@@ -159,7 +160,6 @@
         }
       },
       resolveSymbol: ( symbolName, onSymbolResolvedCallback, onResolveErrorCallback ) => {
-        console.log( '🔍 Resolving symbol:', symbolName );
         setTimeout( () => onSymbolResolvedCallback( {
           name: symbolName,
           full_name: symbolName,

@@ -3,7 +3,8 @@
 import GuildeIcon from "@/components/icon/Icon_GuildeBook";
 import PlayIcon from "@/components/icon/Icon_Play";
 import { getListToken } from "@/services/analysisServices";
-import { INITIAL_ADA, useTokenStore } from "@/store/tokenStore";
+import { getDefaultToken, useTokenStore } from "@/store/tokenStore";
+import { useWalletStore } from "@/store/walletStore";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { TokenSelector } from "./TokenSelector";
@@ -77,12 +78,21 @@ const StatColumn: React.FC<StatColumnProps> = ({
 export const TradingPairInfoComponent: React.FC = () => {
 	const data = mockPairData;
 	const priceColorClass = data.isPriceUp ? "text-green-500" : "text-red-500";
-	const { token, listToken, quoteToken } = useTokenStore();
+	const { token, listToken, quoteToken, setDefaultsForChain } = useTokenStore();
 	const isMobile = useIsMobile();
 	const [apiTokenInfo, setApiTokenInfo] = useState<any>(null);
 	const [isLoadingTokenInfo, setIsLoadingTokenInfo] = useState(false);
 
-	const pairSymbol = `${token.symbol}_${quoteToken.symbol}`;
+	const { activeChain } = useWalletStore();
+
+	// Sync token defaults when activeChain doesn't match (e.g. after page refresh)
+	useEffect(() => {
+		if (activeChain && token.chain !== activeChain) {
+			setDefaultsForChain(activeChain);
+		}
+	}, [activeChain, token.chain, setDefaultsForChain]);
+
+	const pairSymbol = `${token.coin}_${quoteToken.coin}`;
 	useMarketSocket(pairSymbol, "token_info");
 	useMarketSocket(pairSymbol, "ohlc");
 
@@ -100,10 +110,11 @@ export const TradingPairInfoComponent: React.FC = () => {
 		const fetchTokenInfo = async () => {
 			try {
 				setIsLoadingTokenInfo(true);
-				const response = await getListToken({
-					query: token.symbol,
+			const response = await getListToken({
+					query: token.coin,
 					limit: 1,
 					offset: 0,
+					...(activeChain ? { chain: activeChain } : {}),
 				});
 				if (response.tokens && response.tokens.length > 0) {
 					setApiTokenInfo(response.tokens[0]);
@@ -116,14 +127,14 @@ export const TradingPairInfoComponent: React.FC = () => {
 		};
 
 		fetchTokenInfo();
-	}, [token.symbol, tokenInfoSocket]);
+	}, [token.coin, tokenInfoSocket, activeChain]);
 
 	const tokenInfo = useMemo(() => {
 		const foundToken = listToken.find(
-			(item) => item?.symbol === token.symbol
+			(item) => item?.coin === token.coin
 		);
-		return foundToken ?? INITIAL_ADA;
-	}, [token.symbol, listToken]);
+		return foundToken ?? getDefaultToken(activeChain ?? "solana");
+	}, [token.coin, listToken, activeChain]);
 
 	const ohlcToken = useMarketStore(
 		(state) => state.prices?.ohlc?.[pairSymbol]
@@ -132,10 +143,10 @@ export const TradingPairInfoComponent: React.FC = () => {
 	const effectiveTokenInfo = apiTokenInfo;
 
 	const priceChangeDisplay = `${
-		effectiveTokenInfo?.change_24h > 0 ? "+" : ""
-	}${effectiveTokenInfo?.change_24h?.toFixed(
+		effectiveTokenInfo?.priceChangePercent > 0 ? "+" : ""
+	}${effectiveTokenInfo?.priceChange?.toFixed(
 		5
-	)} (${effectiveTokenInfo?.change_24h?.toFixed(2)}%)`;
+	)} (${effectiveTokenInfo?.priceChangePercent?.toFixed(2)}%)`;
 
 	return (
 		<div>
@@ -143,8 +154,8 @@ export const TradingPairInfoComponent: React.FC = () => {
 				<div className="flex lg:items-center items-start lg:flex-row flex-col gap-y-3 gap-x-4 w-full">
 					<div className="flex items-center gap-x-2 flex-1">
 						<Image
-							src={tokenInfo?.logo_url || "/images/snek.png"}
-							alt={tokenInfo?.name || "Snek"}
+							src={tokenInfo?.image || "/images/snek.png"}
+							alt={tokenInfo?.coin || "Token"}
 							className="w-10 h-10 rounded-full"
 							width={40}
 							height={40}
@@ -154,10 +165,10 @@ export const TradingPairInfoComponent: React.FC = () => {
 						<div className="flex items-start space-x-2 cursor-pointer">
 							<div className="flex flex-col">
 								<span className="text-white text-sm font-bold">
-									{token.symbol}/{quoteToken.symbol}
+									{token.coin}/{quoteToken.coin}
 								</span>
 								<span className="text-dark-gray-200 text-xs">
-									{tokenInfo?.name}
+									{tokenInfo?.coin}
 								</span>
 							</div>
 							<TokenSelector />
@@ -207,7 +218,7 @@ export const TradingPairInfoComponent: React.FC = () => {
 			</div>
 			{isMobile ? null : (
 				<TVChartContainer
-					symbol={`${token.symbol}_${quoteToken.symbol}`}
+					symbol={`${token.coin}_${quoteToken.coin}`}
 					className="w-full h-80 rounded-lg"
 					interval="1D"
 				/>

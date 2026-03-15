@@ -4,6 +4,8 @@ import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import GrowUpIcon from "@/components/icon/Icon_GrowUp";
 import TrendDownIcon from "@/components/icon/Icon_TrendDown";
 import { vaultApi } from "@/services/vaultServices";
+import { useWalletStore } from "@/store/walletStore";
+import { getServerChainId } from "@/services/chainServices";
 
 interface PositionsProps {
 	data: VaultInfo;
@@ -24,6 +26,7 @@ interface PaginationProps {
 }
 
 const Positions = ({ data }: PositionsProps) => {
+	const { activeChain } = useWalletStore();
 	const [openPositions, setOpenPositions] = useState<Position[]>([]);
 	const [closedPositions, setClosedPositions] = useState<Position[]>([]);
 	const [openSearch, setOpenSearch] = useState("");
@@ -45,7 +48,7 @@ const Positions = ({ data }: PositionsProps) => {
 					status: "open",
 					page: openPage,
 					limit: itemsPerPage,
-				});
+				}, await getServerChainId(activeChain ?? ""));
 				setOpenPositions(response.positions);
 			} catch (error) {
 				console.error("Error fetching open positions:", error);
@@ -59,7 +62,7 @@ const Positions = ({ data }: PositionsProps) => {
 		if (data.id) {
 			fetchOpenPositions();
 		}
-	}, [data.id, openPage]);
+	}, [data.id, openPage, activeChain]);
 
 	useEffect(() => {
 		const fetchClosedPositions = async () => {
@@ -70,7 +73,7 @@ const Positions = ({ data }: PositionsProps) => {
 					status: "closed",
 					page: closedPage,
 					limit: itemsPerPage,
-				});
+				}, await getServerChainId(activeChain ?? ""));
 				setClosedPositions(response.positions);
 			} catch (error) {
 				console.error("Error fetching closed positions:", error);
@@ -84,7 +87,7 @@ const Positions = ({ data }: PositionsProps) => {
 		if (data.id) {
 			fetchClosedPositions();
 		}
-	}, [data.id, closedPage]);
+	}, [data.id, closedPage, activeChain]);
 
 	const filteredOpenPositions = openPositions.filter((pos) =>
 		pos.pair.toLowerCase().includes(openSearch.toLowerCase())

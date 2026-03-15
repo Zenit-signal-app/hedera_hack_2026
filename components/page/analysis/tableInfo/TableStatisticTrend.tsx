@@ -10,7 +10,9 @@ import { formatNumber } from "@/lib/format";
 import GrowDownIcon from "@/components/icon/Icon_GrowDown";
 import { TableWrapper } from "@/components/common/table";
 import { TradingPairTrend, TrendPair } from "@/types";
-import { INITIAL_ADA, useTokenStore } from "@/store/tokenStore";
+import { getDefaultQuoteToken, useTokenStore } from "@/store/tokenStore";
+import { useWalletStore } from "@/store/walletStore";
+import { TokenPriceData } from "@/types/token";
 
 type TProps = {
 	data: TrendPair[];
@@ -21,30 +23,31 @@ const TableStatisticTrend = ({ data, type }: TProps) => {
 	const [page, setPage] = useState(0);
 	const [isLoading, setIsLoading] = useState(false);
 	
-	const { handleSelectToken, handleSelectQuoteToken, handleSelectQuoteAsset } = useTokenStore();
+	const { handleSelectToken, handleSelectQuoteToken } = useTokenStore();
+	const { activeChain } = useWalletStore();
 	
 	const handleRowClick = useCallback((trendPair: TrendPair) => {
 		const pairParts = trendPair.pair.split(/[/_]/);
 		const tokenSymbol = pairParts[0];
 		
-		const tokenData = {
-			id: tokenSymbol,
-			name: tokenSymbol,
-			symbol: tokenSymbol,
-			logo_url: trendPair.logo_url,
+		const tokenData: TokenPriceData = {
+			chain: activeChain ?? "",
+			coin: tokenSymbol,
+			image: trendPair.logo_url,
 			price: trendPair.price,
-			change_24h: trendPair.change_24h,
-			low_24h: 0,
-			high_24h: 0,
-			volume_24h: trendPair.volume_24h,
-			market_cap: trendPair.market_cap,
+			priceChange: 0,
+			priceChangePercent: trendPair.change_24h,
+			quoteVolume: trendPair.volume_24h,
+			symbol: tokenSymbol,
+			time: 0,
+			time_readable: "",
+			volume: 0,
 		};
 		
 		// Cập nhật token vào store
 		handleSelectToken(tokenData);
-		handleSelectQuoteToken(INITIAL_ADA);
-		handleSelectQuoteAsset("ADA");
-	}, [handleSelectToken, handleSelectQuoteToken, handleSelectQuoteAsset]);
+		handleSelectQuoteToken(getDefaultQuoteToken(activeChain ?? "solana"));
+	}, [handleSelectToken, handleSelectQuoteToken, activeChain]);
 	const columns: ColumnDef<TrendPair, any>[] = useMemo(
 		() => [
 			{

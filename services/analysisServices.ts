@@ -3,12 +3,13 @@ import { TrendAnalysisParams, TrendAnalysisResponse } from "@/types";
 import { TokenPriceData } from "@/types/token";
 import { ApiResponse, PaginationParams, TopTrader } from "@/types/transaction";
 
-const BASE_ANALYSIS_API = "/analysis/tokens";
+const BASE_ANALYSIS_API = "/tokens";
 
 export interface TokensParams {
 	query?: string;
 	limit: number;
 	offset: number;
+	chain?: string;
 }
 
 
@@ -24,7 +25,7 @@ export const getListToken = async (
 	}
 };
 
-const BASE_TRANSACTION_URL = "/analysis/swaps";
+const BASE_TRANSACTION_URL = "/swaps";
 
 export const fetchTransactions = async (
 	params: PaginationParams
@@ -38,7 +39,7 @@ export const fetchTransactions = async (
 	}
 };
 
-const BASE_TOPTRADERS_URL = "/analysis/toptraders";
+const BASE_TOPTRADERS_URL = "/toptraders";
 
 type TopTraderResponse = {
 	total: number,

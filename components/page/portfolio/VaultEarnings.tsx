@@ -7,6 +7,7 @@ import ArrowUpRightIcon from "@/components/icon/Icon_ArrowUpRight";
 import { VaultEarning } from "@/types/vault";
 import { vaultApi } from "@/services/vaultServices";
 import { useWalletStore } from "@/store/walletStore";
+import { getServerChainId } from "@/services/chainServices";
 import Link from "next/link";
 
 interface VaultData extends VaultEarning {
@@ -25,7 +26,8 @@ const VaultEarnings = () => {
 	const [error, setError] = useState<string | null>(null);
 	const [totalRecords, setTotalRecords] = useState(0);
 
-	const { usedAddress } = useWalletStore();
+	const { chainConnections, activeChain } = useWalletStore();
+	const usedAddress = activeChain ? chainConnections[activeChain]?.address : undefined;
 
 	// Fetch vault earnings
 	useEffect(() => {
@@ -43,7 +45,7 @@ const VaultEarnings = () => {
 					wallet_address: usedAddress,
 					limit: pageSize,
 					offset: pageIndex * pageSize,
-				});
+				}, await getServerChainId(activeChain ?? ""));
 
 				// Transform API response to VaultData format
 				const transformedData: VaultData[] = response.earnings.map(
@@ -81,7 +83,7 @@ const VaultEarnings = () => {
 		};
 
 		fetchEarnings();
-	}, [usedAddress, pageIndex, pageSize]);
+	}, [usedAddress, pageIndex, pageSize, activeChain]);
 
 	const columns: ColumnDef<VaultData>[] = [
 		{

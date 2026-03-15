@@ -186,6 +186,7 @@ export interface VaultWithdrawRequest {
 	vault_id: string;
 	wallet_address: string;
 	amount_ada?: number;
+	chain_id?: number | string;
 }
 
 export interface VaultWithdrawResponse {

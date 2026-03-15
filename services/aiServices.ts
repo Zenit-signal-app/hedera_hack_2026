@@ -2,6 +2,12 @@ import api from "@/axios/axiosInstance";
 import { Message } from "ai";
 import dayjs from "dayjs";
 
+/** Send a chat query to the AI assistant and get a markdown response. */
+export const sendChatQuery = async (query: string): Promise<string> => {
+	const response = await api.post("/ai-assistant/chat", { query });
+	return response.data as string;
+};
+
 export const getChatHistory = async (
 	walletAddress: string
 ): Promise<Message[]> => {

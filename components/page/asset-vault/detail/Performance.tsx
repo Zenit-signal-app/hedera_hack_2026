@@ -6,6 +6,8 @@ import CommonLineChart, {
 import { useState, useEffect } from "react";
 import SearchIcon from "@/components/icon/Icon_ Search";
 import { vaultApi } from "@/services/vaultServices";
+import { useWalletStore } from "@/store/walletStore";
+import { getServerChainId } from "@/services/chainServices";
 
 interface PerformanceProps {
 	data: VaultInfo;
@@ -85,6 +87,7 @@ const Performance = ({ data }: PerformanceProps) => {
 	const [stats, setStats] = useState<VaultStats | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const { activeChain } = useWalletStore();
 
 	// Fetch vault stats
 	useEffect(() => {
@@ -92,7 +95,7 @@ const Performance = ({ data }: PerformanceProps) => {
 			try {
 				setIsLoading(true);
 				setError(null);
-				const statsData = await vaultApi.getVaultStats(data.id);
+				const statsData = await vaultApi.getVaultStats(data.id, await getServerChainId(activeChain ?? ""));
 				setStats(statsData);
 			} catch (err) {
 				setError(
@@ -107,7 +110,7 @@ const Performance = ({ data }: PerformanceProps) => {
 		if (data?.id) {
 			fetchStats();
 		}
-	}, [data?.id]);
+	}, [data?.id, activeChain]);
 
 	const filterOptions: TimeFilterOption[] = [
 		{ key: "1W", label: "1W" },

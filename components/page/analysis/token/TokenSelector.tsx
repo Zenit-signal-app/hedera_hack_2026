@@ -8,9 +8,10 @@ import { PopoverWrapper } from "@/components/common/popover";
 import ChevronDownMini from "@/components/icon/Icon_ChevronDownMini";
 import Image from "next/image";
 import Input from "@/components/common/input";
+import { useWalletStore } from "@/store/walletStore";
 import SearchIcon from "@/components/icon/Icon_ Search";
 import TabsWrapper from "@/components/common/tabs";
-import { INITIAL_ADA, INITIAL_USDM, useTokenStore } from "@/store/tokenStore";
+import { getDefaultToken, getDefaultQuoteToken, useTokenStore } from "@/store/tokenStore";
 import { TokenPriceData } from "@/types/token";
 
 const SCROLL_CONTAINER_ID = "token-list-scroll-container";
@@ -18,24 +19,22 @@ const SCROLL_CONTAINER_ID = "token-list-scroll-container";
 export const TokenSelector: React.FC = () => {
 	const [isOpen, setIsOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
-	const { tokens, isLoading } = useTokenLoadMore(searchQuery);
+	const { activeChain } = useWalletStore();
+	const { tokens, isLoading } = useTokenLoadMore(searchQuery, activeChain);
 	const {
 		handleSelectToken,
-		handleSelectQuoteAsset,
-		quoteAsset,
 		handleSelectQuoteToken,
 	} = useTokenStore();
-	const [tab, setTabs] = useState(quoteAsset);
+	const [tab, setTabs] = useState("USDC");
 	const handleToken = useCallback(
 		(token: TokenPriceData) => {
 			setIsOpen(false);
 			handleSelectToken(token);
-			handleSelectQuoteAsset(tab);
-			tab === "USDM"
-				? handleSelectQuoteToken(INITIAL_USDM)
-				: handleSelectQuoteToken(INITIAL_ADA);
+			tab === "USDC"
+				? handleSelectQuoteToken(getDefaultQuoteToken(activeChain ?? "solana"))
+				: handleSelectQuoteToken(getDefaultToken(activeChain ?? "solana"));
 		},
-		[tab]
+		[tab, activeChain, handleSelectToken, handleSelectQuoteToken]
 	);
 	return (
 		<PopoverWrapper
@@ -82,22 +81,22 @@ export const TokenSelector: React.FC = () => {
 				>
 					{tokens.map((token) => (
 						<div
-							key={token.id}
+							key={token.symbol}
 							onClick={() => handleToken(token)}
 							className="p-2 cursor-pointer hover:bg-dark-gray-900 flex justify-between items-center gap-x-2 text-xs"
 						>
 							<Image
-								src={token.logo_url}
+								src={token.image}
 								width={32}
 								height={32}
-								alt={token.name}
+								alt={token.coin}
 								className="rounded-full"
 								unoptimized
 							/>{" "}
 							<div className="flex items-center flex-wrap justify-end gap-x-1">
-								<p>{token.name}</p>{" "}
+								<p>{token.coin}</p>{" "}
 								<p>
-									({`${token.symbol}/${tab.toUpperCase()}`})
+									({`${token.coin}/${tab.toUpperCase()}`})
 								</p>
 							</div>
 						</div>

@@ -8,6 +8,7 @@ import Filter1Icon from "@/components/icon/Icon_Filter1";
 import { useWalletStore } from "@/store/walletStore";
 import { useFetchUserSwaps, SwapTransaction } from "@/hooks/useFetchUserSwaps";
 import { vaultApi } from "@/services/vaultServices";
+import { getServerChainId } from "@/services/chainServices";
 import { VaultTransaction } from "@/types/vault";
 import Image from "next/image";
 import dayjs from "dayjs";
@@ -63,7 +64,9 @@ export const TransactionHistory = () => {
 	const [vaultTotal, setVaultTotal] = useState(0);
 
 	// Get wallet info from store
-	const usedAddress = useWalletStore((state) => state.usedAddress);
+	const chainConnections = useWalletStore((state) => state.chainConnections);
+	const activeChain = useWalletStore((state) => state.activeChain);
+	const usedAddress = activeChain ? chainConnections[activeChain]?.address : undefined;
 	const { swaps, total, isLoading } = useFetchUserSwaps({
 		walletAddress: usedAddress,
 		page: pageIndex + 1,
@@ -87,7 +90,7 @@ export const TransactionHistory = () => {
 					wallet_address: usedAddress,
 					page: pageIndex + 1,
 					limit: pageSize,
-				});
+				}, await getServerChainId(activeChain ?? ""));
 
 				// Transform API response to VaultTransactionData format
 				const transformedData: VaultTransactionData[] =
@@ -119,7 +122,7 @@ export const TransactionHistory = () => {
 		if (activeTab === "vault" && usedAddress) {
 			fetchVaultTransactions();
 		}
-	}, [usedAddress, pageIndex, pageSize, activeTab]);
+	}, [usedAddress, pageIndex, pageSize, activeTab, activeChain]);
 
 	const tabs: TabItem[] = [
 		{ value: "swap", label: "Swap" },

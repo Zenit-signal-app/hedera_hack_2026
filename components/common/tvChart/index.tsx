@@ -17,6 +17,7 @@ import IconCamera from "@/components/icon/IconCamera";
 import IconDirect from "@/components/icon/IconDirect";
 import { PopoverWrapper } from "@/components/common/popover";
 import { useFetchChartPairs } from "@/hooks/useFetchChartPairs";
+import { useWalletStore } from "@/store/walletStore";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -84,11 +85,12 @@ export const TVChartContainer = ({
 
 	// Fetch chart pairs data on component mount
 	const { fetchPairs, pairs } = useFetchChartPairs();
+	const { activeChain } = useWalletStore();
 
 	useEffect(() => {
 		// Load initial pairs data from API
-		fetchPairs({ limit: 100 });
-	}, [fetchPairs]);
+		fetchPairs({ limit: 100, ...(activeChain ? { chain: activeChain } : {}) });
+	}, [fetchPairs, activeChain]);
 
 	useEffect(() => {
 		// Update display symbol when symbol prop changes

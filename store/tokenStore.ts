@@ -1,57 +1,126 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { MinswapEstimate } from "@/types/minswap";
 import { TokenPriceData } from "@/types/token";
+import { SwapQuoteResult } from "@/services/chainSwapService";
 import { create } from "zustand";
-
 
 interface MarketState {
 	listToken: TokenPriceData[];
 	token: TokenPriceData;
-	quoteAsset: "USDM" | "ADA";
-	estimateDetail: MinswapEstimate | null;
 	quoteToken: TokenPriceData;
+	estimateDetail: SwapQuoteResult | null;
 }
 
 interface MarketActions {
 	updateListToken: (updates: TokenPriceData[]) => void;
 	handleSelectToken: (token: TokenPriceData) => void;
-	handleSelectQuoteAsset: (quote: "USDM" | "ADA") => void;
-	handleSetEstimateDetail: (detail: MinswapEstimate) => void;
+	handleSetEstimateDetail: (detail: SwapQuoteResult | null) => void;
 	handleSelectQuoteToken: (quote: TokenPriceData) => void;
+	setDefaultsForChain: (chainId: string) => void;
 }
 
-export const INITIAL_ADA = {
-	id: "lovelace",
-	name: "Cardano",
-	symbol: "ADA",
-	logo_url: "/images/ada.png",
-	price: 2.275426,
-	change_24h: 0.038026,
-	low_24h: 2.236817,
-	high_24h: 2.288063,
-	volume_24h: 4548.25782,
-	market_cap: 102394187052.0219,
+// ─── Per-chain default tokens ──────────────────────────────────────────────────
+
+export const INITIAL_SOL: TokenPriceData = {
+	chain: "solana",
+	coin: "SOL",
+	image: "/images/solana.png",
+	price: 0,
+	priceChange: 0,
+	priceChangePercent: 0,
+	quoteVolume: 0,
+	symbol: "SOLUSDT",
+	time: 0,
+	time_readable: "",
+	volume: 0,
 };
 
-export const INITIAL_USDM = {
-	id: "c48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ad0014df105553444d",
-	name: "USDM",
-	symbol: "USDM",
-	logo_url:
-		"https://asset-logos.minswap.org/c48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ad0014df105553444d",
+export const INITIAL_USDC: TokenPriceData = {
+	chain: "solana",
+	coin: "USDC",
+	image: "/images/usdc.png",
 	price: 1,
-	change_24h: 0,
-	low_24h: 0.983032,
-	high_24h: 1.005553,
-	volume_24h: 1998.859582,
-	market_cap: 32340721.681006,
+	priceChange: 0,
+	priceChangePercent: 0,
+	quoteVolume: 0,
+	symbol: "USDCUSDT",
+	time: 0,
+	time_readable: "",
+	volume: 0,
 };
+
+export const INITIAL_DOT: TokenPriceData = {
+	chain: "polkadot",
+	coin: "DOT",
+	image: "/images/polkadot.png",
+	price: 0,
+	priceChange: 0,
+	priceChangePercent: 0,
+	quoteVolume: 0,
+	symbol: "DOTUSDT",
+	time: 0,
+	time_readable: "",
+	volume: 0,
+};
+
+export const INITIAL_DOT_USDC: TokenPriceData = {
+	chain: "polkadot",
+	coin: "USDC",
+	image: "/images/usdc.png",
+	price: 1,
+	priceChange: 0,
+	priceChangePercent: 0,
+	quoteVolume: 0,
+	symbol: "USDCUSDT",
+	time: 0,
+	time_readable: "",
+	volume: 0,
+};
+
+export const INITIAL_HBAR: TokenPriceData = {
+	chain: "hedera",
+	coin: "HBAR",
+	image: "/images/hedera.png",
+	price: 0,
+	priceChange: 0,
+	priceChangePercent: 0,
+	quoteVolume: 0,
+	symbol: "HBARUSDT",
+	time: 0,
+	time_readable: "",
+	volume: 0,
+};
+
+export const INITIAL_HBAR_USDC: TokenPriceData = {
+	chain: "hedera",
+	coin: "USDC",
+	image: "/images/usdc.png",
+	price: 1,
+	priceChange: 0,
+	priceChangePercent: 0,
+	quoteVolume: 0,
+	symbol: "USDCUSDT",
+	time: 0,
+	time_readable: "",
+	volume: 0,
+};
+
+export const CHAIN_DEFAULT_TOKENS: Record<string, { token: TokenPriceData; quoteToken: TokenPriceData }> = {
+	solana: { token: INITIAL_SOL, quoteToken: INITIAL_USDC },
+	polkadot: { token: INITIAL_DOT, quoteToken: INITIAL_DOT_USDC },
+	hedera: { token: INITIAL_HBAR, quoteToken: INITIAL_HBAR_USDC },
+};
+
+export const getDefaultToken = (chainId: string): TokenPriceData =>
+	CHAIN_DEFAULT_TOKENS[chainId]?.token ?? INITIAL_SOL;
+
+export const getDefaultQuoteToken = (chainId: string): TokenPriceData =>
+	CHAIN_DEFAULT_TOKENS[chainId]?.quoteToken ?? INITIAL_USDC;
+
 export const useTokenStore = create<MarketState & MarketActions>((set) => ({
 	listToken: [],
-	token: INITIAL_USDM,
-	quoteToken: INITIAL_ADA,
+	token: INITIAL_SOL,
+	quoteToken: INITIAL_USDC,
 	estimateDetail: null,
-	quoteAsset: "ADA",
 	updateListToken: (updates) => {
 		set((state) => ({
 			listToken: [...state.listToken, ...updates],
@@ -60,12 +129,6 @@ export const useTokenStore = create<MarketState & MarketActions>((set) => ({
 	handleSelectToken: (updates) => {
 		set(() => ({
 			token: updates,
-		}));
-	},
-	handleSelectQuoteAsset: (quoteAsset) => {
-		set((state) => ({
-			...state,
-			quoteAsset,
 		}));
 	},
 	handleSelectQuoteToken: (quoteToken) => {
@@ -79,5 +142,11 @@ export const useTokenStore = create<MarketState & MarketActions>((set) => ({
 			...state,
 			estimateDetail: detail,
 		}));
+	},
+	setDefaultsForChain: (chainId) => {
+		const defaults = CHAIN_DEFAULT_TOKENS[chainId];
+		if (defaults) {
+			set({ token: defaults.token, quoteToken: defaults.quoteToken, listToken: [], estimateDetail: null });
+		}
 	},
 }));

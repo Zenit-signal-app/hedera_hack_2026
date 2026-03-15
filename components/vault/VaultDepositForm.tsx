@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useVaultDeposit } from '@/hooks/useVaultDeposit';
 import { vaultApi } from '@/services/vaultServices';
+import { getServerChainId } from '@/services/chainServices';
 import { VaultConfig } from '@/lib/vault-transaction';
 import { useWalletStore } from '@/store/walletStore';
 import { useWalletConnect } from '@/hooks/useWalletConnect';
@@ -23,15 +24,22 @@ export function VaultDepositForm({ vaultId }: VaultDepositFormProps) {
 
   const { deposit, isDepositing, error, txHash, reset } = useVaultDeposit();
   const { connect, disconnect, isLoading: isConnectingWallet } = useWalletConnect();
-  const activeWallet = useWalletStore((state) => state.activeWallet);
-  const usedAddress = useWalletStore((state) => state.usedAddress);
+  const activeWallet = useWalletStore((state) => {
+    const chain = state.activeChain;
+    return chain ? state.chainConnections[chain]?.walletName ?? null : null;
+  });
+  const activeChain = useWalletStore((state) => state.activeChain);
+  const usedAddress = useWalletStore((state) => {
+    const chain = state.activeChain;
+    return chain ? state.chainConnections[chain]?.address : undefined;
+  });
 
   // Load vault configuration
   useEffect(() => {
     const loadVaultConfig = async () => {
       try {
         setIsLoadingVault(true);
-        const vaultInfo = await vaultApi.getVaultInfo(vaultId);
+        const vaultInfo = await vaultApi.getVaultInfo(vaultId, await getServerChainId(activeChain ?? ""));
 
         setVaultConfig({
           vault_address: vaultInfo.address,
@@ -46,7 +54,7 @@ export function VaultDepositForm({ vaultId }: VaultDepositFormProps) {
     };
 
     loadVaultConfig();
-  }, [vaultId]);
+  }, [vaultId, activeChain]);
 
   const handleDeposit = async () => {
     if (!vaultConfig) {

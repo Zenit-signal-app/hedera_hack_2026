@@ -1,12 +1,13 @@
 export interface TokenPriceData {
-  id: string;
-  name: string;
-  symbol: string;
-  logo_url: string;
+  chain: string;
+  coin: string;
+  image: string;
   price: number;
-  change_24h: number;
-  low_24h: number;
-  high_24h: number;
-  volume_24h: number;
-  market_cap: number;
+  priceChange: number;
+  priceChangePercent: number;
+  quoteVolume: number;
+  symbol: string;
+  time: number;
+  time_readable: string;
+  volume: number;
 }

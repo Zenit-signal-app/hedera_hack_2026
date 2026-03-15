@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useSwapLogic } from "@/hooks/useSwapLogic";
-import { useTokenStore } from "@/store/tokenStore";
 import { useWalletStore } from "@/store/walletStore";
-import { MinswapBalanceItem } from "@/types/minswap";
 import { useMemo } from "react";
 import TokenInputCard from "./TokenInputCard";
 import SwapIcon from "@/components/icon/Icon_Swap";
@@ -12,7 +10,10 @@ import Loader from "@/components/common/loading/loader";
 import SwapModals from "./SwapModals";
 
 export const SwapInterface: React.FC = () => {
-	const { balance } = useWalletStore();
+	const { activeChain, chainConnections, chainBalances } = useWalletStore();
+	const walletAddress = activeChain
+		? chainConnections[activeChain]?.address
+		: undefined;
 
 	const {
 		topCardData,
@@ -22,47 +23,45 @@ export const SwapInterface: React.FC = () => {
 		setInputAmount,
 		handleChangeTokenIn,
 		handleChangeTokenOut,
+		tokenIn,
+		tokenOut,
 		modalStep,
 		miniStep,
 		reviewData,
 		openReviewModal,
 		closeModal,
 		handleSwapFlow,
+		handleViewExplorer,
 		txHash,
 	} = useSwapLogic();
+
+	const balances = activeChain ? chainBalances[activeChain] ?? [] : [];
+
 	const isInsufficientBalance = useMemo(() => {
-		const balanceToken = balance.find(
-			(item) =>
-				item.asset?.ticker?.toUpperCase() ===
-				topCardData.token?.toUpperCase()
+		const balanceEntry = balances.find(
+			(b) =>
+				b.symbol.toUpperCase() === topCardData.token?.toUpperCase()
 		);
-
-		const valueToken =
-			balanceToken?.asset?.ticker === "ADA"
-				? Number(balanceToken.amount) / 1000000
-				: Number(balanceToken?.amount);
-
+		const available = parseFloat(balanceEntry?.balance ?? "0");
 		return (
-			Number(topCardData.value) > Number(valueToken) ||
-			balanceToken === undefined
+			parseFloat(topCardData.value || "0") > available ||
+			!balanceEntry
 		);
-	}, [topCardData.value, topCardData.token, balance]);
-	const { usedAddress } = useWalletStore();
+	}, [topCardData.value, topCardData.token, balances]);
+
 	const isQuoteLoading = swapState.isQuoteLoading;
 	const isReadyToSwap =
 		parseFloat(topCardData.value) > 0 && !!swapState.quote;
 
 	const handleSwapSubmit = async () => {
 		if (!isReadyToSwap || swapState.isSubmitting) return;
-		if (!usedAddress || !swapState.quote) return;
+		if (!walletAddress || !swapState.quote) return;
 		openReviewModal();
-	};
-	const handleTokenSelect = (token: MinswapBalanceItem) => {
-		handleChangeTokenIn(token);
 	};
 
 	const isButtonDisabled =
 		!isReadyToSwap || swapState.isSubmitting || isInsufficientBalance;
+
 	return (
 		<div className="w-full relative mx-auto rounded-2xl shadow-2xl flex flex-col gap-y-5">
 			<div className="flex flex-col space-y-2">
@@ -70,7 +69,7 @@ export const SwapInterface: React.FC = () => {
 					{...topCardData}
 					onAmountChange={setInputAmount}
 					isLoading={isQuoteLoading}
-					onSelect={(token) => handleTokenSelect(token)}
+					onSelect={(token) => handleChangeTokenIn(token)}
 					type="sell"
 				/>
 
@@ -88,9 +87,7 @@ export const SwapInterface: React.FC = () => {
 					{...bottomCardData}
 					onAmountChange={() => {}}
 					isLoading={isQuoteLoading}
-					onSelect={(token) =>
-						handleChangeTokenOut && handleChangeTokenOut(token)
-					}
+					onSelect={(token) => handleChangeTokenOut(token)}
 					type="buy"
 				/>
 			</div>
@@ -110,8 +107,8 @@ export const SwapInterface: React.FC = () => {
 						</div>
 					) : (
 						<TransactionDetails
-							tokenIn={topCardData.token}
-							tokenOut={bottomCardData.token}
+							tokenIn={tokenIn}
+							tokenOut={tokenOut}
 						/>
 					)}
 				</div>
@@ -127,6 +124,8 @@ export const SwapInterface: React.FC = () => {
 			>
 				{swapState.isSubmitting ? (
 					<Loader className="w-6 h-6 mx-auto animate-spin" />
+				) : !walletAddress ? (
+					"Connect Wallet"
 				) : isInsufficientBalance ? (
 					`Insufficient ${topCardData.token} Balance`
 				) : (
@@ -141,10 +140,7 @@ export const SwapInterface: React.FC = () => {
 				onConfirm={handleSwapFlow}
 				miniStep={miniStep}
 				txHash={txHash || undefined}
-				onViewExplorer={(hash) => {
-					const url = `https://cardanoscan.io/transaction/${hash}`;
-					window.open(url, "_blank");
-				}}
+				onViewExplorer={(hash) => handleViewExplorer(hash)}
 			/>
 		</div>
 	);

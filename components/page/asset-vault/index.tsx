@@ -7,6 +7,8 @@ import StrategyCard from "./StrategyCard";
 import { useState, useMemo, useEffect } from "react";
 import { vaultApi } from "@/services/vaultServices";
 import { Vault, VaultStatus } from "@/types/vault";
+import { useWalletStore } from "@/store/walletStore";
+import { getServerChainId } from "@/services/chainServices";
 
 const AssetVaultPage = () => {
 	const [searchTerm, setSearchTerm] = useState("");
@@ -14,6 +16,7 @@ const AssetVaultPage = () => {
 	const [vaults, setVaults] = useState<Vault[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const { activeChain } = useWalletStore();
 
 	// Fetch vaults when tab changes
 	useEffect(() => {
@@ -21,7 +24,7 @@ const AssetVaultPage = () => {
 			setIsLoading(true);
 			setError(null);
 			try {
-				const response = await vaultApi.getVaultsByStatus(tab);
+				const response = await vaultApi.getVaultsByStatus(tab, await getServerChainId(activeChain ?? ""));
 				setVaults(response.vaults);
 			} catch (err) {
 				setError("Failed to fetch vaults");
@@ -32,7 +35,7 @@ const AssetVaultPage = () => {
 		};
 
 		fetchVaults();
-	}, [tab]);
+	}, [tab, activeChain]);
 
 	const filteredVaults = useMemo(() => {
 		if (!searchTerm.trim()) {

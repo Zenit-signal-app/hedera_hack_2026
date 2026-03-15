@@ -2,10 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
-import CopyIcon from "@/components/icon/Icon_Copy";
 import { useWalletStore } from "@/store/walletStore";
-import { useState } from "react";
-import { formatTokenAmount } from "@/lib/ultils";
 import { formatWallet } from "@/lib/format";
 import Copy from "@/components/common/Copy";
 
@@ -63,8 +60,13 @@ const BgLiquidGlass = ({
 
 // Main WalletBalance Component
 const WalletBalance = () => {
-	const { isConnected, usedAddress, balance, isWalletInfoLoading } =
-		useWalletStore();
+	const { chainConnections, activeChain, chainBalances } = useWalletStore();
+
+	const connection = activeChain ? chainConnections[activeChain] : undefined;
+	const usedAddress = connection?.address ?? "";
+	const isConnected = !!connection;
+	const balances = activeChain ? chainBalances[activeChain] ?? [] : [];
+
 	if (!isConnected) {
 		return (
 			<div className="p-6 bg-gray-900 text-white rounded-xl text-center">
@@ -102,10 +104,10 @@ const WalletBalance = () => {
 						My wallet:
 					</div>
 					<Copy
-						value={usedAddress || ""}
+						value={usedAddress}
 						className="flex items-center text-sm lg:text-base text-white font-semibold"
 					>
-						<span>{formatWallet(usedAddress || "", 6, 4)}</span>
+						<span>{formatWallet(usedAddress, 6, 4)}</span>
 					</Copy>
 				</div>
 			</div>
@@ -113,40 +115,38 @@ const WalletBalance = () => {
 				className="flex-col items-start self-stretch w-full rounded-2xl flex relative overflow-hidden"
 				style={{ background: "rgba(255, 255, 255, 0.05)" }}
 			>
-				{isWalletInfoLoading ? (
-					<div className="text-center text-gray-400">
-						Loading balance...
+				{balances.length === 0 ? (
+					<div className="w-full text-center text-gray-400 py-4 text-sm">
+						No balances found
 					</div>
 				) : (
-					balance.map((asset) => (
+					balances.map((token) => (
 						<div
-							key={asset.asset.token_id}
+							key={token.symbol}
 							className="flex w-full px-4 py-2 justify-between items-center"
 						>
 							<div className="flex items-center space-x-3">
 								<Image
-									src={asset.asset.logo}
-									alt={asset.asset.ticker}
+									src={token.logo}
+									alt={token.symbol}
 									width={30}
 									height={30}
 									className="rounded-full"
+									unoptimized
 								/>
 								<div className="flex flex-col">
 									<span className="text-white font-medium">
-										{asset.asset.ticker}
+										{token.symbol}
 									</span>
 									<span className="text-gray-500 text-xs">
-										{asset.asset.project_name}
+										{token.name}
 									</span>
 								</div>
 							</div>
 
 							<div className="flex flex-col items-end">
 								<span className="text-white font-bold">
-									{formatTokenAmount(
-										asset.amount,
-										asset.asset.decimals
-									)}
+									{token.balance}
 								</span>
 							</div>
 						</div>

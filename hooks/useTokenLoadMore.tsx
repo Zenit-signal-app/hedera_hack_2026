@@ -1,4 +1,4 @@
-import { getChartingPairs, getListToken } from "@/services/analysisServices";
+import { getListToken } from "@/services/analysisServices";
 import { useTokenStore } from "@/store/tokenStore";
 import { TokenPriceData } from "@/types/token";
 import { useState, useEffect, useCallback } from "react";
@@ -11,7 +11,7 @@ interface TokenHookResult {
 	canLoadMore: boolean;
 	loadMore: () => void;
 }
-export const useTokenLoadMore = (query?: string): TokenHookResult => {
+export const useTokenLoadMore = (query?: string, chain?: string | null): TokenHookResult => {
 	const [tokens, setTokens] = useState<TokenPriceData[]>([]);
 	const [offset, setOffset] = useState(0);
 	const [total, setTotal] = useState(0);
@@ -30,6 +30,7 @@ export const useTokenLoadMore = (query?: string): TokenHookResult => {
 					query,
 					limit: INITIAL_LIMIT,
 					offset: currentOffset,
+					...(chain ? { chain } : {}),
 				});
 
 				const newTokens = data.tokens || [];
@@ -50,7 +51,7 @@ export const useTokenLoadMore = (query?: string): TokenHookResult => {
 				setIsLoading(false);
 			}
 		},
-		[query, updateListToken]
+		[query, chain, updateListToken]
 	);
 
 	useEffect(() => {
@@ -58,7 +59,7 @@ export const useTokenLoadMore = (query?: string): TokenHookResult => {
 		setOffset(0);
 		setTotal(0);
 		fetchData(0);
-	}, [query, fetchData]);
+	}, [query, chain, fetchData]);
 
 	const loadMore = useCallback(() => {
 		if (canLoadMore) {

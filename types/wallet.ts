@@ -1,43 +1,71 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // types/wallet.ts
 
-import { Cardano } from "@cardano-sdk/core";
-
-export interface WalletApi {
-	getNetworkId(): Promise<number>;
-	getUsedAddresses(): Promise<string[]>;
-	getBalance(): Promise<string>;
-	signTx(tx: string): Promise<string>;
-	getUnusedAddresses(): Promise<string[]>;
-	on(
-		eventName: "accountChange" | "networkChange" | string,
-		callback: () => void
-	): void;
-	getUtxos(): Promise<Cardano.Utxo[]>;
-	off(
-		eventName: "accountChange" | "networkChange" | string,
-		callback: () => void
-	): void;
-}
-
-export interface WalletInfo {
-	id: string;
-	name: string;
-	icon: string;
-}
-
-
 declare global {
 	interface Window {
-		cardano?: {
-			[key: string]: {
-				name: string;
-				icon: string;
-				apiVersion: string;
-				enable(): Promise<WalletApi>;
-				isEnabled(): Promise<boolean>;
+		phantom?: {
+			solana?: {
+				isPhantom: boolean;
+				publicKey: { toString(): string } | null;
+				connect(opts?: { onlyIfTrusted?: boolean }): Promise<{
+					publicKey: { toString(): string };
+				}>;
+				disconnect(): Promise<void>;
 			};
 		};
-		CardanoWasm: any;
+		solflare?: {
+			isSolflare: boolean;
+			publicKey: { toString(): string } | null;
+			connect(): Promise<void>;
+			disconnect(): Promise<void>;
+		};
+		backpack?: {
+			isBackpack: boolean;
+			publicKey: { toString(): string } | null;
+			connect(): Promise<{ publicKey: { toString(): string } }>;
+			disconnect(): Promise<void>;
+		};
+
+		injectedWeb3?: {
+			[extensionId: string]: {
+				version: string;
+				name: string;
+				enable(origin: string): Promise<{
+					accounts: {
+						get(): Promise<
+							Array<{
+								address: string;
+								name: string;
+								type: string;
+							}>
+						>;
+					};
+					signer?: {
+						signPayload(
+							payload: any,
+						): Promise<{ signature: string }>;
+						signRaw?(raw: {
+							address: string;
+							data: string;
+							type: string;
+						}): Promise<{ signature: string }>;
+					};
+				}>;
+			};
+		};
+
+		hashconnect?: unknown;
+		bladewallet?: {
+			enable(): Promise<{ accountId: string }>;
+		};
+		ethereum?: {
+			isMetaMask?: boolean;
+			request(args: {
+				method: string;
+				params?: unknown[];
+			}): Promise<unknown>;
+		};
 	}
 }
+
+export {};

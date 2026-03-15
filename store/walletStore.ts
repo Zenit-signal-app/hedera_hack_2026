@@ -1,150 +1,102 @@
 import { create } from "zustand";
-import { WalletApi, WalletInfo } from "../types/wallet";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { MinswapBalanceItem } from "@/types/minswap";
+
+// ─── Per-chain connection record ───────────────────────────────────────────────
+export interface ChainConnection {
+	walletId: string;
+	walletName: string;
+	address: string;
+}
+
+export interface ChainTokenBalance {
+	symbol: string;
+	name: string;
+	logo: string;
+	balance: string; // human-readable amount
+	decimals: number;
+}
 
 interface WalletState {
-	isConnected: boolean;
-	activeWallet: WalletApi | null;
-	currentWalletId: string | null;
 	error: string | null;
-
-	availableWallets: WalletInfo[];
-	networkId: number | null;
-	usedAddress: string | null;
-	balance: MinswapBalanceItem[];
-	isWalletInfoLoading: boolean;
-}
-interface WalletActions {
-	setWallets: (wallets: WalletInfo[]) => void;
-	setConnected: (api: WalletApi, id: string) => void;
-	setDisconnected: () => void;
-	setError: (error: string | null) => void;
-	setWalletInfoLoading: (loading: boolean) => void;
-
-	setWalletInfo: (info: {
-		networkId: number | null;
-		usedAddress: string | null;
-		balance: MinswapBalanceItem[];
-	}) => void;
-	updateBalanceAfterSwap: (params: {
-		fromTokenId: string;
-		toTokenId: string;
-		fromAmount: string;
-		toAmount: string;
-		fromTokenDecimals: number;
-		toTokenDecimals: number;
-	}) => void;
 	accessToken: string;
-	setAccessToken: (key: string) => void;
+	/** Keyed by ChainId ("solana" | "polkadot" | "hedera") */
+	chainConnections: Record<string, ChainConnection>;
+	activeChain: string | null;
+	/** Cached balances per chain, keyed by ChainId */
+	chainBalances: Record<string, ChainTokenBalance[]>;
+	/** Timestamp of last balance fetch per chain */
+	chainBalancesFetchedAt: Record<string, number>;
 }
-const initialBalance: MinswapBalanceItem[] = [];
-const initialState: Omit<WalletState, "availableWallets"> &
-	Pick<WalletActions, "accessToken"> = {
-	isConnected: false,
-	activeWallet: null,
-	currentWalletId: null,
+
+interface WalletActions {
+	setError: (error: string | null) => void;
+	setAccessToken: (key: string) => void;
+	setChainConnection: (chainId: string, connection: ChainConnection) => void;
+	removeChainConnection: (chainId: string) => void;
+	setActiveChain: (chainId: string | null) => void;
+	setChainBalances: (chainId: string, balances: ChainTokenBalance[]) => void;
+}
+
+const initialState: WalletState = {
 	error: null,
-	networkId: null,
-	usedAddress: null,
-	balance:initialBalance,
-	isWalletInfoLoading: false,
 	accessToken: "",
+	chainConnections: {},
+	activeChain: "solana",
+	chainBalances: {},
+	chainBalancesFetchedAt: {},
 };
 
 export const useWalletStore = create<WalletState & WalletActions>()(
 	persist(
 		(set, get) => ({
 			...initialState,
-			availableWallets: [],
 
 			setAccessToken: (key) => set({ accessToken: key }),
-			setWallets: (wallets) => set({ availableWallets: wallets }),
 			setError: (error) => set({ error }),
-			setWalletInfoLoading: (loading) =>
-				set({ isWalletInfoLoading: loading }),
 
-			setConnected: (api, id) => {
-				set({
-					isConnected: true,
-					activeWallet: api,
-					currentWalletId: id,
-					error: null,
-				});
-			},
-
-			setDisconnected: () => {
+			// ── Multi-chain ────────────────────────────────────────────────────
+			setChainConnection: (chainId, connection) =>
 				set((state) => ({
-					...initialState,
-					availableWallets: state.availableWallets,
-					accessToken: "",
-				}));
-			},
+					chainConnections: {
+						...state.chainConnections,
+						[chainId]: connection,
+					},
+				})),
 
-			setWalletInfo: ({ networkId, usedAddress, balance }) => {
-				set({ networkId, usedAddress, balance, isWalletInfoLoading: false });
-			},
-
-			updateBalanceAfterSwap: ({
-				fromTokenId,
-				toTokenId,
-				fromAmount,
-				toAmount,
-				fromTokenDecimals,
-				toTokenDecimals,
-			}) => {
+			removeChainConnection: (chainId) =>
 				set((state) => {
-					const updatedBalance = [...state.balance];
+					const next = { ...state.chainConnections };
+					delete next[chainId];
+					const nextBalances = { ...state.chainBalances };
+					delete nextBalances[chainId];
+					const nextFetched = { ...state.chainBalancesFetchedAt };
+					delete nextFetched[chainId];
+					return {
+						chainConnections: next,
+						chainBalances: nextBalances,
+						chainBalancesFetchedAt: nextFetched,
+						activeChain:
+							state.activeChain === chainId ? null : state.activeChain,
+					};
+				}),
 
-					const fromTokenIndex = updatedBalance.findIndex(
-						(item) => item.asset.token_id === fromTokenId
-					);
+			setActiveChain: (chainId) => set({ activeChain: chainId }),
 
-					if (fromTokenIndex !== -1) {
-						const currentAmount = parseFloat(
-							updatedBalance[fromTokenIndex].amount
-						);
-						const subtractAmount = parseFloat(fromAmount);
-						const newAmount = Math.max(
-							0,
-							currentAmount - subtractAmount
-						);
-						updatedBalance[fromTokenIndex] = {
-							...updatedBalance[fromTokenIndex],
-							amount: newAmount.toString(),
-						};
-					}
-
-					const toTokenIndex = updatedBalance.findIndex(
-						(item) => item.asset.token_id === toTokenId
-					);
-
-					if (toTokenIndex !== -1) {
-						const currentAmount = parseFloat(
-							updatedBalance[toTokenIndex].amount
-						);
-						const addAmount = parseFloat(toAmount);
-						const newAmount = currentAmount + addAmount;
-						updatedBalance[toTokenIndex] = {
-							...updatedBalance[toTokenIndex],
-							amount: newAmount.toString(),
-						};
-					}
-
-					return { balance: updatedBalance };
-				});
-			},
+			setChainBalances: (chainId, balances) =>
+				set((state) => ({
+					chainBalances: { ...state.chainBalances, [chainId]: balances },
+					chainBalancesFetchedAt: { ...state.chainBalancesFetchedAt, [chainId]: Date.now() },
+				})),
 		}),
 		{
 			name: "wallet-storage",
 			storage: createJSONStorage(() => localStorage),
-
 			partialize: (state) => ({
 				accessToken: state.accessToken,
-				networkId: state.networkId,
-				usedAddress: state.usedAddress,
-				balance: state.balance,
-				currentWalletId: state.currentWalletId,
+				chainConnections: state.chainConnections,
+				activeChain: state.activeChain,
+				chainBalances: state.chainBalances,
+				chainBalancesFetchedAt: state.chainBalancesFetchedAt,
 			}),
 		}
 	)

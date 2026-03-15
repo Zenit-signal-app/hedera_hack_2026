@@ -1,25 +1,14 @@
 // components/ChatInput.tsx
-import React, { ChangeEvent, forwardRef, useState } from "react";
-import MicroIcon from "@/components/icon/Icon_Microphone-mic";
+import React, { ChangeEvent, forwardRef } from "react";
 import ChevronDownMini from "@/components/icon/Icon_ChevronDownMini";
 import ArrowUpIcon from "@/components/icon/Icon_ArrowUp";
-import Loader from "@/components/common/loading/loader";
 import AiAskIcon from "@/components/icon/AiAskIcon";
-import { FileUploadButton } from "@/components/common/input/Upload";
-import { useReactMediaRecorder } from "react-media-recorder";
-import { ChatRequestOptions } from "ai";
+
 interface ChatInputProps {
 	disabled: boolean;
 	value: string;
 	onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
-	handleSubmit: (
-		event?:
-			| {
-					preventDefault?: (() => void) | undefined;
-			  }
-			| undefined,
-		chatRequestOptions?: ChatRequestOptions | undefined
-	) => void;
+	handleSubmit: (event?: { preventDefault?: () => void }) => void;
 	onChange: (
 		e: ChangeEvent<HTMLTextAreaElement> | ChangeEvent<HTMLInputElement>
 	) => void;

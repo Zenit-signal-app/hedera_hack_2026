@@ -6,6 +6,8 @@ import AmountSlider from "@/components/common/slider/AmountSlider";
 import { vaultApi } from "@/services/vaultServices";
 import { toast } from "sonner";
 import Loader from "@/components/common/loading/loader";
+import { useWalletStore } from "@/store/walletStore";
+import { getServerChainId } from "@/services/chainServices";
 
 interface RedeemModalProps {
 	isOpen: boolean;
@@ -28,6 +30,7 @@ const RedeemModal = ({
 }: RedeemModalProps) => {
 	const [redeemAmount, setRedeemAmount] = useState(0);
 	const [isLoading, setIsLoading] = useState(false);
+	const { activeChain } = useWalletStore();
 
 	const safeMaxAmount = useMemo(() => {
 		return Number.isFinite(maxAmount) ? Math.max(maxAmount, 0) : 0;
@@ -78,10 +81,12 @@ const RedeemModal = ({
 		setIsLoading(true);
 
 		try {
+			const chainId = await getServerChainId(activeChain ?? "");
 			const result = await vaultApi.withdrawFromVault({
 				vault_id: vaultId,
 				wallet_address: walletAddress,
 				amount_ada: redeemAmount,
+				chain_id: chainId,
 			});
 
 			// Check if withdrawal was successful

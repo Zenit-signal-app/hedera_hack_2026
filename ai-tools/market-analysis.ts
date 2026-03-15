@@ -98,14 +98,15 @@ const getSupportedTokensSchema = z.object({
     query: z.string().optional().describe('Optional search query to filter tokens by name or symbol'),
     page: z.number().optional().default(1).describe('Page number for pagination (default: 1)'),
     page_size: z.number().optional().default(50).describe('Number of tokens per page (default: 50)'),
+    chain: z.string().optional().describe('Blockchain chain to filter tokens (e.g. solana, polkadot, hedera)'),
 });
 
 export const getSupportedTokensTool = tool({
     description: 'Get the list of supported tokens on Seerbot Exchange. Use this to answer questions about what tokens are available on the platform.',
     parameters: getSupportedTokensSchema,
-    execute: async function ({ query, page = 1, page_size = 50 }) {
+    execute: async function ({ query, page = 1, page_size = 50, chain }) {
         console.log('----- Trigger get supported tokens -----');
-        console.log({ query, page, page_size });
+        console.log({ query, page, page_size, chain });
         
         try {
             const params: Record<string, string | number> = {
@@ -116,15 +117,18 @@ export const getSupportedTokensTool = tool({
             if (query) {
                 params.query = query;
             }
+
+            if (chain) {
+                params.chain = chain;
+            }
             
             const response = await api.get('/analysis/tokens', { params });
             const responseData = await response.data;
             
-            // Extract only id, name, and symbol from each token
+            // Extract only symbol and coin from each token
             const tokens = (responseData.tokens || []).map((token: any) => ({
-                id: token.id || '',
-                name: token.name || '',
                 symbol: token.symbol || '',
+                coin: token.coin || '',
             }));
             
             // Create a human-readable content message

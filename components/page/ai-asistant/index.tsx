@@ -1,74 +1,76 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// app/ai/page.tsx
 "use client";
 
 import { PromptSuggestions } from "./PromptSuggest";
 import ChatInput from "./ChatInput";
 import LoadingAI from "@/components/common/loading/loading_ai";
-import { useChat } from "@ai-sdk/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { getChatHistory } from "@/services/aiServices";
-import { useWalletStore } from "@/store/walletStore";
-import { createIdGenerator } from "ai";
+import { sendChatQuery } from "@/services/aiServices";
+
+interface ChatMessage {
+	id: string;
+	role: "user" | "assistant";
+	content: string;
+}
+
+let msgCounter = 0;
+const nextId = () => `msg-${++msgCounter}-${Date.now()}`;
 
 export default function AIChatPage() {
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [input, setInput] = useState("");
+	const [loadingAI, setLoadingAI] = useState(false);
+
 	const scrollToBottom = useCallback(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, []);
 
-	const walletAddress = useWalletStore((state) => state.usedAddress);
-	const {
-		messages,
-		setMessages,
-		input,
-		handleInputChange,
-		handleSubmit,
-		isLoading: loadingAI,
-	} = useChat({
-		api: "/api/chat",
-		sendExtraMessageFields: true,
-		generateId: createIdGenerator({
-			prefix: "user",
-			size: 32,
-		}),
-		body: {
-			walletAddress,
-		},
-	});
-
-	useEffect(() => {
-		const loadHistory = async () => {
-			if (walletAddress) {
-				const rawHistory = await getChatHistory(walletAddress);
-				if (rawHistory && rawHistory.length > 0) {
-					const formattedHistory = rawHistory.map((msg: any) => ({
-						id: msg.id,
-						role: msg.role,
-						content: msg.content,
-						createdAt: msg.created_at
-							? new Date(msg.created_at)
-							: new Date(),
-
-						toolInvocations: msg.tool_invocations || undefined,
-					}));
-					setMessages(formattedHistory);
-				}
-			}
-		};
-
-		loadHistory();
-	}, [walletAddress, setMessages]);
-
-	const handleSelectPrompt = (e: string) => {
-		handleInputChange({
-			target: { value: e },
-		} as React.ChangeEvent<HTMLTextAreaElement>);
+	const handleInputChange = (
+		e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>
+	) => {
+		setInput(e.target.value);
 	};
+
+	const handleSubmit = async (e?: { preventDefault?: () => void }) => {
+		e?.preventDefault?.();
+		const query = input.trim();
+		if (!query || loadingAI) return;
+
+		const userMsg: ChatMessage = { id: nextId(), role: "user", content: query };
+		setMessages((prev) => [...prev, userMsg]);
+		setInput("");
+		setLoadingAI(true);
+
+		try {
+			const response = await sendChatQuery(query);
+			const assistantMsg: ChatMessage = {
+				id: nextId(),
+				role: "assistant",
+				content: response,
+			};
+			setMessages((prev) => [...prev, assistantMsg]);
+		} catch {
+			const errorMsg: ChatMessage = {
+				id: nextId(),
+				role: "assistant",
+				content: "Sorry, something went wrong. Please try again.",
+			};
+			setMessages((prev) => [...prev, errorMsg]);
+		} finally {
+			setLoadingAI(false);
+		}
+	};
+
+	const handleSelectPrompt = (text: string) => {
+		setInput(text);
+	};
+
 	useEffect(() => {
 		const timer = setTimeout(scrollToBottom, 100);
 		return () => clearTimeout(timer);
@@ -78,7 +80,7 @@ export default function AIChatPage() {
 		if (e.key === "Enter" && !e.shiftKey) {
 			e.preventDefault();
 			if (e.nativeEvent.isComposing) return;
-			handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>);
+			handleSubmit();
 		}
 	};
 

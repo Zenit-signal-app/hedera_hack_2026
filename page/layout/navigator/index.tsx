@@ -41,14 +41,15 @@ const Navigator = () => {
 		<div className="flex w-full lg:h-full h-max flex-col gap-y-4 items-start py-4 px-3 lg:bg-dark-gray-950 bg-black">
 			{isMobile ? null : (
 				<>
-					<Link href="/">
+					<Link href="/" className="flex items-center gap-x-1 text-2xl font-bold font-quicksand">
 						<Image
 							className=""
-							width={174}
-							height={44}
+							width={36}
+							height={22}
 							alt="Logo"
 							src="/images/logo.png"
 						/>
+						Zenit
 					</Link>{" "}
 					<Input
 						startIcon={<SearchIcon size={20} />}

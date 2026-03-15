@@ -17,6 +17,7 @@ import { strategyDescriptionContent } from "@/data/strategy-description";
 import { useEffect, useState } from "react";
 import { vaultApi } from "@/services/vaultServices";
 import { VaultResolution } from "@/types/vault";
+import { useWalletStore } from "@/store/walletStore";
 import type { ChartDataPoint } from "@/components/common/chart/Line";
 import { formatWallet } from "@/lib/format";
 import Copy from "@/components/common/Copy";
@@ -29,6 +30,7 @@ const Overview = ({ data }: { data: VaultInfo }) => {
 	const [isChartLoading, setIsChartLoading] = useState(true);
 	const [selectedResolution, setSelectedResolution] =
 		useState<VaultResolution>("1d");
+	const { activeChain } = useWalletStore();
 	const [priceChange, setPriceChange] = useState<{
 		value: number;
 		percentage: number;
@@ -42,7 +44,7 @@ const Overview = ({ data }: { data: VaultInfo }) => {
 					resolution: selectedResolution,
 					currency: "usd",
 					count_back: 20,
-				});
+				}, await getServerChainId(activeChain ?? ""));
 
 				if (response.s === "ok" && response.t && response.c) {
 					// Convert TradingView format to chart format
@@ -87,7 +89,7 @@ const Overview = ({ data }: { data: VaultInfo }) => {
 		if (data.id) {
 			fetchChartData();
 		}
-	}, [data.id, selectedResolution]);
+	}, [data.id, selectedResolution, activeChain]);
 
 	// Helper function to format date based on resolution
 	const formatDate = (date: Date, resolution: VaultResolution): string => {

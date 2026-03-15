@@ -4,6 +4,7 @@ import "./globals.css";
 import { exo, museoModerno, quickSand, montserrat, valeraRound } from "../lib/fonts";
 import { NextIntlClientProvider } from "next-intl";
 import ConditionalLayout from "@/components/layout/ConditionalLayout";
+import ChainInitializer from "@/components/layout/ChainInitializer";
 
 export const metadata: Metadata = {
 	title: "SeerBOT | Market Insights & On-chain Analysis",
@@ -43,6 +44,7 @@ export default function RootLayout({
 			<body
 				className={`${exo.variable} ${museoModerno.variable} ${quickSand.variable} ${montserrat.variable} ${valeraRound.variable} antialiased bg-black text-white`}
 			>
+				<ChainInitializer />
 				<ConditionalLayout>
 					<NextIntlClientProvider>{children}</NextIntlClientProvider>
 				</ConditionalLayout>

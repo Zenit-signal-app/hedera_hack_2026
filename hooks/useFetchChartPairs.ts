@@ -16,6 +16,7 @@ export interface ChartPair {
 interface FetchChartPairsParams {
 	query?: string;
 	limit?: number;
+	chain?: string;
 }
 
 export const useFetchChartPairs = () => {
@@ -36,6 +37,10 @@ export const useFetchChartPairs = () => {
 
 				if (params.query) {
 					queryParams.query = params.query;
+				}
+
+				if (params.chain) {
+					queryParams.chain = params.chain;
 				}
 
 				const response = await api.get(

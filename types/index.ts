@@ -1,5 +1,3 @@
-import { Cardano } from "@cardano-sdk/core";
-
 type SwapDirection = "sell" | "buy";
 
 export interface TokenData {
@@ -10,8 +8,6 @@ export interface TokenData {
 	balance: string;
 	iconUrl: string;
 }
-
-export type Utxo = Cardano.Utxo;
 
 export interface TradingPairTrend {
 	pair: string;

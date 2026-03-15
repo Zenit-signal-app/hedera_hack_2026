@@ -16,7 +16,8 @@ type TokenDisplay = {
 type ReviewData = {
 	sell: TokenDisplay;
 	buy: TokenDisplay;
-	feeAda: string;
+	fee: string;
+	feeUsd?: string;
 };
 
 type SwapModalsProps = {
@@ -61,13 +62,18 @@ const Divider = () => (
 	<div className="w-full h-px bg-[rgba(255,255,255,0.08)]" aria-hidden />
 );
 
-const SectionTitle: React.FC<{ fee: string }> = ({ fee }) => (
+const SectionTitle: React.FC<{ fee: string; feeUsd?: string }> = ({ fee, feeUsd }) => (
 	<div className="flex items-center justify-between w-full text-sm text-dark-gray-100">
 		<div className="flex items-center gap-1">
 			<span>Network fee</span>
 			<span className="text-dark-gray-100 text-sm">?</span>
 		</div>
-		<span className="text-white">{fee}</span>
+		<span className="text-white">
+			{fee}
+			{feeUsd ? (
+				<span className="text-dark-gray-100 ml-1">({feeUsd})</span>
+			) : null}
+		</span>
 	</div>
 );
 
@@ -141,7 +147,7 @@ const SwapModals: React.FC<SwapModalsProps> = ({
 					<ArrowDown className="text-dark-gray-100" />
 					<TokenRow {...reviewData.buy} />
 					<Divider />
-					<SectionTitle fee={reviewData.feeAda} />
+					<SectionTitle fee={reviewData.fee} feeUsd={reviewData.feeUsd} />
 					<PrimaryButton label="Confirm" onClick={onConfirm} />
 				</ModalFrame>
 			</CommonModal>
@@ -169,7 +175,7 @@ const SwapModals: React.FC<SwapModalsProps> = ({
 					<ArrowDown className="text-dark-gray-100" />
 					<TokenRow {...reviewData.buy} />
 					<Divider />
-					<SectionTitle fee={reviewData.feeAda} />
+					<SectionTitle fee={reviewData.fee} feeUsd={reviewData.feeUsd} />
 					<PrimaryButton
 						label="Confirm in your wallet"
 						onClick={onConfirm}
@@ -202,7 +208,7 @@ const SwapModals: React.FC<SwapModalsProps> = ({
 					<ArrowDown className="text-dark-gray-100" />
 					<TokenRow {...reviewData.buy} />
 					<Divider />
-					<SectionTitle fee={reviewData.feeAda} />
+					<SectionTitle fee={reviewData.fee} feeUsd={reviewData.feeUsd} />
 				</ModalFrame>
 			</CommonModal>
 
@@ -230,7 +236,7 @@ const SwapModals: React.FC<SwapModalsProps> = ({
 					<ArrowDown className="text-dark-gray-100" />
 					<TokenRow {...reviewData.buy} />
 					<Divider />
-					<SectionTitle fee={reviewData.feeAda} />
+					<SectionTitle fee={reviewData.fee} feeUsd={reviewData.feeUsd} />
 				</ModalFrame>
 			</CommonModal>
 

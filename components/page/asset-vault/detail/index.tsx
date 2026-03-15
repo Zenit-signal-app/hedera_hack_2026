@@ -12,6 +12,8 @@ import MyDeposits from "./MyDeposits";
 import { useState, useEffect } from "react";
 import { vaultApi } from "@/services/vaultServices";
 import { VaultInfo } from "@/types/vault";
+import { useWalletStore } from "@/store/walletStore";
+import { getServerChainId } from "@/services/chainServices";
 
 const DetailPage = () => {
 	const params = useParams();
@@ -20,6 +22,7 @@ const DetailPage = () => {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [activeTab, setActiveTab] = useState("overview");
+	const { activeChain } = useWalletStore();
 
 	useEffect(() => {
 		const fetchVaultInfo = async () => {
@@ -28,7 +31,7 @@ const DetailPage = () => {
 			setIsLoading(true);
 			setError(null);
 			try {
-				const data = await vaultApi.getVaultInfo(assetId);
+				const data = await vaultApi.getVaultInfo(assetId, await getServerChainId(activeChain ?? ""));
 				setVaultInfo(data);
 			} catch (err) {
 				setError("Failed to fetch vault information");
@@ -39,7 +42,7 @@ const DetailPage = () => {
 		};
 
 		fetchVaultInfo();
-	}, [assetId]);
+	}, [assetId, activeChain]);
 
 	if (isLoading) {
 		return (

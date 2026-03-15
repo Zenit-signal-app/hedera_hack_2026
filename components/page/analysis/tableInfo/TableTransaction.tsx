@@ -19,15 +19,15 @@ export function TransactionTable() {
 	const quoteToken = useTokenStore((state) => state.quoteToken);
 	
 	// Tạo pair từ token và quoteToken đang chọn
-	const pair = `${selectedToken.symbol}_${quoteToken.symbol}`;
+	const pair = `${selectedToken.coin}_${quoteToken.coin}`;
 	
 	const { data, isLoading, pagination, setPageIndex, setPageSize } =
 		useFetchTransactions(pair);
 
 	const getTransactionType = (transaction: Transaction): "BUY" | "SELL" => {
 		const isFromQuote =
-			transaction.from_token === quoteToken.symbol ||
-			transaction.from_token === quoteToken.id;
+			transaction.from_token === quoteToken.coin ||
+			transaction.from_token === quoteToken.symbol;
 		return isFromQuote ? "BUY" : "SELL";
 	};
 
@@ -35,8 +35,8 @@ export function TransactionTable() {
 		return type === "BUY" ? "text-green-500" : "text-red-500";
 	};
 
-	const baseAssetSymbol = selectedToken.symbol;
-	const quoteAssetSymbol = quoteToken.symbol;
+	const baseAssetSymbol = selectedToken.coin;
+	const quoteAssetSymbol = quoteToken.coin;
 
 	const columns: ColumnDef<Transaction, any>[] = useMemo(
 		() => [

@@ -1,8 +1,4 @@
 import AnalysisWrapper from "@/components/page/analysis";
-import SwapContainer from "@/components/page/analysis/swap";
-import TableStatistic from "@/components/page/analysis/tableInfo";
-import TableStatisticTrend from "@/components/page/analysis/tableInfo/TableStatisticTrend";
-import { TradingPairInfoComponent } from "@/components/page/analysis/token/TokenInfo";
 import { getTrendAnalysisServer } from "@/services/analysisServices";
 import { TrendPair } from "@/types";
 export default async function Analysis() {
