@@ -65,19 +65,15 @@ def _get_vaults(
             v.id,
             CASE
                 WHEN vs.state IS NOT NULL THEN vs.state
-                WHEN extract(epoch from now()) < v.trading_time THEN 'open'
-                WHEN extract(epoch from now()) < v.withdrawal_time THEN 'trading'
-                WHEN extract(epoch from now()) < v.closed_time THEN 'withdrawable'
                 ELSE 'closed'
             END AS state,
             v.name AS vault_name,
             v.summary,
             v.description,
             v.address,
-            v.pool_id,
             vs.tvl_usd,
             vs.max_drawdown,
-            v.depositing_time AS start_time,
+            v.start_time AS start_time,
             vs.return_percent,
             v.logo_url AS icon_url,
             COUNT(*) OVER() AS total_count
@@ -89,7 +85,7 @@ def _get_vaults(
         LEFT JOIN {SCHEMA}.vault v ON vs.vault_id = v.id
         WHERE 1=1
             {id_filter}
-        ORDER BY v.depositing_time DESC
+        ORDER BY v.start_time DESC
         {limit_sql}
         """
     )
@@ -106,7 +102,6 @@ def _get_vaults(
                 "summary": str(row.summary) if row.summary else None,
                 "description": str(row.description) if row.description else None,
                 "address": str(row.address) if row.address else "",
-                "pool_id": str(row.pool_id) if row.pool_id else "",
                 "annual_return": round(annual_return, 2),
                 "tvl_usd": float(row.tvl_usd) if row.tvl_usd else 0.0,
                 "max_drawdown": float(row.max_drawdown) if row.max_drawdown else 0.0,
