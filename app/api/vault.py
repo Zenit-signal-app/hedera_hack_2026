@@ -656,10 +656,7 @@ def get_vault_positions(
             quote_token.symbol as quote_token_symbol,
             COUNT(*) OVER() AS total_count
         FROM {SCHEMA}.vault_positions vtp
-        LEFT JOIN {SCHEMA}.tokens quote_token ON CASE 
-            WHEN vtp.quote_token_id ~ '^[0-9]+$' THEN vtp.quote_token_id::integer = quote_token.id
-            ELSE vtp.quote_token_id = quote_token.contract_address
-        END
+        LEFT JOIN {SCHEMA}.tokens quote_token ON vtp.quote_token_id = quote_token.id
         WHERE vtp.vault_id = '{id}' AND vtp.chain_id = {chain_id} {status_filter}
         ORDER BY vtp.start_time DESC
         LIMIT {limit} OFFSET {offset}
