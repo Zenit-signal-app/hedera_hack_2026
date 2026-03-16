@@ -14,7 +14,7 @@ from app.db.session import get_db
 import app.schemas.vault as schemas
 from app.services import price_cache
 
-SCHEMA = settings.SCHEMA_2
+SCHEMA = settings.SCHEMA_1
 
 router = APIRouter()
 group_tags: List[str] = ["Vault"]
