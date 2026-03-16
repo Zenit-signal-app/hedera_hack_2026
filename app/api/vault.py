@@ -24,10 +24,10 @@ def _get_vaults(
     db: Session,
     *,
     vault_id: Optional[str] = None,
+    chain_id: int = 2,
     status: str = "active",
     limit: int = 20,
     offset: int = 0,
-    chain_id: int,
 ) -> dict:
     """
     Shared vault fetcher with caching.
@@ -147,7 +147,7 @@ def _get_vault_stats_data(
             vs.trade_per_month,
             vs.total_fees_paid,
             ts.decision_cycle,
-            v.depositing_time AS depositing_time
+            v.start_time AS start_time
         FROM {SCHEMA}.vault_state vs
         LEFT JOIN {SCHEMA}.vault v ON vs.vault_id = v.id
         LEFT JOIN {SCHEMA}.trade_strategies ts ON (
@@ -176,7 +176,7 @@ def _get_vault_stats_data(
 
     annual_return = float(result.return_percent) if result.return_percent else 0.0
     start_time = (
-        result.depositing_time if result.depositing_time else result.trade_start_time
+        result.start_time if result.start_time else result.trade_start_time
     )
     dc_map = {
         "1h": "1 hour",
@@ -250,22 +250,11 @@ def _fetch_vault_item(db: Session, vault_id: str, chain_id: int) -> Optional[dic
     status_code=http_status.HTTP_200_OK,
 )
 def get_vaults_by_status(
-    status: str = Query(
-        "active",
-        description="Filter by status: active, inactive, or all (default: active)",
-    ),
-    chain_id: int = Query(
-        ...,
-        ge=1,
-        description="Chain ID to scope the vault data.",
-    ),
+    status: str = Query("active", description="Filter by status: active, inactive, or all (default: active)"),
+    chain_id: int = Query(2, ge=1, description="Chain ID to scope the vault data."),
     page: int = Query(1, ge=1, description="Page number (default: 1)"),
-    limit: int = Query(
-        20, ge=1, le=100, description="Items per page (default: 20, max: 100)"
-    ),
-    offset: Optional[int] = Query(
-        None, description="Number of items to skip (alternative to page)"
-    ),
+    limit: int = Query(20, ge=1, le=100, description="Items per page (default: 20, max: 100)"),
+    offset: Optional[int] = Query(None, description="Number of items to skip (alternative to page)"),
     db: Session = Depends(get_db),
 ) -> schemas.VaultListResponse:
     """
@@ -339,11 +328,7 @@ def get_vaults_by_status(
 )
 def get_vault_info(
     id: str,
-    chain_id: int = Query(
-        ...,
-        ge=1,
-        description="Chain ID that owns the requested vault.",
-    ),
+    chain_id: int = Query(2, ge=1, description="Chain ID that owns the requested vault."),
     db: Session = Depends(get_db),
 ) -> schemas.VaultInfo:
     """
@@ -671,15 +656,24 @@ def get_vault_positions(
             quote_token.symbol as quote_token_symbol,
             COUNT(*) OVER() AS total_count
         FROM {SCHEMA}.vault_positions vtp
-        LEFT JOIN {SCHEMA}.tokens quote_token ON vtp.quote_token_id = quote_token.id
+        LEFT JOIN {SCHEMA}.tokens quote_token ON CASE 
+            WHEN vtp.quote_token_id ~ '^[0-9]+$' THEN vtp.quote_token_id::integer = quote_token.id
+            ELSE vtp.quote_token_id = quote_token.contract_address
+        END
         WHERE vtp.vault_id = '{id}' AND vtp.chain_id = {chain_id} {status_filter}
         ORDER BY vtp.start_time DESC
         LIMIT {limit} OFFSET {offset}
         """
     )
 
-    results = db.execute(positions_query).fetchall()
-    total = int(results[0].total_count) if results and len(results) > 0 else 0
+    results = []
+    try:
+        results = db.execute(positions_query).fetchall()
+    except Exception as e:
+        print(f"Error executing get_vault_positions: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    
+    total = int(results[0].total_count) if results else 0
 
     positions = []
     for row in results:
