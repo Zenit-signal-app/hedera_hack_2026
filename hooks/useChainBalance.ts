@@ -3,14 +3,14 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { useWalletStore, ChainTokenBalance } from "@/store/walletStore";
-import { DEFAULT_CHAIN_TOKENS, type ChainId } from "@/lib/constant";
+import { DEFAULT_CHAIN_TOKENS, NETWORK_CONFIG, type ChainId } from "@/lib/constant";
 
 // Cache TTL: don't re-fetch within 60 seconds
 const BALANCE_TTL_MS = 60_000;
 
 // ─── Solana balance fetching ──────────────────────────────────────────────────
 
-const SOLANA_RPC = "https://api.mainnet-beta.solana.com";
+const SOLANA_RPC = NETWORK_CONFIG.solana.rpc;
 
 async function fetchSolanaBalances(address: string): Promise<ChainTokenBalance[]> {
 	const defaults = DEFAULT_CHAIN_TOKENS.solana;
@@ -99,7 +99,7 @@ async function fetchPolkadotBalances(address: string): Promise<ChainTokenBalance
 
 	// Fetch native DOT balance via Polkadot public RPC
 	try {
-		const resp = await fetch("https://rpc.polkadot.io", {
+		const resp = await fetch(NETWORK_CONFIG.polkadot.rpc_http, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
@@ -153,7 +153,7 @@ async function fetchHederaBalances(address: string): Promise<ChainTokenBalance[]
 
 	try {
 		const resp = await fetch(
-			`https://mainnet-public.mirrornode.hedera.com/api/v1/balances?account.id=${address}`
+			`${NETWORK_CONFIG.hedera.rpc}/api/v1/balances?account.id=${address}`
 		);
 		const data = await resp.json();
 		const balanceEntry = data?.balances?.[0];

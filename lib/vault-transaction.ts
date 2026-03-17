@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { ChainId } from "@/lib/constant";
+import { NETWORK_CONFIG, type ChainId } from "@/lib/constant";
 
 export interface VaultConfig {
 	vault_address: string;
@@ -26,7 +26,7 @@ async function depositSolana(
 		await import("@solana/web3.js");
 
 	const connection = new Connection(
-		"https://api.mainnet-beta.solana.com",
+		NETWORK_CONFIG.solana.rpc,
 		"confirmed",
 	);
 
@@ -73,7 +73,7 @@ async function estimateFeeSolana(
 		await import("@solana/web3.js");
 
 	const connection = new Connection(
-		"https://api.mainnet-beta.solana.com",
+		NETWORK_CONFIG.solana.rpc,
 		"confirmed",
 	);
 
@@ -125,7 +125,7 @@ async function depositPolkadot(
 	}
 
 	const { ApiPromise, WsProvider } = await import("@polkadot/api");
-	const wsProvider = new WsProvider("wss://rpc.polkadot.io");
+	const wsProvider = new WsProvider(NETWORK_CONFIG.polkadot.rpc);
 	const api = await ApiPromise.create({ provider: wsProvider });
 
 	try {
@@ -172,7 +172,7 @@ async function estimateFeePolkadot(
 	contributorAddress: string,
 ): Promise<number> {
 	const { ApiPromise, WsProvider } = await import("@polkadot/api");
-	const wsProvider = new WsProvider("wss://rpc.polkadot.io");
+	const wsProvider = new WsProvider(NETWORK_CONFIG.polkadot.rpc);
 	const api = await ApiPromise.create({ provider: wsProvider });
 
 	try {
@@ -205,7 +205,7 @@ async function depositHedera(
 
 		// Use Hedera REST API to submit transfer
 		const transferResp = await fetch(
-			"https://mainnet-public.mirrornode.hedera.com/api/v1/transactions",
+			`${NETWORK_CONFIG.hedera.rpc}/api/v1/transactions`,
 			{
 				method: "POST",
 				headers: { "Content-Type": "application/json" },

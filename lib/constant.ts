@@ -1,3 +1,22 @@
+export const NETWORK_ENV = process.env.NEXT_PUBLIC_NETWORK || "mainnet";
+export const IS_TESTNET = NETWORK_ENV === "testnet";
+
+export const NETWORK_CONFIG = {
+	solana: {
+		rpc: process.env.NEXT_PUBLIC_SOLANA_RPC || (IS_TESTNET ? "https://api.devnet.solana.com" : "https://api.mainnet-beta.solana.com"),
+		explorer: IS_TESTNET ? "https://solscan.io/tx/" : "https://solscan.io/tx/", // For Solana explorer, we will append ?cluster=devnet in the service wrapper
+	},
+	polkadot: {
+		rpc: process.env.NEXT_PUBLIC_POLKADOT_RPC || (IS_TESTNET ? "wss://westend-rpc.polkadot.io" : "wss://rpc.polkadot.io"),
+		rpc_http: process.env.NEXT_PUBLIC_POLKADOT_RPC_HTTP || (IS_TESTNET ? "https://westend-rpc.polkadot.io" : "https://rpc.polkadot.io"),
+		explorer: IS_TESTNET ? "https://westend.subscan.io/extrinsic/" : "https://polkadot.subscan.io/extrinsic/",
+	},
+	hedera: {
+		rpc: process.env.NEXT_PUBLIC_HEDERA_RPC || (IS_TESTNET ? "https://testnet.mirrornode.hedera.com" : "https://mainnet-public.mirrornode.hedera.com"),
+		explorer: IS_TESTNET ? "https://hashscan.io/testnet/transaction/" : "https://hashscan.io/mainnet/transaction/",
+	}
+};
+
 export const listNavigators = [
 	{
 		text: "Analysis",

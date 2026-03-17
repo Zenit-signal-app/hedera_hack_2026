@@ -43,6 +43,26 @@ const POLKADOT_INJECTED_MAP: Record<string, string> = {
 	"aleph-zero-signer": "aleph-zero-signer",
 };
 
+/**
+ * Find the MetaMask provider even when multiple wallet extensions override
+ * window.ethereum. Handles the EIP-5749 / EIP-6963 multi-provider scenario.
+ */
+function getMetaMaskProvider(): any | null {
+	if (typeof window === "undefined" || !window.ethereum) return null;
+
+	// Direct check – MetaMask is the sole provider
+	if (window.ethereum.isMetaMask) return window.ethereum;
+
+	// Multi-provider array (Phantom, Coinbase, etc. push MetaMask here)
+	const providers = (window.ethereum as any).providers;
+	if (Array.isArray(providers)) {
+		const mm = providers.find((p: any) => p.isMetaMask);
+		if (mm) return mm;
+	}
+
+	return null;
+}
+
 export function getInstalledWalletIds(chainId: ChainId): string[] {
 	if (typeof window === "undefined") return [];
 
@@ -58,12 +78,15 @@ export function getInstalledWalletIds(chainId: ChainId): string[] {
 			return ids;
 		}
 		case "polkadot": {
-			if (!window.injectedWeb3) return [];
-			const allKeys = Object.keys(window.injectedWeb3);
 			const ids: string[] = [];
-			for (const [walletId, injectedKey] of Object.entries(POLKADOT_INJECTED_MAP)) {
-				if (allKeys.includes(injectedKey)) ids.push(walletId);
+			if (window.injectedWeb3) {
+				const allKeys = Object.keys(window.injectedWeb3);
+				for (const [walletId, injectedKey] of Object.entries(POLKADOT_INJECTED_MAP)) {
+					if (allKeys.includes(injectedKey)) ids.push(walletId);
+				}
 			}
+			// MetaMask with Polkadot Snap
+			if (getMetaMaskProvider()) ids.push("metamask-polkadot");
 			return ids;
 		}
 		case "hedera": {
@@ -71,7 +94,7 @@ export function getInstalledWalletIds(chainId: ChainId): string[] {
 			if (window.hashconnect) ids.push("hashpack");
 			if (window.bladewallet) ids.push("blade");
 			// MetaMask with Hedera Snap
-			if (window.ethereum?.isMetaMask) ids.push("metamask-hedera");
+			if (getMetaMaskProvider()) ids.push("metamask-hedera");
 			return ids;
 		}
 		default:
@@ -116,6 +139,17 @@ async function connectSolana(walletId: string): Promise<string> {
 }
 
 async function connectPolkadot(walletId: string): Promise<string> {
+	// MetaMask with Polkadot Snap
+	if (walletId === "metamask-polkadot") {
+		const eth = getMetaMaskProvider();
+		if (!eth) throw new Error("MetaMask not installed");
+		const accounts = (await eth.request({
+			method: "eth_requestAccounts",
+		})) as string[];
+		if (!accounts.length) throw new Error("No accounts returned");
+		return accounts[0];
+	}
+
 	const web3 = window.injectedWeb3;
 	const injectedKey = POLKADOT_INJECTED_MAP[walletId] ?? walletId;
 	if (!web3 || !web3[injectedKey]) {
@@ -136,8 +170,8 @@ async function connectHedera(walletId: string): Promise<string> {
 			return result.accountId;
 		}
 		case "metamask-hedera": {
-			const eth = window.ethereum;
-			if (!eth?.isMetaMask) throw new Error("MetaMask not installed");
+			const eth = getMetaMaskProvider();
+			if (!eth) throw new Error("MetaMask not installed");
 			const accounts = (await eth.request({
 				method: "eth_requestAccounts",
 			})) as string[];

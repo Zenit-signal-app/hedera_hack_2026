@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { ChainId } from "@/lib/constant";
+import { NETWORK_CONFIG, IS_TESTNET, type ChainId } from "@/lib/constant";
 
 // ─── Shared Types ──────────────────────────────────────────────────────────────
 
@@ -42,14 +42,12 @@ function formatFee(value: number): string {
 	return value.toFixed(8).replace(/\.?0+$/, "");
 }
 
-const EXPLORER_BASE: Record<string, string> = {
-	solana: "https://solscan.io/tx/",
-	polkadot: "https://polkadot.subscan.io/extrinsic/",
-	hedera: "https://hashscan.io/mainnet/transaction/",
-};
-
 export function getExplorerUrl(chainId: string, txHash: string): string {
-	return `${EXPLORER_BASE[chainId] ?? ""}${txHash}`;
+	const baseUrl = NETWORK_CONFIG[chainId as ChainId]?.explorer ?? "";
+	if (chainId === "solana" && IS_TESTNET) {
+		return `${baseUrl}${txHash}?cluster=devnet`;
+	}
+	return `${baseUrl}${txHash}`;
 }
 
 // ─── Jupiter (Solana) ──────────────────────────────────────────────────────────
@@ -143,7 +141,7 @@ async function executeJupiterSwap(
 	const signed = await provider.signTransaction(transaction);
 
 	const connection = new Connection(
-		"https://api.mainnet-beta.solana.com",
+		NETWORK_CONFIG.solana.rpc,
 		"confirmed"
 	);
 	const txHash = await connection.sendRawTransaction(signed.serialize(), {
@@ -424,7 +422,16 @@ async function executeHederaSwap(
 	const txData = await swapResp.json();
 
 	// Try signing with available Hedera wallet
-	const eth = window.ethereum;
+	// Find MetaMask even when multiple wallet extensions override window.ethereum
+	const eth = (() => {
+		if (!window.ethereum) return null;
+		if (window.ethereum.isMetaMask) return window.ethereum;
+		const providers = (window.ethereum as any).providers;
+		if (Array.isArray(providers)) {
+			return providers.find((p: any) => p.isMetaMask) ?? null;
+		}
+		return null;
+	})();
 	const blade = window.bladewallet;
 
 	if (blade) {
@@ -454,7 +461,7 @@ async function executeHederaSwap(
 		}
 	}
 
-	if (eth?.isMetaMask) {
+	if (eth) {
 		// MetaMask with Hedera — uses EVM-compatible contract call
 		if (txData.to && txData.data) {
 			const txHash = (await eth.request({
