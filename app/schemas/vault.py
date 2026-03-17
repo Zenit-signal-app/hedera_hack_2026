@@ -38,10 +38,10 @@ class VaultInfo(CustomBaseModel):
     state: str = ""  # open, trading, withdrawable, closed
     icon_url: Optional[str] = None
     vault_name: str = ""
-    vault_type: str = "Seerbot Vault"
-    vault_type_logo: str = settings.HOST + "/static/images/Seerbot.png"
-    blockchain: str = "Cardano"
-    blockchain_logo: str = settings.HOST + "/static/images/Cardano_icon.png"
+    vault_type: str = "Zenit Vault"
+    vault_type_logo: str = settings.HOST + "/static/images/Zenit.png"
+    blockchain: str = "polkadot"
+    blockchain_logo: str = "https://cryptologos.cc/logos/polkadot-new-dot-logo.png"
     address: str = ""
     pool_id: str = ""
     summary: Optional[str] = None
