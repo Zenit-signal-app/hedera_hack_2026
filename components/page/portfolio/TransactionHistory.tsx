@@ -74,7 +74,7 @@ export const TransactionHistory = () => {
 		page: pageIndex + 1,
 		limit: pageSize,
 		enabled: activeTab === "swap",
-		chain_id: activeChain,
+		chain_id: activeChain || "polkadot",
 	});
 
 	// Fetch vault transactions
