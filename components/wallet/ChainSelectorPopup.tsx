@@ -54,7 +54,7 @@ const ChainSelectorPopup: React.FC<Props> = ({ children }) => {
 				</button>
 
 				{popoverOpen && (
-					<div className="absolute left-0 top-full mt-2 bg-dark-gray-900 border border-dark-gray-700 rounded-xl p-2 z-[9999] w-52 shadow-2xl">
+					<div className="absolute left-0 top-full mt-2 bg-primary-900 border border-dark-gray-700 rounded-xl p-2 z-[9999] w-52 shadow-2xl">
 						<p className="text-dark-gray-400 text-xs px-3 py-1.5 font-medium uppercase tracking-wider">
 							Select Network
 						</p>

@@ -13,6 +13,7 @@ import MyDeposits from "./MyDeposits";
 import CopyIcon from "@/components/icon/Icon_Copy";
 import ArrowUpRightIcon from "@/components/icon/Icon_ArrowUpRight";
 import QuestionInfoIcon from "@/components/icon/Icon_QuestionInfo";
+import { getServerChainId } from "@/services/chainServices";
 import { strategyDescriptionContent } from "@/data/strategy-description";
 import { useEffect, useState } from "react";
 import { vaultApi } from "@/services/vaultServices";

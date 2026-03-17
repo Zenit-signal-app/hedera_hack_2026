@@ -39,7 +39,7 @@ export default function Home({ partners = [] }: { partners?: Partner[] }) {
 
 			const itemsToAppend = partners.slice(
 				0,
-				Math.min(remaining, currentCount)
+				Math.min(remaining, currentCount),
 			);
 
 			scaledList = scaledList.concat(itemsToAppend);
@@ -66,8 +66,6 @@ export default function Home({ partners = [] }: { partners?: Partner[] }) {
 				<div className="landing-hero">
 					<h1 className="landing-hero-title">
 						The next generation trading
-						<br />
-						platform on Cardano
 					</h1>
 					<p className="landing-hero-subtitle">
 						Analyze, manage, and grow your crypto balance — all in
@@ -87,7 +85,7 @@ export default function Home({ partners = [] }: { partners?: Partner[] }) {
 				<div className="landing-demo">
 					<Image
 						src="/images/landing-page-1.png"
-						alt="SeerBot Trading Platform Demo"
+						alt="Zenit Trading Platform Demo"
 						width={1280}
 						height={681}
 						className="landing-demo-image"

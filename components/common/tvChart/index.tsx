@@ -290,7 +290,7 @@ export const TVChartContainer = ({
 
 	return (
 		<div
-			className={`flex flex-col gap-2 lg:gap-0 overflow-hidden bg-dark-gray-950 rounded-t-lg h-full ${className}`}
+			className={`flex flex-col gap-2 lg:gap-0 overflow-hidden bg-primary-950 rounded-t-lg h-full ${className}`}
 		>
 			<div className="flex gap-4 items-center pt-2 pb-2 px-3 shrink-0">
 				<div className="flex gap-1 items-center">
@@ -307,7 +307,7 @@ export const TVChartContainer = ({
 							{INTERVAL_LABELS[timeInterval] || timeInterval}
 						</button>
 					))}
-					<div className="bg-dark-gray-900 border border-dark-gray-900 rounded-md h-6 flex items-center px-1">
+					<div className="bg-primary-900 border border-dark-gray-900 rounded-md h-6 flex items-center px-1">
 						<Icon_ChevronDownMini className="w-6 h-6" />
 					</div>
 				</div>
@@ -324,9 +324,9 @@ export const TVChartContainer = ({
 						open={popoverOpen}
 						onOpenChange={setPopoverOpen}
 						align="start"
-						className="w-[200px] p-2 bg-dark-gray-950 border border-dark-gray-700 rounded-lg"
+						className="w-[200px] p-2 bg-primary-950 border border-dark-gray-700 rounded-lg"
 						trigger={
-							<button className="bg-dark-gray-950 border border-dark-gray-700 flex gap-2 items-center justify-center px-3 py-1 rounded-lg cursor-pointer">
+							<button className="bg-primary-950 border border-dark-gray-700 flex gap-2 items-center justify-center px-3 py-1 rounded-lg cursor-pointer">
 								<span className="text-sm font-bold text-white">
 									{selectedIndicators.length > 0
 										? selectedIndicators[0]
@@ -387,9 +387,9 @@ export const TVChartContainer = ({
 							open={timezonePopoverOpen}
 							onOpenChange={setTimezonePopoverOpen}
 							align="start"
-							className="w-[220px] p-2 bg-dark-gray-950 border border-dark-gray-700 rounded-lg"
+							className="w-[220px] p-2 bg-primary-950 border border-dark-gray-700 rounded-lg"
 							trigger={
-								<button className="bg-dark-gray-950 flex gap-2 items-center justify-center px-3 py-1 rounded-lg cursor-pointer">
+								<button className="bg-primary-950 flex gap-2 items-center justify-center px-3 py-1 rounded-lg cursor-pointer">
 									<span className="text-sm font-bold text-white">
 										{currentTime
 											? `${currentTime} (${selectedTimezone})`

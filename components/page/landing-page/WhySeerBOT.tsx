@@ -96,15 +96,20 @@ function AnimatedCounter({
 	};
 
 	return (
-		<h2 ref={counterRef} className="why-seerbot-stats-value">
+		<h2 ref={counterRef} className="why-Zenit-stats-value">
 			{prefix}
 			{formatNumber(count)}
 			{suffix}
+
 		</h2>
 	);
 }
 
-export default function WhySeerBOT({ stats }: { stats: PlatformStatistics | null }) {
+export default function WhySeerBOT({
+	stats,
+}: {
+	stats: PlatformStatistics | null;
+}) {
 	const cardsRef = useRef<HTMLDivElement>(null);
 	const [isDragging, setIsDragging] = useState(false);
 	const [startX, setStartX] = useState(0);
@@ -148,10 +153,10 @@ export default function WhySeerBOT({ stats }: { stats: PlatformStatistics | null
 		>
 			<div className="landing-section-wrapper">
 				<div className="landing-section-content">
-					<h2 className="landing-section-title">Why SeerBOT</h2>
+					<h2 className="landing-section-title">Why Zenit</h2>
 					<p className="landing-section-subtitle">
 						Navigating the Cardano DeFi ecosystem shouldn&apos;t be
-						complicated. SeerBOT combines the security of
+						complicated. Zenit combines the security of
 						non-custodial trading with the power of AI-driven
 						analysis. We provide the tools you need to validate
 						market trends, automate your strategies, and trade with
@@ -199,23 +204,23 @@ export default function WhySeerBOT({ stats }: { stats: PlatformStatistics | null
 				{/* Stats Cards */}
 				<div
 					ref={cardsRef}
-					className="why-seerbot-stats-container"
+					className="why-Zenit-stats-container"
 					onMouseDown={handleMouseDown}
 					onMouseMove={handleMouseMove}
 					onMouseUp={handleMouseUp}
 					onMouseLeave={handleMouseLeave}
 				>
 					{STATS_CARDS.map((card, index) => (
-						<div key={index} className="why-seerbot-stats-card">
-							<div className="why-seerbot-stats-card-bg"></div>
-							<div className="why-seerbot-stats-card-content">
+						<div key={index} className="why-Zenit-stats-card">
+							<div className="why-Zenit-stats-card-bg"></div>
+							<div className="why-Zenit-stats-card-content">
 								<AnimatedCounter
 									value={safeStats[card.numericValue]}
 									prefix={card.prefix}
 									suffix={card.suffix}
 									duration={1000}
 								/>
-								<p className="why-seerbot-stats-label">
+								<p className="why-Zenit-stats-label">
 									{card.label}
 								</p>
 							</div>

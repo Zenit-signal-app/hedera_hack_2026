@@ -83,7 +83,7 @@ export function TableWrapper<TData>({
 		? "rounded-lg  shadow-lg w-full"
 		: "w-full";
 	const tableHeaderClass = isDefaultVariant
-		? `bg-dark-gray-950 text-white border-r border-dark-gray-700 ${
+		? `bg-primary-950 text-white border-r border-dark-gray-700 ${
 				showHeaderBorder ? "border-b" : ""
 		  }`
 		: `bg-transparent ${
@@ -175,7 +175,7 @@ export function TableWrapper<TData>({
 											tableRowClass,
 											index % 2 === 0 &&
 												variant === "minimal"
-												? "bg-dark-gray-900"
+												? "bg-primary-900"
 												: "bg-transparent",
 											customRowClass,
 											onRowClick && "cursor-pointer"

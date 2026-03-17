@@ -36,7 +36,7 @@ const TabsWrapper: React.FC<TabsWrapperProps> = ({
 
 	if (variant === "pill") {
 		tabsListVariantClasses =
-			"p-1 bg-dark-gray-900 rounded-md shadow-inner w-max";
+			"p-1 bg-primary-900 rounded-md shadow-inner w-max";
 		triggerBaseClasses = "px-3 py-1.5 rounded-md relative z-10";
 		triggerInactiveClasses = "text-gray-400 hover:text-gray-200";
 		triggerActiveClasses =

@@ -1,11 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/**
- * useChainWalletConnect
- *
- * Handles wallet detection + connection for Solana, Polkadot, and Hedera.
- * On successful connect it writes to `chainConnections[chainId]` in the wallet store.
- */
-
 import { useCallback, useState } from "react";
 import { useWalletStore } from "@/store/walletStore";
 import type { ChainId } from "@/lib/constant";
@@ -14,9 +7,6 @@ export type ConnectChainResult =
 	| { ok: true; address: string }
 	| { ok: false; error: string };
 
-// ─── Detect which wallets are installed for a given chain ────────────────────
-
-/** Map wallet id → window property for generic Solana wallet detection. */
 const SOLANA_WALLET_WINDOW_MAP: Record<string, string> = {
 	phantom: "phantom",
 	solflare: "solflare",
@@ -41,7 +31,6 @@ const SOLANA_WALLET_WINDOW_MAP: Record<string, string> = {
 	nufi: "nufiSolana",
 };
 
-/** Polkadot wallet id → injectedWeb3 key (when different from wallet id). */
 const POLKADOT_INJECTED_MAP: Record<string, string> = {
 	"polkadot-js": "polkadot-js",
 	talisman: "talisman",
@@ -63,7 +52,6 @@ export function getInstalledWalletIds(chainId: ChainId): string[] {
 			if (window.phantom?.solana?.isPhantom) ids.push("phantom");
 			if ((window as any).solflare?.isSolflare) ids.push("solflare");
 			if ((window as any).backpack?.isBackpack) ids.push("backpack");
-			// Generic detection for other wallets
 			for (const [id, prop] of Object.entries(SOLANA_WALLET_WINDOW_MAP)) {
 				if (!ids.includes(id) && (window as any)[prop]) ids.push(id);
 			}

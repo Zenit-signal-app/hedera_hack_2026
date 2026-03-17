@@ -70,7 +70,7 @@ const DetailPage = () => {
 				href={"/asset-vault"}
 				className="text-white flex items-center gap-x-2 text-base font-bold font-exo"
 			>
-				<div className="p-1 bg-dark-gray-900 w-max rounded-sm">
+				<div className="p-1 bg-primary-900 w-max rounded-sm">
 					<ChevronLeftMiniIcon size={24} />
 				</div>{" "}
 				Back

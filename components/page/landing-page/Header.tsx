@@ -11,11 +11,7 @@ export default function Header() {
 
 	useEffect(() => {
 		const handleScroll = () => {
-			const sections = [
-				"home",
-				"how-it-works",
-				"ai-assistant",
-			];
+			const sections = ["home", "how-it-works", "ai-assistant"];
 
 			const scrollPosition = window.scrollY + 150; // Offset for header height + buffer
 			let currentSection = "";
@@ -60,7 +56,7 @@ export default function Header() {
 
 	const handleNavClick = (
 		e: React.MouseEvent<HTMLAnchorElement>,
-		sectionId: string
+		sectionId: string,
 	) => {
 		e.preventDefault();
 		const section = document.getElementById(sectionId);
@@ -92,14 +88,17 @@ export default function Header() {
 
 				{/* Logo */}
 				<div className="landing-logo-wrapper">
-					<div className="landing-logo-icon">
+					<div className="landing-logo-icon flex items-center">
 						<Image
-							src="/images/Logo_landingpage.png"
-							alt="SeerBOT Logo"
-							width={184}
-							height={44}
+							src="/images/logo.png"
+							alt="Zenit Logo"
+							width={64}
+							height={32}
 							priority
 						/>
+						<span className="font-quicksand text-4xl font-bold">
+							Zenit
+						</span>
 					</div>
 				</div>
 
@@ -133,8 +132,8 @@ export default function Header() {
 					>
 						AI Assistant
 					</a>
-					{/* <a href="#why-seerbot" className="landing-nav-link">
-						Why SeerBOT
+					{/* <a href="#why-Zenit" className="landing-nav-link">
+						Why Zenit
 					</a>
 					<a href="#faq" className="landing-nav-link">
 						FAQ

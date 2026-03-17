@@ -68,4 +68,10 @@ declare global {
 	}
 }
 
-export {};
+export interface WalletInfo {
+	id: string;
+	name: string;
+	icon?: string;
+	url?: string;
+	chainId?: string;
+}

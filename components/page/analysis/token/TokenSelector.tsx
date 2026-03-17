@@ -83,7 +83,7 @@ export const TokenSelector: React.FC = () => {
 						<div
 							key={token.symbol}
 							onClick={() => handleToken(token)}
-							className="p-2 cursor-pointer hover:bg-dark-gray-900 flex justify-between items-center gap-x-2 text-xs"
+							className="p-2 cursor-pointer hover:bg-primary-900 flex justify-between items-center gap-x-2 text-xs"
 						>
 							<Image
 								src={token.image}

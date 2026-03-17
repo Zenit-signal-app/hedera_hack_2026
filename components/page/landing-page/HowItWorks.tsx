@@ -45,7 +45,11 @@ export default function HowItWorks() {
 					<div className="how-it-works-text">
 						<h2 className="landing-section-title">How it works</h2>
 						<p className="landing-section-subtitle">
-							SeerBOT aim to make trading on Cardano easier and more intuitive not just for ADA, but for the entire range of ecosystem token with On-chain Swap, Technical Analysis, AI Assistant, Strategy Vault and more.
+							Zenit aim to make trading on Polkadot easier and
+							more intuitive not just for DOT, but for the entire
+							range of ecosystem token with On-chain Swap,
+							Technical Analysis, AI Assistant, Strategy Vault and
+							more.
 						</p>
 						<div className="landing-hero-actions">
 							<button className="landing-btn-primary">

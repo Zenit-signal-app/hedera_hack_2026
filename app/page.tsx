@@ -22,7 +22,7 @@ const fetchApi = async (path: string) => {
 		if (!res.ok) {
 			const text = await res.text().catch(() => "");
 			throw new Error(
-				`Fetch ${url} failed: ${res.status} ${res.statusText} ${text}`
+				`Fetch ${url} failed: ${res.status} ${res.statusText} ${text}`,
 			);
 		}
 		const json = await res.json().catch(() => null);
@@ -46,7 +46,7 @@ export default async function LandingPage() {
 
 	let partners: Partner[] = [];
 	let statistics: PlatformStatistics = defaultStatistics;
-	
+
 	// Fetch partners with graceful error handling
 	try {
 		const result = await fetchApi("/content/partners");

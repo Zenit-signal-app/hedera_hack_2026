@@ -1,19 +1,29 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Custom hook for vault deposit operations
- * Handles direct deposit to vault smart contract with wallet signing
+ * Handles direct deposit to vault smart contract via on-chain transaction
+ * Supports Solana, Polkadot, and Hedera chains
  */
 
 import { useState, useCallback } from 'react';
-import { useWalletStore } from '@/store/walletStore';
 import { toast } from 'sonner';
+import { useWalletStore } from '@/store/walletStore';
+import type { ChainId } from '@/lib/constant';
+import {
+  VaultConfig,
+  toSmallestUnit,
+  fromSmallestUnit,
+  depositToVault,
+  estimateDepositFee,
+  CHAIN_NATIVE_SYMBOL,
+} from '@/lib/vault-transaction';
 
 export interface UseVaultDepositResult {
   isDepositing: boolean;
   error: string | null;
   txHash: string | null;
-  deposit: (vaultId: string, amountNative: number, contributorAddress?: string) => Promise<string | null>;
-  estimateFee: (vaultId: string, amountNative: number, contributorAddress?: string) => Promise<number>;
+  deposit: (vaultConfig: VaultConfig, amount: number, contributorAddress?: string) => Promise<string | null>;
+  estimateFee: (vaultConfig: VaultConfig, amount: number, contributorAddress?: string) => Promise<number>;
   reset: () => void;
 }
 
@@ -22,18 +32,16 @@ export function useVaultDeposit(): UseVaultDepositResult {
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
 
-  const activeChain = useWalletStore((state) => state.activeChain);
-  const chainConnections = useWalletStore((state) => state.chainConnections);
-  const walletAddress = activeChain ? chainConnections[activeChain]?.address : undefined;
+  const activeChain = useWalletStore((state) => state.activeChain) as ChainId | null;
 
   const deposit = useCallback(
     async (
-      vaultId: string,
-      amountNative: number,
+      vaultConfig: VaultConfig,
+      amount: number,
       contributorAddress?: string
     ): Promise<string | null> => {
-      if (!walletAddress) {
-        const errorMsg = 'Please connect your wallet first';
+      if (!activeChain) {
+        const errorMsg = 'Please select a chain first';
         setError(errorMsg);
         toast.error(errorMsg);
         return null;
@@ -46,7 +54,7 @@ export function useVaultDeposit(): UseVaultDepositResult {
         return null;
       }
 
-      if (amountNative <= 0) {
+      if (amount <= 0) {
         const errorMsg = 'Deposit amount must be greater than 0';
         setError(errorMsg);
         toast.error(errorMsg);
@@ -58,8 +66,24 @@ export function useVaultDeposit(): UseVaultDepositResult {
       setTxHash(null);
 
       try {
-        // Chain-specific vault deposit — implementation coming soon
-        throw new Error(`Vault deposit via ${activeChain ?? 'selected chain'} — coming soon`);
+        const amountSmallest = toSmallestUnit(amount, activeChain);
+
+        if (amountSmallest < vaultConfig.min_deposit) {
+          throw new Error(
+            `Deposit amount is below minimum required (${fromSmallestUnit(vaultConfig.min_deposit, activeChain)} ${CHAIN_NATIVE_SYMBOL[activeChain]})`,
+          );
+        }
+
+        const result = await depositToVault(
+          activeChain,
+          vaultConfig.vault_address,
+          amountSmallest,
+          contributorAddress,
+        );
+
+        setTxHash(result.txHash);
+        toast.success('Deposit successful!', { description: `TX: ${result.txHash}` });
+        return result.txHash;
       } catch (err: any) {
         const errorMsg = err.message || 'Failed to deposit to vault';
         setError(errorMsg);
@@ -69,7 +93,27 @@ export function useVaultDeposit(): UseVaultDepositResult {
         setIsDepositing(false);
       }
     },
-    [walletAddress, activeChain]
+    [activeChain]
+  );
+
+  const estimateFee = useCallback(
+    async (
+      vaultConfig: VaultConfig,
+      amount: number,
+      contributorAddress?: string
+    ): Promise<number> => {
+      if (!activeChain || !contributorAddress) return 0;
+
+      const amountSmallest = toSmallestUnit(amount, activeChain);
+
+      return estimateDepositFee(
+        activeChain,
+        vaultConfig.vault_address,
+        amountSmallest,
+        contributorAddress,
+      );
+    },
+    [activeChain]
   );
 
   const reset = useCallback(() => {

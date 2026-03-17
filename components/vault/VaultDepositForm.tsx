@@ -9,9 +9,11 @@ import { useState, useEffect } from 'react';
 import { useVaultDeposit } from '@/hooks/useVaultDeposit';
 import { vaultApi } from '@/services/vaultServices';
 import { getServerChainId } from '@/services/chainServices';
-import { VaultConfig } from '@/lib/vault-transaction';
+import { VaultConfig, CHAIN_NATIVE_SYMBOL, CHAIN_DECIMALS, fromSmallestUnit, toSmallestUnit } from '@/lib/vault-transaction';
 import { useWalletStore } from '@/store/walletStore';
 import { useWalletConnect } from '@/hooks/useWalletConnect';
+import { getExplorerUrl } from '@/services/chainSwapService';
+import type { ChainId } from '@/lib/constant';
 
 interface VaultDepositFormProps {
   vaultId: string;
@@ -28,11 +30,13 @@ export function VaultDepositForm({ vaultId }: VaultDepositFormProps) {
     const chain = state.activeChain;
     return chain ? state.chainConnections[chain]?.walletName ?? null : null;
   });
-  const activeChain = useWalletStore((state) => state.activeChain);
+  const activeChain = useWalletStore((state) => state.activeChain) as ChainId | null;
   const usedAddress = useWalletStore((state) => {
     const chain = state.activeChain;
     return chain ? state.chainConnections[chain]?.address : undefined;
   });
+
+  const nativeSymbol = activeChain ? CHAIN_NATIVE_SYMBOL[activeChain] : "";
 
   // Load vault configuration
   useEffect(() => {
@@ -44,7 +48,7 @@ export function VaultDepositForm({ vaultId }: VaultDepositFormProps) {
         setVaultConfig({
           vault_address: vaultInfo.address,
           pool_id: vaultInfo.pool_id,
-          min_lovelace: 2_000_000, // 2 ADA minimum
+          min_deposit: activeChain ? toSmallestUnit(2, activeChain) : 0,
         });
       } catch (err) {
         console.error('Failed to load vault config:', err);
@@ -68,20 +72,20 @@ export function VaultDepositForm({ vaultId }: VaultDepositFormProps) {
       return;
     }
 
-    // Perform deposit
-    const resultTxHash = await deposit(vaultConfig, amountNum);
+    const resultTxHash = await deposit(vaultConfig, amountNum, usedAddress);
 
     if (resultTxHash) {
-      // Success - reset form
       setAmount('');
     }
   };
 
-  const handleConnectWallet = async (walletId: string) => {
-    await connect(walletId);
+  const handleConnectWallet = async (chainId: ChainId, walletId: string, walletName: string) => {
+    await connect(chainId, walletId, walletName);
   };
 
-  const minAda = vaultConfig ? vaultConfig.min_lovelace / 1_000_000 : 2;
+  const minAmount = vaultConfig && activeChain
+    ? fromSmallestUnit(vaultConfig.min_deposit, activeChain)
+    : 2;
 
   return (
     <div className="vault-deposit-form p-6 border rounded-lg max-w-md mx-auto">
@@ -95,18 +99,18 @@ export function VaultDepositForm({ vaultId }: VaultDepositFormProps) {
           </p>
           <div className="space-y-2">
             <button
-              onClick={() => handleConnectWallet('nami')}
+              onClick={() => handleConnectWallet('solana', 'phantom', 'Phantom')}
               disabled={isConnectingWallet}
               className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
             >
-              Connect Nami
+              Connect Phantom
             </button>
             <button
-              onClick={() => handleConnectWallet('eternl')}
+              onClick={() => handleConnectWallet('polkadot', 'talisman', 'Talisman')}
               disabled={isConnectingWallet}
               className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
             >
-              Connect Eternl
+              Connect Talisman
             </button>
           </div>
         </div>
@@ -121,7 +125,7 @@ export function VaultDepositForm({ vaultId }: VaultDepositFormProps) {
             </p>
           )}
           <button
-            onClick={disconnect}
+            onClick={() => disconnect()}
             className="text-xs text-red-600 hover:underline mt-2"
           >
             Disconnect
@@ -141,20 +145,20 @@ export function VaultDepositForm({ vaultId }: VaultDepositFormProps) {
         <>
           <div className="mb-4">
             <label className="block text-sm font-medium mb-2">
-              Amount (ADA)
+              Amount ({nativeSymbol})
             </label>
             <input
               type="number"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder={`Min: ${minAda} ADA`}
-              min={minAda}
+              placeholder={`Min: ${minAmount} ${nativeSymbol}`}
+              min={minAmount}
               step={0.1}
               disabled={isDepositing || !activeWallet}
               className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Minimum deposit: {minAda} ADA
+              Minimum deposit: {minAmount} {nativeSymbol}
             </p>
           </div>
 
@@ -188,14 +192,16 @@ export function VaultDepositForm({ vaultId }: VaultDepositFormProps) {
               <p className="text-xs text-gray-600 break-all">
                 Transaction: {txHash}
               </p>
-              <a
-                href={`https://cardanoscan.io/transaction/${txHash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-blue-600 hover:underline mt-2 inline-block"
-              >
-                View on Explorer →
-              </a>
+              {activeChain && (
+                <a
+                  href={getExplorerUrl(activeChain, txHash)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-600 hover:underline mt-2 inline-block"
+                >
+                  View on Explorer →
+                </a>
+              )}
             </div>
           )}
         </>
@@ -216,7 +222,7 @@ export function VaultDepositForm({ vaultId }: VaultDepositFormProps) {
             </p>
             <p>
               <span className="font-medium">Min Deposit:</span>{' '}
-              {vaultConfig.min_lovelace / 1_000_000} ADA
+              {minAmount} {nativeSymbol}
             </p>
           </div>
         </div>

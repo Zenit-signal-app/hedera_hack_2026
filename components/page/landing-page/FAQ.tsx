@@ -32,7 +32,7 @@ const FAQ_DATA = [
 	},
 	{
 		id: 2,
-		question: "Is there a fee to use SeerBOT?",
+		question: "Is there a fee to use Zenit?",
 		answer: "Currently, accessing the platform, market analysis, and manual trading tools is free. In the future, advanced features like automated 'Trading Pilot' bots or premium Strategy Vaults may carry a service fee or subscription model",
 	},
 	{
@@ -52,8 +52,8 @@ const FAQ_DATA = [
 	},
 	{
 		id: 6,
-		question: "Is SeerBOT safe? Do you hold my funds?",
-		answer: "SeerBOT is strictly non-custodial. We never have access to your private keys or funds. All trades are executed via smart contracts directly from your connected wallet (like Lace, Nami, or Eternl), meaning you retain full control of your assets at all times.",
+		question: "Is Zenit safe? Do you hold my funds?",
+		answer: "Zenit is strictly non-custodial. We never have access to your private keys or funds. All trades are executed via smart contracts directly from your connected wallet (like Lace, Nami, or Eternl), meaning you retain full control of your assets at all times.",
 	},
 ];
 

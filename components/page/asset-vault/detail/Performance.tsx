@@ -200,13 +200,13 @@ const Performance = ({ data }: PerformanceProps) => {
 				{/* Tabs Header */}
 				<div className="flex justify-between items-center gap-4 mb-4">
 					{/* Horizontal Tabs */}
-					{/* <div className="flex items-center p-1 gap-0.5 bg-dark-gray-900 rounded-lg w-fit">
+					{/* <div className="flex items-center p-1 gap-0.5 bg-primary-900 rounded-lg w-fit">
 						<button
 							onClick={() => setActiveTab("live")}
 							className={`flex justify-center cursor-pointer items-center px-3 py-1.5 gap-1 rounded-lg transition-all duration-200 ${
 								activeTab === "live"
 									? "bg-white"
-									: "bg-dark-gray-900"
+									: "bg-primary-900"
 							}`}
 						>
 							<span
@@ -224,7 +224,7 @@ const Performance = ({ data }: PerformanceProps) => {
 							className={`flex cursor-pointer justify-center items-center px-3 py-1.5 gap-1 rounded-lg transition-all duration-200 ${
 								activeTab === "backtest"
 									? "bg-white"
-									: "bg-dark-gray-900"
+									: "bg-primary-900"
 							}`}
 						>
 							<span
@@ -347,7 +347,7 @@ const Performance = ({ data }: PerformanceProps) => {
 										className={
 											index % 2 === 0
 												? "bg-transparent"
-												: "bg-dark-gray-900 rounded-lg"
+												: "bg-primary-900 rounded-lg"
 										}
 									>
 										<td

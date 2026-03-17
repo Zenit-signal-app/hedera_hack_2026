@@ -7,19 +7,19 @@ import ConditionalLayout from "@/components/layout/ConditionalLayout";
 import ChainInitializer from "@/components/layout/ChainInitializer";
 
 export const metadata: Metadata = {
-	title: "SeerBOT | Market Insights & On-chain Analysis",
+	title: "Zenit | Market Insights & On-chain Analysis",
 	description: "The ultimate trading platform, an assistant providing real-time signals and data visualization for users.",
 	openGraph: {
-    title: 'SeerBOT | Market Insights & On-chain Analysis',
+    title: 'Zenit | Market Insights & On-chain Analysis',
     description: 'The ultimate trading platform, an assistant providing real-time signals and data visualization for users.',
-    url: 'https://seerbot.io/', 
-    siteName: 'SeerBOT',
+    url: 'https://zenit.seerbot.io/', 
+    siteName: 'Zenit',
     images: [
       {
         url: '/images/seerbot.jpeg',
         width: 1200,
         height: 630,
-        alt: 'SeerBOT Market Analysis Platform',
+        alt: 'Zenit Market Analysis Platform',
       },
     ],
     locale: 'vi_VN',
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   
   twitter: {
     card: 'summary_large_image', // Loại card: Hiển thị ảnh lớn
-    title: 'SeerBOT | Market Insights & On-chain Analysis',
+    title: 'Zenit | Market Insights & On-chain Analysis',
     description: 'The ultimate trading platform, an assistant providing real-time signals and data visualization for users.',
     images: ['/images/seerbot.jpeg'], 
   },

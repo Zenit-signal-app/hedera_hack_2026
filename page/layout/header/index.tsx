@@ -26,7 +26,7 @@ const Header = () => {
 	const { activeChain } = useWalletStore();
 	const activeChainDef = CHAIN_DEFINITIONS.find((c) => c.id === activeChain);
 	return (
-		<div className="px-6 pt-3 pb-[18px] flex items-center justify-between bg-dark-gray-950 sticky z-9999 top-0">
+		<div className="px-6 pt-3 pb-[18px] flex items-center justify-between bg-primary-950 sticky z-9999 top-0">
 			{isMobile ? (
 				<div className="flex items-center gap-x-2.5">
 					<CommonModal
@@ -58,7 +58,7 @@ const Header = () => {
 						<AIAssistantGradient />
 					</Link>
 				</div>
-				<div className="flex items-center lg:px-3 lg:py-1.5 px-2 py-1.5 rounded-full  border border-dark-gray-700 bg-dark-gray-900">
+				<div className="flex items-center lg:px-3 lg:py-1.5 px-2 py-1.5 rounded-full  border border-dark-gray-700 bg-primary-900">
 					<ChainSelectorPopup>
 						<div className="flex items-center gap-x-2 h-7">
 							{activeChainDef ? (

@@ -1,253 +1,331 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Lucid, Data, Blockfrost, getAddressDetails } from "lucid-cardano";
-import { toast } from "sonner";
-
-const DepositDatumSchema = Data.Object({
-	contributor_address: Data.Bytes(),
-	pool_id: Data.Bytes(),
-});
-
-type DepositDatum = Data.Static<typeof DepositDatumSchema>;
+import type { ChainId } from "@/lib/constant";
 
 export interface VaultConfig {
 	vault_address: string;
 	pool_id: string;
-	min_lovelace: number;
+	min_deposit: number; // minimum deposit in native token's smallest unit
 }
 
-const normalizePoolIdHex = (poolId: string): string => {
-	if (!poolId) {
-		toast.error("pool_id is required for deposit");
-	}
+// ─── Solana Deposit ────────────────────────────────────────────────────────────
 
-	const hex = poolId.replace(/\./g, "");
-
-	if (!/^[0-9a-fA-F]+$/.test(hex)) {
-		toast.error(`pool_id must be valid hex, got: ${poolId}`);
-	}
-
-	return hex;
-};
-
-const isValidAddressFormat = (address: string): boolean => {
-	if (!address || typeof address !== "string") return false;
-	return address.match(/^addr(1|_test1)[a-z0-9]{50,}$/i) !== null;
-};
-
-const extractFeeLovelace = (txComplete: any): number | undefined => {
-	const feeValue =
-		txComplete?.fee ??
-		txComplete?.txComplete?.body?.()?.fee?.()?.to_str?.();
-
-	if (typeof feeValue === "bigint") {
-		return Number(feeValue);
-	}
-
-	if (typeof feeValue === "string") {
-		const parsed = Number(feeValue);
-		if (!Number.isNaN(parsed)) {
-			return parsed;
-		}
-	}
-
-	if (typeof feeValue === "number") {
-		return feeValue;
-	}
-
-	toast.error("Unable to read transaction fee");
-};
-
-export function buildDepositDatum(
-	contributorAddress: string,
-	poolId: string,
-): string | undefined {
-	if (contributorAddress.length < 80) {
-		toast.error(
-			"Contributor address appears to be a script address, not a wallet address. Wallet addresses are typically 100+ chars.",
+async function depositSolana(
+	vaultAddress: string,
+	amountLamports: number,
+	_contributorAddress: string,
+): Promise<{ txHash: string; fee: number }> {
+	const provider = (window as any).solana;
+	if (!provider?.signTransaction) {
+		throw new Error(
+			"Solana wallet not found. Please connect Phantom or Solflare.",
 		);
 	}
+
+	const { Connection, PublicKey, SystemProgram, Transaction } =
+		await import("@solana/web3.js");
+
+	const connection = new Connection(
+		"https://api.mainnet-beta.solana.com",
+		"confirmed",
+	);
+
+	const fromPubkey = new PublicKey(_contributorAddress);
+	const toPubkey = new PublicKey(vaultAddress);
+
+	const transaction = new Transaction().add(
+		SystemProgram.transfer({
+			fromPubkey,
+			toPubkey,
+			lamports: amountLamports,
+		}),
+	);
+
+	transaction.recentBlockhash = (
+		await connection.getLatestBlockhash()
+	).blockhash;
+	transaction.feePayer = fromPubkey;
+
+	const signed = await provider.signTransaction(transaction);
+	const txHash = await connection.sendRawTransaction(signed.serialize(), {
+		skipPreflight: false,
+		maxRetries: 3,
+	});
+
+	await connection.confirmTransaction(txHash, "confirmed");
+
+	// Estimate fee from the transaction message
+	const feeResult = await connection.getFeeForMessage(
+		transaction.compileMessage(),
+		"confirmed",
+	);
+	const fee = feeResult?.value ?? 5000; // default 5000 lamports
+
+	return { txHash, fee };
+}
+
+async function estimateFeeSolana(
+	vaultAddress: string,
+	amountLamports: number,
+	contributorAddress: string,
+): Promise<number> {
+	const { Connection, PublicKey, SystemProgram, Transaction } =
+		await import("@solana/web3.js");
+
+	const connection = new Connection(
+		"https://api.mainnet-beta.solana.com",
+		"confirmed",
+	);
+
+	const fromPubkey = new PublicKey(contributorAddress);
+	const toPubkey = new PublicKey(vaultAddress);
+
+	const transaction = new Transaction().add(
+		SystemProgram.transfer({
+			fromPubkey,
+			toPubkey,
+			lamports: amountLamports,
+		}),
+	);
+
+	transaction.recentBlockhash = (
+		await connection.getLatestBlockhash()
+	).blockhash;
+	transaction.feePayer = fromPubkey;
+
+	const feeResult = await connection.getFeeForMessage(
+		transaction.compileMessage(),
+		"confirmed",
+	);
+
+	return feeResult?.value ?? 5000;
+}
+
+// ─── Polkadot Deposit ──────────────────────────────────────────────────────────
+
+async function depositPolkadot(
+	vaultAddress: string,
+	amountPlanck: number,
+	contributorAddress: string,
+): Promise<{ txHash: string; fee: number }> {
+	const web3 = window.injectedWeb3;
+	if (!web3) throw new Error("No Polkadot wallet extension found");
+
+	const extensionIds = Object.keys(web3).filter((k) =>
+		["polkadot-js", "talisman", "subwallet-js"].includes(k),
+	);
+	if (extensionIds.length === 0) {
+		throw new Error("No supported Polkadot wallet extension installed");
+	}
+
+	const injected = await web3[extensionIds[0]].enable("Zenit");
+	const signer = injected.signer;
+	if (!signer?.signPayload) {
+		throw new Error("Wallet extension does not support signing");
+	}
+
+	const { ApiPromise, WsProvider } = await import("@polkadot/api");
+	const wsProvider = new WsProvider("wss://rpc.polkadot.io");
+	const api = await ApiPromise.create({ provider: wsProvider });
 
 	try {
-		const addressDetails = getAddressDetails(contributorAddress);
-
-		if (!addressDetails.paymentCredential) {
-			toast.error(
-				"Invalid contributor address: missing payment credential",
-			);
-		}
-
-		const poolIdHex = poolId.split(".")[1];
-
-		const paymentHash = addressDetails.paymentCredential?.hash || "";
-		const stakingHash = addressDetails.stakeCredential?.hash || "";
-		const combinedHash = paymentHash + stakingHash;
-
-		const datum: DepositDatum = {
-			contributor_address: combinedHash,
-			pool_id: poolIdHex,
-		};
-
-		return Data.to(datum as any, DepositDatumSchema);
-	} catch (error: any) {
-		toast.error(
-			`Invalid contributor address format: ${error.message || error}`,
+		const transfer = api.tx.balances.transferKeepAlive(
+			vaultAddress,
+			amountPlanck,
 		);
+
+		// Get fee estimate
+		const paymentInfo = await transfer.paymentInfo(contributorAddress);
+		const fee = Number(paymentInfo.partialFee);
+
+		// Sign and send
+		const txHash = await new Promise<string>((resolve, reject) => {
+			transfer
+				.signAndSend(
+					contributorAddress,
+					{ signer: signer as any },
+					({ status, dispatchError }: any) => {
+						if (dispatchError) {
+							reject(new Error(dispatchError.toString()));
+						}
+						if (status.isInBlock || status.isFinalized) {
+							resolve(
+								status.isInBlock
+									? status.asInBlock.toHex()
+									: status.asFinalized.toHex(),
+							);
+						}
+					},
+				)
+				.catch(reject);
+		});
+
+		return { txHash, fee };
+	} finally {
+		await api.disconnect();
 	}
 }
 
-export async function buildDepositTransaction(
-	lucid: Lucid,
-	vaultConfig: VaultConfig,
-	amountLovelace: number,
-	contributorAddress?: string,
-) {
-	if (amountLovelace < vaultConfig.min_lovelace) {
-		toast.error(
-			`Deposit amount (${amountLovelace}) is below minimum required (${vaultConfig.min_lovelace} lovelace)`,
-		);
-	}
+async function estimateFeePolkadot(
+	vaultAddress: string,
+	amountPlanck: number,
+	contributorAddress: string,
+): Promise<number> {
+	const { ApiPromise, WsProvider } = await import("@polkadot/api");
+	const wsProvider = new WsProvider("wss://rpc.polkadot.io");
+	const api = await ApiPromise.create({ provider: wsProvider });
 
-	const vaultAddress = vaultConfig.vault_address.trim().replace(/^"|"$/g, "");
-
-	if (!isValidAddressFormat(vaultAddress)) {
-		toast.error(
-			"Vault address format is invalid. Expected Cardano address.",
-		);
-	}
-
-	if (!contributorAddress || typeof contributorAddress !== "string") {
-		toast.error("Contributor address must be provided and cannot be empty");
-	}
-
-	const contributor = contributorAddress?.trim();
-
-	if (!contributor?.startsWith("addr")) {
-		toast.error(
-			"Invalid contributor address: must be a valid Cardano wallet address starting with 'addr'",
-		);
-	}
-
-	if (contributor === vaultAddress) {
-		toast.error("Contributor address cannot be the same as vault address");
-	}
-
-	const datum = buildDepositDatum(contributor || "", vaultConfig.pool_id);
-
-	const tx = lucid
-		.newTx()
-		.payToContract(
+	try {
+		const transfer = api.tx.balances.transferKeepAlive(
 			vaultAddress,
-			{ inline: datum },
-			{ lovelace: BigInt(amountLovelace) },
+			amountPlanck,
+		);
+		const paymentInfo = await transfer.paymentInfo(contributorAddress);
+		return Number(paymentInfo.partialFee);
+	} finally {
+		await api.disconnect();
+	}
+}
+
+// ─── Hedera Deposit ────────────────────────────────────────────────────────────
+
+async function depositHedera(
+	vaultAddress: string,
+	amountTinybar: number,
+	contributorAddress: string,
+): Promise<{ txHash: string; fee: number }> {
+	const eth = window.ethereum;
+	const blade = window.bladewallet;
+
+	if (blade) {
+		const bladeSession = await blade.enable();
+		if (!bladeSession?.accountId) {
+			throw new Error("Blade wallet: failed to get account");
+		}
+
+		// Use Hedera REST API to submit transfer
+		const transferResp = await fetch(
+			"https://mainnet-public.mirrornode.hedera.com/api/v1/transactions",
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					transactionType: "CRYPTOTRANSFER",
+					transfers: [
+						{ account: contributorAddress, amount: -amountTinybar },
+						{ account: vaultAddress, amount: amountTinybar },
+					],
+				}),
+			},
 		);
 
-	const completeTx = await tx.complete();
+		if (!transferResp.ok) {
+			throw new Error("Failed to submit Hedera transfer");
+		}
 
-	return completeTx;
+		const result = await transferResp.json();
+		const txHash = result.transactionId ?? result.txHash ?? "";
+		// Hedera standard fee is typically ~0.0001 HBAR = 10000 tinybar
+		const fee = 10000;
+
+		return { txHash, fee };
+	}
+
+	if (eth?.isMetaMask) {
+		// MetaMask with Hedera — EVM-compatible transfer
+		const txHash = (await eth.request({
+			method: "eth_sendTransaction",
+			params: [
+				{
+					from: contributorAddress,
+					to: vaultAddress,
+					value: "0x" + amountTinybar.toString(16),
+				},
+			],
+		})) as string;
+
+		const fee = 10000; // ~0.0001 HBAR
+		return { txHash, fee };
+	}
+
+	throw new Error(
+		"No supported Hedera wallet found. Please connect Blade or MetaMask.",
+	);
+}
+
+async function estimateFeeHedera(
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	_vaultAddress: string,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	_amountTinybar: number,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	_contributorAddress: string,
+): Promise<number> {
+	// Hedera has predictable fees: ~0.0001 HBAR for crypto transfer
+	return 10000; // tinybar
+}
+
+// ─── Unified API ───────────────────────────────────────────────────────────────
+
+export async function depositToVault(
+	chainId: ChainId,
+	vaultAddress: string,
+	amount: number, // smallest unit of the chain's native token
+	contributorAddress: string,
+): Promise<{ txHash: string; fee: number }> {
+	switch (chainId) {
+		case "solana":
+			return depositSolana(vaultAddress, amount, contributorAddress);
+		case "polkadot":
+			return depositPolkadot(vaultAddress, amount, contributorAddress);
+		case "hedera":
+			return depositHedera(vaultAddress, amount, contributorAddress);
+		default:
+			throw new Error(`Unsupported chain: ${chainId}`);
+	}
 }
 
 export async function estimateDepositFee(
-	lucid: Lucid,
-	vaultConfig: VaultConfig,
-	amountLovelace: number,
-	contributorAddress?: string,
+	chainId: ChainId,
+	vaultAddress: string,
+	amount: number,
+	contributorAddress: string,
 ): Promise<number> {
-	const completeTx = await buildDepositTransaction(
-		lucid,
-		vaultConfig,
-		amountLovelace,
-		contributorAddress,
-	);
-
-	return extractFeeLovelace(completeTx) as number;
-}
-
-export async function depositToVaultContract(
-	lucid: Lucid,
-	vaultConfig: VaultConfig,
-	amountLovelace: number,
-	contributorAddress?: string,
-): Promise<string | undefined> {
-	try {
-		const completeTx = await buildDepositTransaction(
-			lucid,
-			vaultConfig,
-			amountLovelace,
-			contributorAddress,
-		);
-
-		const signedTx = await completeTx.sign().complete();
-
-		const txHash = await signedTx.submit();
-
-		return txHash;
-	} catch (error: any) {
-		toast.error(`Failed to deposit to vault: ${error.message || error}`);
+	switch (chainId) {
+		case "solana":
+			return estimateFeeSolana(vaultAddress, amount, contributorAddress);
+		case "polkadot":
+			return estimateFeePolkadot(
+				vaultAddress,
+				amount,
+				contributorAddress,
+			);
+		case "hedera":
+			return estimateFeeHedera(vaultAddress, amount, contributorAddress);
+		default:
+			throw new Error(`Unsupported chain: ${chainId}`);
 	}
 }
 
-export async function initializeLucid(
-	network: "Mainnet" | "Preview",
-	blockfrostApiKey: string,
-	walletApi: any,
-): Promise<Lucid> {
-	const lucid = await Lucid.new(
-		new Blockfrost(
-			`https://cardano-${network.toLowerCase()}.blockfrost.io/api/v0`,
-			blockfrostApiKey,
-		),
-		network,
-	);
+// ─── Chain-specific unit helpers ───────────────────────────────────────────────
 
-	// Select wallet
-	lucid.selectWallet(walletApi);
+/** Native token decimals per chain */
+export const CHAIN_DECIMALS: Record<ChainId, number> = {
+	solana: 9, // lamports
+	polkadot: 10, // planck
+	hedera: 8, // tinybar
+};
 
-	return lucid;
+export const CHAIN_NATIVE_SYMBOL: Record<ChainId, string> = {
+	solana: "SOL",
+	polkadot: "DOT",
+	hedera: "HBAR",
+};
+
+export function toSmallestUnit(amount: number, chainId: ChainId): number {
+	return Math.floor(amount * Math.pow(10, CHAIN_DECIMALS[chainId]));
 }
 
-export function adaToLovelace(ada: number): number {
-	return Math.floor(ada * 1_000_000);
-}
-
-export function lovelaceToAda(lovelace: number): number {
-	return lovelace / 1_000_000;
-}
-
-export function getPaymentHashFromAddress(address: string): string {
-	const details = getAddressDetails(address);
-	if (!details.paymentCredential) {
-		toast.error("Invalid address: missing payment credential");
-	}
-	return details.paymentCredential?.hash || "";
-}
-
-export function isSamePaymentCredential(
-	address: string,
-	contributorPaymentHash: string,
-): boolean {
-	try {
-		return getPaymentHashFromAddress(address) === contributorPaymentHash;
-	} catch {
-		return false;
-	}
-}
-
-export async function waitForTransactionConfirmation(
-	lucid: Lucid,
-	txHash: string,
-	maxWaitTime: number = 180_000,
-): Promise<boolean> {
-	const startTime = Date.now();
-
-	while (Date.now() - startTime < maxWaitTime) {
-		try {
-			await lucid.awaitTx(txHash);
-			return true;
-		} catch {
-			await new Promise((resolve) => setTimeout(resolve, 5000));
-		}
-	}
-
-	return false;
+export function fromSmallestUnit(amount: number, chainId: ChainId): number {
+	return amount / Math.pow(10, CHAIN_DECIMALS[chainId]);
 }

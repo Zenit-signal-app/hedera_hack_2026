@@ -66,12 +66,15 @@ export const TransactionHistory = () => {
 	// Get wallet info from store
 	const chainConnections = useWalletStore((state) => state.chainConnections);
 	const activeChain = useWalletStore((state) => state.activeChain);
-	const usedAddress = activeChain ? chainConnections[activeChain]?.address : undefined;
+	const usedAddress = activeChain
+		? chainConnections[activeChain]?.address
+		: undefined;
 	const { swaps, total, isLoading } = useFetchUserSwaps({
 		walletAddress: usedAddress,
 		page: pageIndex + 1,
 		limit: pageSize,
 		enabled: activeTab === "swap",
+		chain_id: activeChain,
 	});
 
 	// Fetch vault transactions
@@ -86,11 +89,14 @@ export const TransactionHistory = () => {
 				setIsLoadingVault(true);
 				setVaultError(null);
 
-				const response = await vaultApi.getUserVaultTransactions({
-					wallet_address: usedAddress,
-					page: pageIndex + 1,
-					limit: pageSize,
-				}, await getServerChainId(activeChain ?? ""));
+				const response = await vaultApi.getUserVaultTransactions(
+					{
+						wallet_address: usedAddress,
+						page: pageIndex + 1,
+						limit: pageSize,
+					},
+					await getServerChainId(activeChain ?? ""),
+				);
 
 				// Transform API response to VaultTransactionData format
 				const transformedData: VaultTransactionData[] =

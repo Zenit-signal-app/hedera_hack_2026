@@ -13,7 +13,7 @@ interface RedeemModalProps {
 	isOpen: boolean;
 	onOpenChange: (open: boolean) => void;
 	vaultId: string;
-	walletAddress: string | null;
+	walletAddress: string | null | undefined;
 	minAmount: number;
 	maxAmount: number;
 	onSuccess?: () => void;

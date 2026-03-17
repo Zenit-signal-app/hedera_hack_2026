@@ -116,7 +116,7 @@ const ModalConnectChainWallet: React.FC<Props> = ({ chainId, isOpen, onClose }) 
 		if (existingConnection && state === "SELECT") {
 			return (
 				<div className="mt-4 space-y-4">
-					<div className="flex items-center gap-3 p-4 bg-dark-gray-950 rounded-xl">
+					<div className="flex items-center gap-3 p-4 bg-primary-950 rounded-xl">
 						<WalletIcon
 							wallet={
 								chain.wallets.find(
@@ -150,7 +150,7 @@ const ModalConnectChainWallet: React.FC<Props> = ({ chainId, isOpen, onClose }) 
 								key={wallet.id}
 								onClick={() => handleWalletSelect(wallet)}
 								disabled={isLoading}
-								className="flex items-center bg-dark-gray-950 rounded-md justify-between w-full py-2.5 px-4 transition duration-150 text-white disabled:opacity-50"
+								className="flex items-center bg-primary-950 rounded-md justify-between w-full py-2.5 px-4 transition duration-150 text-white disabled:opacity-50"
 							>
 								<div className="flex items-center gap-3">
 									<WalletIcon wallet={wallet} />
@@ -179,7 +179,7 @@ const ModalConnectChainWallet: React.FC<Props> = ({ chainId, isOpen, onClose }) 
 										key={wallet.id}
 										onClick={() => handleWalletSelect(wallet)}
 										disabled={isLoading}
-										className="flex items-center justify-between w-full py-3 px-4 rounded-lg hover:bg-dark-gray-950 transition duration-150 text-white disabled:opacity-50"
+										className="flex items-center justify-between w-full py-3 px-4 rounded-lg hover:bg-primary-950 transition duration-150 text-white disabled:opacity-50"
 									>
 										<div className="flex items-center gap-3">
 											<WalletIcon wallet={wallet} size={32} />

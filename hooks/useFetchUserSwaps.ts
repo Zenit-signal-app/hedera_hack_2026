@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import api from "@/axios/axiosInstance";
+import { getServerChainId } from "@/services/chainServices";
 
 export interface SwapTransaction {
 	fromToken: {
@@ -34,10 +35,11 @@ export interface SwapResponse {
 }
 
 interface UseFetchUserSwapsParams {
-	walletAddress: string | null;
+	walletAddress: string | null | undefined;
 	page: number;
 	limit: number;
 	enabled?: boolean;
+	chain_id?: string;
 }
 
 export const useFetchUserSwaps = ({
@@ -45,6 +47,7 @@ export const useFetchUserSwaps = ({
 	page,
 	limit,
 	enabled = true,
+	chain_id,
 }: UseFetchUserSwapsParams) => {
 	const [swaps, setSwaps] = useState<SwapTransaction[]>([]);
 	const [total, setTotal] = useState(0);
@@ -62,23 +65,20 @@ export const useFetchUserSwaps = ({
 			setIsLoading(true);
 			setError(null);
 			try {
-				const response = await api.get<SwapResponse>(
-					"/user/swaps",
-					{
-						params: {
-							wallet_address: walletAddress,
-							page,
-							limit,
-						},
-					}
-				);
+				const serverChainId = chain_id ? await getServerChainId(chain_id) : undefined;
+				const response = await api.get<SwapResponse>("/swaps", {
+					params: {
+						wallet_address: walletAddress,
+						page,
+						limit,
+						chain_id: serverChainId,
+					},
+				});
 
 				setSwaps(response.data.data || []);
 				setTotal(response.data.total || 0);
-			} catch (err : any) {
-				setError(
-					err.message || "Failed to fetch swap transactions"
-				);
+			} catch (err: any) {
+				setError(err.message || "Failed to fetch swap transactions");
 				setSwaps([]);
 				setTotal(0);
 			} finally {
@@ -87,7 +87,7 @@ export const useFetchUserSwaps = ({
 		};
 
 		fetchSwaps();
-	}, [walletAddress, page, limit, enabled]);
+	}, [walletAddress, page, limit, enabled, chain_id]);
 
 	return {
 		swaps,

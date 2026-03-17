@@ -21,7 +21,7 @@ const ModalConnectWallet: React.FC<ModalConnectWalletProps> = ({
 	onClose,
 }) => {
 	const { connect, isLoading } = useWalletConnect();
-	const { availableWallets, error } = useWalletStore();
+	const error = useWalletStore((state) => state.error);
 	const [modalState, setModalState] = useState<ModalState | string>("SELECT");
 	const [selectedWallet, setSelectedWallet] = useState<WalletInfo | null>(
 		null
@@ -41,21 +41,11 @@ const ModalConnectWallet: React.FC<ModalConnectWalletProps> = ({
 	}, [isOpen]);
 
 	const handleWalletSelect = async (wallet: WalletInfo) => {
-		const isInstalled = availableWallets.some(
-			(installedWallet) => installedWallet.id === wallet.id
-		);
-
-		if (!isInstalled) {
-			setSelectedWallet(wallet);
-			setModalState("NOT_INSTALLED");
-			return;
-		}
-
 		setSelectedWallet(wallet);
 		setModalState("CONNECTING");
 
 		try {
-			await connect(wallet.id);
+			await connect((wallet.chainId ?? "solana") as Parameters<typeof connect>[0], wallet.id, wallet.name);
 			onClose();
 		} catch {
 			setModalState("REJECTED");
@@ -72,10 +62,11 @@ const ModalConnectWallet: React.FC<ModalConnectWalletProps> = ({
 								<button
 									key={wallet.id}
 									onClick={() => handleWalletSelect(wallet)}
-									className="flex items-center bg-dark-gray-950 rounded-md justify-between w-full py-2.5 px-4 transition duration-150 text-white disabled:opacity-50"
+									className="flex items-center bg-primary-950 rounded-md justify-between w-full py-2.5 px-4 transition duration-150 text-white disabled:opacity-50"
 									disabled={isLoading}
 								>
 									<div className="flex items-center">
+										{wallet.icon && (
 										<Image
 											src={wallet.icon}
 											alt={`${wallet.name} icon`}
@@ -83,6 +74,7 @@ const ModalConnectWallet: React.FC<ModalConnectWalletProps> = ({
 											width={28}
 											height={28}
 										/>
+										)}
 										<span className="font-medium">
 											{wallet.name}
 										</span>
@@ -100,7 +92,7 @@ const ModalConnectWallet: React.FC<ModalConnectWalletProps> = ({
 			case "CONNECTING":
 				return (
 					<div className="flex flex-col items-center justify-center p-8 space-y-4">
-						{selectedWallet && (
+						{selectedWallet?.icon && (
 							<Image
 								src={selectedWallet.icon}
 								alt={`${selectedWallet.name} icon`}
@@ -121,7 +113,7 @@ const ModalConnectWallet: React.FC<ModalConnectWalletProps> = ({
 			case "REJECTED":
 				return (
 					<div className="flex flex-col items-center justify-center p-8 space-y-4">
-						{selectedWallet && (
+						{selectedWallet?.icon && (
 							<Image
 								src={selectedWallet.icon}
 								alt={`${selectedWallet.name} icon`}
@@ -149,7 +141,7 @@ const ModalConnectWallet: React.FC<ModalConnectWalletProps> = ({
 			case "NOT_INSTALLED":
 				return (
 					<div className="flex flex-col items-center justify-center p-8 space-y-4">
-						{selectedWallet && (
+						{selectedWallet?.icon && (
 							<Image
 								src={selectedWallet.icon}
 								alt={`${selectedWallet.name} icon`}

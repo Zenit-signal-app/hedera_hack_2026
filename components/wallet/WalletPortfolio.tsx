@@ -92,7 +92,7 @@ export const WalletPortfolio: React.FC<{
 					{balances.map((token) => (
 						<div
 							key={token.symbol}
-							className="flex items-center justify-between p-3 bg-dark-gray-950 rounded-lg"
+							className="flex items-center justify-between p-3 bg-primary-950 rounded-lg"
 						>
 							<div className="flex items-center gap-3">
 								<Image
@@ -131,7 +131,7 @@ export const WalletPortfolio: React.FC<{
 							return (
 								<div
 									key={chainId}
-									className="flex items-center gap-3 p-3 bg-dark-gray-950 rounded-lg"
+									className="flex items-center gap-3 p-3 bg-primary-950 rounded-lg"
 								>
 									<span
 										className="w-2.5 h-2.5 rounded-full shrink-0"

@@ -19,7 +19,7 @@ export default function TradeSmarter() {
 					{/* CTA Buttons */}
 					<div className="flex items-center gap-4 flex-wrap justify-center">
 						<span className="text-white text-lg font-medium">
-							Try SeerBOT
+							Try Zenit
 						</span>
 						<a href="/analysis" className="trade-smarter-btn">
 							<span>Launch App</span>
@@ -32,7 +32,7 @@ export default function TradeSmarter() {
 				<footer className="trade-smarter-footer">
 					<div className="trade-smarter-footer-content">
 						<div className="trade-smarter-footer-copyright">
-							<span>© 2025 SeerBOT. All rights reserved.</span>
+							<span>© 2025 Zenit. All rights reserved.</span>
 						</div>
 
 						<div className="trade-smarter-footer-socials">

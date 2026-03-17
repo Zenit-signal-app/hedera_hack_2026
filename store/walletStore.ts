@@ -75,8 +75,8 @@ export const useWalletStore = create<WalletState & WalletActions>()(
 						chainConnections: next,
 						chainBalances: nextBalances,
 						chainBalancesFetchedAt: nextFetched,
-						activeChain:
-							state.activeChain === chainId ? null : state.activeChain,
+						// Keep activeChain so the user stays on the same chain tab
+						activeChain: state.activeChain,
 					};
 				}),
 
@@ -84,8 +84,14 @@ export const useWalletStore = create<WalletState & WalletActions>()(
 
 			setChainBalances: (chainId, balances) =>
 				set((state) => ({
-					chainBalances: { ...state.chainBalances, [chainId]: balances },
-					chainBalancesFetchedAt: { ...state.chainBalancesFetchedAt, [chainId]: Date.now() },
+					chainBalances: {
+						...state.chainBalances,
+						[chainId]: balances,
+					},
+					chainBalancesFetchedAt: {
+						...state.chainBalancesFetchedAt,
+						[chainId]: Date.now(),
+					},
 				})),
 		}),
 		{
@@ -98,6 +104,6 @@ export const useWalletStore = create<WalletState & WalletActions>()(
 				chainBalances: state.chainBalances,
 				chainBalancesFetchedAt: state.chainBalancesFetchedAt,
 			}),
-		}
-	)
+		},
+	),
 );

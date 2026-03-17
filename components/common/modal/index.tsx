@@ -45,7 +45,7 @@ const CommonModal: React.FC<CommonModalProps> = ({
 									onClick={() => handleBack("SELECT")}
 									className="flex items-center font-exo text-white text-base gap-x-2 hover:text-white"
 								>
-									<div className="bg-dark-gray-900 p-1 rounded-sm">
+									<div className="bg-primary-900 p-1 rounded-sm">
 										<ChevronLeftMiniIcon className="w-6 h-6" />
 									</div>{" "}
 									Back

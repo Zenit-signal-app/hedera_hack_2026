@@ -228,7 +228,7 @@ const MyDeposits = ({
 				<button
 					onClick={() => setShowRedeemModal(true)}
 					disabled={isRedeemDisabled || isEarningLoading}
-					className="box-border flex flex-row justify-center items-center py-2 px-3 gap-2 h-10 flex-1 bg-dark-gray-950 border border-primary-600 rounded-lg font-museomoderno text-label-3 font-medium text-white cursor-pointer hover:-translate-y-0.5 active:translate-y-0 transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+					className="box-border flex flex-row justify-center items-center py-2 px-3 gap-2 h-10 flex-1 bg-primary-950 border border-primary-600 rounded-lg font-museomoderno text-label-3 font-medium text-white cursor-pointer hover:-translate-y-0.5 active:translate-y-0 transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
 				>
 					Redeem
 				</button>

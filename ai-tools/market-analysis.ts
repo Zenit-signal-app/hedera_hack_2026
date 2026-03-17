@@ -102,7 +102,7 @@ const getSupportedTokensSchema = z.object({
 });
 
 export const getSupportedTokensTool = tool({
-    description: 'Get the list of supported tokens on Seerbot Exchange. Use this to answer questions about what tokens are available on the platform.',
+    description: 'Get the list of supported tokens on Zenit Exchange. Use this to answer questions about what tokens are available on the platform.',
     parameters: getSupportedTokensSchema,
     execute: async function ({ query, page = 1, page_size = 50, chain }) {
         console.log('----- Trigger get supported tokens -----');
@@ -136,7 +136,7 @@ export const getSupportedTokensTool = tool({
             const currentPage = responseData.page || page;
             const tokensCount = tokens.length;
             
-            let content = `Found ${totalTokens} supported token${totalTokens !== 1 ? 's' : ''} on Seerbot Exchange`;
+            let content = `Found ${totalTokens} supported token${totalTokens !== 1 ? 's' : ''} on Zenit Exchange`;
             if (query) {
                 content += ` matching "${query}"`;
             }

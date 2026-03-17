@@ -69,8 +69,7 @@
 
 .landing-page-container .trade-smarter-footer {
 	@apply w-full border-t py-6;
-	border-color: rgba(31, 41, 55, 1);
-	/* gray-800 */
+	border-color: rgba(31, 41, 55, 1); /* gray-800 */
 }
 
 .landing-page-container .trade-smarter-footer-content {
@@ -79,8 +78,7 @@
 
 .landing-page-container .trade-smarter-footer-copyright {
 	@apply flex items-center gap-2 text-sm;
-	color: rgba(156, 163, 175, 1);
-	/* gray-400 */
+	color: rgba(156, 163, 175, 1); /* gray-400 */
 }
 
 .landing-page-container .trade-smarter-footer-socials {
@@ -89,8 +87,7 @@
 
 .landing-page-container .trade-smarter-footer-socials a {
 	@apply transition-colors duration-200;
-	color: rgba(156, 163, 175, 1);
-	/* gray-400 */
+	color: rgba(156, 163, 175, 1); /* gray-400 */
 }
 
 .landing-page-container .trade-smarter-footer-socials a:hover {
@@ -163,9 +160,11 @@
 
 .landing-page-container .why-seerbot-stats-card-bg {
 	@apply absolute inset-0;
-	background: linear-gradient(135deg,
-			rgba(255, 255, 255, 0.1) 0%,
-			rgba(255, 255, 255, 0.05) 100%);
+	background: linear-gradient(
+		135deg,
+		rgba(255, 255, 255, 0.1) 0%,
+		rgba(255, 255, 255, 0.05) 100%
+	);
 	backdrop-filter: blur(20px);
 	border: 1px solid rgba(255, 255, 255, 0.18);
 	border-radius: 24px;
@@ -266,9 +265,11 @@
 .landing-page-container .landing-nav-bg::after {
 	@apply absolute left-0 right-0 top-0 bottom-0 rounded-full;
 	content: "";
-	background: linear-gradient(135deg,
-			rgba(255, 255, 255, 0.12) 0%,
-			rgba(255, 255, 255, 0.04) 100%);
+	background: linear-gradient(
+		135deg,
+		rgba(255, 255, 255, 0.12) 0%,
+		rgba(255, 255, 255, 0.04) 100%
+	);
 	pointer-events: none;
 }
 
@@ -284,7 +285,7 @@
 }
 
 .landing-page-container .landing-nav-link.active {
-	color: var(--color-primary-300);
+	color: var(--color-primary-950);
 	position: relative;
 }
 
@@ -305,7 +306,6 @@
 		transform: scaleX(0);
 		opacity: 0;
 	}
-
 	to {
 		transform: scaleX(1);
 		opacity: 1;
@@ -412,7 +412,7 @@
 	@apply flex flex-row items-center gap-4;
 }
 
-.landing-page-container .landing-btn-primary {
+.landing-page-container .bg-primary-900 {
 	@apply flex flex-row justify-center items-center gap-2 border-none font-semibold text-white cursor-pointer transition-all duration-200 ease-in-out;
 	padding: 10px 16px;
 	height: 44px;
@@ -425,7 +425,7 @@
 	letter-spacing: 0.1px;
 }
 
-.landing-page-container .landing-btn-primary:hover {
+.landing-page-container .bg-primary-900:hover {
 	background: var(--color-primary-950);
 	box-shadow: 0 4px 12px rgba(114, 1, 255, 0.4);
 }
@@ -454,7 +454,7 @@
 /* ==================== Brands Section ==================== */
 
 .landing-page-container .landing-brands {
-	@apply flex flex-col items-center w-full pt-0 gap-12;
+	@apply flex  flex-col items-center w-full pt-0 gap-12;
 	margin: 0 auto;
 }
 
@@ -500,7 +500,6 @@
 	0% {
 		transform: translateX(0);
 	}
-
 	100% {
 		transform: translateX(-50%);
 	}
@@ -515,7 +514,7 @@
 /* ==================== How It Works Section ==================== */
 
 .landing-page-container .how-it-works-header {
-	@apply flex justify-between items-center w-full px-16 pt-20 gap-16;
+	@apply flex justify-between items-center w-full  px-16 pt-20 gap-16;
 }
 
 .landing-page-container .how-it-works-text {
@@ -539,15 +538,12 @@
 	overflow-x: auto;
 	overflow-y: hidden;
 	-webkit-overflow-scrolling: touch;
-	scrollbar-width: none;
-	/* Firefox */
-	-ms-overflow-style: none;
-	/* IE and Edge */
+	scrollbar-width: none; /* Firefox */
+	-ms-overflow-style: none; /* IE and Edge */
 }
 
 .landing-page-container .how-it-works-cards::-webkit-scrollbar {
-	display: none;
-	/* Chrome, Safari, Opera */
+	display: none; /* Chrome, Safari, Opera */
 }
 
 .landing-page-container .how-it-works-cards-container {
@@ -627,7 +623,6 @@
 		opacity: 0;
 		transform: translateY(-10px);
 	}
-
 	to {
 		opacity: 1;
 		transform: translateY(0);
@@ -753,7 +748,7 @@
 		@apply flex-col w-full;
 	}
 
-	.landing-page-container .landing-btn-primary,
+	.landing-page-container .bg-primary-900,
 	.landing-page-container .landing-btn-secondary {
 		@apply w-full max-w-[300px];
 	}
@@ -829,7 +824,6 @@
 
 /* ==================== Mobile Responsive (375px) ==================== */
 @media (max-width: 911px) {
-
 	/* Header - Mobile Layout */
 	.landing-page-container .landing-header {
 		height: 44px;
@@ -924,7 +918,7 @@
 		@apply flex-row gap-2;
 	}
 
-	.landing-page-container .landing-btn-primary,
+	.landing-page-container .bg-primary-900,
 	.landing-page-container .landing-btn-secondary {
 		width: 111px;
 		min-width: 111px;
@@ -955,12 +949,16 @@
 	}
 
 	/* Backed by label - adjust width proportionally */
-	.landing-page-container .landing-brands-group .landing-brands-label.w-\[166px\] {
+	.landing-page-container
+		.landing-brands-group
+		.landing-brands-label.w-\[166px\] {
 		width: 120px;
 	}
 
 	/* Angel investors label - adjust width proportionally */
-	.landing-page-container .landing-brands-group .landing-brands-label.w-\[292px\] {
+	.landing-page-container
+		.landing-brands-group
+		.landing-brands-label.w-\[292px\] {
 		width: 200px;
 	}
 
@@ -1049,7 +1047,6 @@
 	.landing-page-container .why-seerbot-stats-label {
 		font-size: 20px;
 	}
-
 	.landing-page-container .trade-smarter-footer-content {
 		@apply flex-col items-center justify-center gap-4;
 	}

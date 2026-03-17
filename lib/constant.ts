@@ -205,3 +205,8 @@ export const DEFAULT_CHAIN_TOKENS: Record<ChainId, DefaultChainToken[]> = {
 		},
 	],
 };
+
+// Flat list of all supported wallets across chains (used by ModalConnectWallet)
+export const SUPPORTED_WALLETS = CHAIN_DEFINITIONS.flatMap((chain) =>
+	chain.wallets.map((w) => ({ ...w, chainId: chain.id }))
+);

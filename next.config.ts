@@ -4,7 +4,13 @@ import createNextIntlPlugin from "next-intl/plugin";
 const nextConfig: NextConfig = {
 	output: "standalone",
 	images: {
-		domains: ["asset-logos.minswap.org", "minswap.org", "api.seerbot.io"],
+		domains: [
+			"asset-logos.minswap.org",
+			"minswap.org",
+			"api.seerbot.io",
+			"cryptologos.cc",
+			"localhost"
+		],
 		qualities: [25, 50, 75, 100],
 	},
 	webpack: (config) => {

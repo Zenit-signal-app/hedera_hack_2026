@@ -154,7 +154,7 @@ export function TransactionTable() {
 		[baseAssetSymbol, quoteAssetSymbol]
 	);
 	return (
-		<div className="bg-dark-gray-950 rounded-b-lg">
+		<div className="bg-primary-950 rounded-b-lg">
 			<TableWrapper<Transaction>
 				columns={columns}
 				data={data}

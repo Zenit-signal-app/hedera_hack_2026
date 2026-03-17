@@ -38,7 +38,7 @@ const WalletConnectButton: React.FC = () => {
 		<>
 			<button
 				onClick={handleClick}
-				className="px-3 py-2 bg-dark-gray-900 flex items-center gap-x-1 text-white font-semibold rounded-full shadow-md text-base font-museomoderno transition duration-150 border border-dark-gray-700 hover:border-dark-gray-400"
+				className="px-3 py-2 bg-primary-900 flex items-center gap-x-1 text-white font-semibold rounded-full shadow-md text-base font-museomoderno transition duration-150 border border-dark-gray-700 hover:border-dark-gray-400"
 			>
 				{buttonText}{" "}
 				{isConnected ? (

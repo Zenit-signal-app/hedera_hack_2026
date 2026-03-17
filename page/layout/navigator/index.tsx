@@ -38,7 +38,7 @@ const Navigator = () => {
 	const pathname = usePathname();
 	const isMobile = useIsMobile();
 	return (
-		<div className="flex w-full lg:h-full h-max flex-col gap-y-4 items-start py-4 px-3 lg:bg-dark-gray-950 bg-black">
+		<div className="flex w-full lg:h-full h-max flex-col gap-y-4 items-start py-4 px-3 bg-primary-950">
 			{isMobile ? null : (
 				<>
 					<Link href="/" className="flex items-center gap-x-1 text-2xl font-bold font-quicksand">

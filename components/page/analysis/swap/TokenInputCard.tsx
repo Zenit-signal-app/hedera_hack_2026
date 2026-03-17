@@ -142,7 +142,7 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
 												onSelect?.(swapToken);
 												setOpen(false);
 											}}
-											className="w-full flex items-center justify-between gap-x-4 bg-dark-gray-900 py-2 px-4 my-1 rounded-md hover:bg-dark-gray-700"
+											className="w-full flex items-center justify-between gap-x-4 bg-primary-900 py-2 px-4 my-1 rounded-md hover:bg-dark-gray-700"
 										>
 											<div className="flex items-center gap-x-2">
 												<Image
