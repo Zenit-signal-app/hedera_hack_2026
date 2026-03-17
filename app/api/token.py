@@ -4,7 +4,7 @@ import json
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import requests
 from requests.exceptions import RequestException
@@ -104,6 +104,91 @@ def _fetch_binance_tickers(symbols: Sequence[str]) -> dict[str, dict[str, float]
     return result
 
 
+def _sql_escape(s: str) -> str:
+    return (s or "").replace("'", "''")
+
+
+def _fetch_24h_from_coin_prices_30m_batch(
+    db: Session, pairs: Sequence[Tuple[int, str]]
+) -> Dict[Tuple[int, str], dict[str, float]]:
+    """Latest row per (chain_id, symbol) from coin_prices_30m (by open_time desc)."""
+    unique: list[Tuple[int, str]] = []
+    seen: set[Tuple[int, str]] = set()
+    for cid, sym in pairs:
+        if not sym:
+            continue
+        k = (int(cid), sym)
+        if k not in seen:
+            seen.add(k)
+            unique.append(k)
+    if not unique:
+        return {}
+    table_30m = tables["p30m"]
+    in_rows = ", ".join(
+        f"({int(cid)}, '{_sql_escape(sym)}')" for cid, sym in unique
+    )
+    query = f"""
+        SELECT chain_id, symbol, volume_24h, quote_volume_24h,
+               price_change_24h, price_change_percentage_24h
+        FROM (
+            SELECT
+                chain_id, symbol, volume_24h, quote_volume_24h,
+                price_change_24h, price_change_percentage_24h,
+                row_number() OVER (
+                    PARTITION BY chain_id, symbol ORDER BY open_time DESC
+                ) AS rn
+            FROM {table_30m}
+            WHERE (chain_id, symbol) IN ({in_rows})
+        ) t
+        WHERE rn = 1
+    """
+    try:
+        rows = db.execute(text(query)).fetchall()
+    except Exception as e:
+        print(f"Error querying coin_prices_30m batch: {e}")
+        return {}
+    out: Dict[Tuple[int, str], dict[str, float]] = {}
+    for r in rows:
+        key = (int(r.chain_id), r.symbol)
+        out[key] = {
+            "priceChange": float(r.price_change_24h or 0),
+            "priceChangePercent": float(r.price_change_percentage_24h or 0),
+            "volume": float(r.volume_24h or 0),
+            "quoteVolume": float(r.quote_volume_24h or 0),
+        }
+    return out
+
+
+def _fetch_24h_from_coin_prices_30m_one(
+    db: Session, chain_id: int, symbol: str
+) -> dict[str, float]:
+    if not symbol:
+        return {}
+    table_30m = tables["p30m"]
+    sym = _sql_escape(symbol)
+    cid = int(chain_id)
+    query = f"""
+        SELECT volume_24h, quote_volume_24h, price_change_24h, price_change_percentage_24h
+        FROM {table_30m}
+        WHERE chain_id = {cid} AND symbol = '{sym}'
+        ORDER BY open_time DESC
+        LIMIT 1
+    """
+    try:
+        r = db.execute(text(query)).fetchone()
+    except Exception as e:
+        print(f"Error querying coin_prices_30m: {e}")
+        return {}
+    if not r:
+        return {}
+    return {
+        "priceChange": float(r.price_change_24h or 0),
+        "priceChangePercent": float(r.price_change_percentage_24h or 0),
+        "volume": float(r.volume_24h or 0),
+        "quoteVolume": float(r.quote_volume_24h or 0),
+    }
+
+
 def _sanitize_symbol(symbol: str) -> str:
     if not symbol:
         raise HTTPException(status_code=400, detail="symbol is required")
@@ -128,11 +213,11 @@ def _sanitize_symbol(symbol: str) -> str:
         "- **time**: Unix timestamp of the price.\n"
         "- **time_readable**: Human-readable time (e.g. YYYY-MM-DD HH:MM:SS UTC).\n"
         "- **image**: Coin image URL.\n"
-        "- **priceChange**: 24h price change (from Binance when available).\n"
-        "- **priceChangePercent**: 24h price change percentage.\n"
-        "- **volume**: 24h volume in base asset.\n"
-        "- **quoteVolume**: 24h volume in quote asset (e.g. USDT).\n"
-        "Latest price from DB; 24h metrics from Binance when available."
+        "- **priceChange**: 24h price change (Binance for chain_id=1; else coin_prices_30m).\n"
+        "- **priceChangePercent**: 24h change % (same sources).\n"
+        "- **volume**: 24h base volume (same sources).\n"
+        "- **quoteVolume**: 24h quote volume (same sources).\n"
+        "Latest price from DB; chain_id=1: 24h from Binance; other chains: coin_prices_30m (latest open_time)."
     ),
 )
 def list_all_tokens(
@@ -147,17 +232,21 @@ def list_all_tokens(
         raise HTTPException(status_code=400, detail="Chain not found")
     offset = max(0, offset)
     limit = max(1, min(500, limit))
-    table_5m = tables['p5m']
+    table_1h = tables["f1h"]
     key_filter = _build_key_filter(key)
     chain_filter = f"AND chain_id = {int(chain_id)}" if chain_id is not None else ""
-    
+    # key_filter and chain_filter both start with AND; need a base WHERE when key is empty
+    inner_where = f"WHERE 1=1\n            {key_filter}\n            {chain_filter}"
+
     # Query distinct symbols with their latest prices (per chain when chain_id filtered)
-    # Using f-string as per project requirements (no parameterized queries)
     query = f"""
         SELECT 
             symbol,
             chain_id,
-            left(symbol, char_length(symbol) - 4) as coin,
+            CASE
+                WHEN position('/' in symbol) > 0 THEN split_part(symbol, '/', 1)
+                ELSE left(symbol, char_length(symbol) - 4)
+            END as coin,
             close as price,
             open_time as time
         FROM (
@@ -167,10 +256,8 @@ def list_all_tokens(
                 close,
                 open_time,
                 row_number() over (PARTITION by symbol, chain_id order by open_time desc) AS r
-            FROM {table_5m}
-            WHERE open_time > extract(epoch from now())::bigint - 1800
-            {key_filter}
-            {chain_filter}
+            FROM {table_1h}
+            {inner_where}
         ) latest_prices
         WHERE r = 1
         ORDER BY symbol
@@ -186,14 +273,28 @@ def list_all_tokens(
     if not result:
         return []
     
-    requested_symbols = [row.symbol for row in result if row.symbol]
+    requested_symbols = [
+        row.symbol
+        for row in result
+        if row.symbol and (getattr(row, "chain_id", 1) or 1) == 1
+    ]
     binance_metrics = _fetch_binance_tickers(requested_symbols)
+    alt_pairs = [
+        (int(getattr(r, "chain_id", 1) or 1), r.symbol)
+        for r in result
+        if r.symbol and int(getattr(r, "chain_id", 1) or 1) != 1
+    ]
+    alt_24h = _fetch_24h_from_coin_prices_30m_batch(db, alt_pairs)
 
     tokens = []
     for row in result:
         coin_key = (row.coin or "").strip().lower()
         cid = getattr(row, "chain_id", 1) or 1
         chain_val = get_slug_for_chain_id(db, int(cid))
+        if int(cid) == 1:
+            metrics = binance_metrics.get(row.symbol, {})
+        else:
+            metrics = alt_24h.get((int(cid), row.symbol), {})
         tokens.append(
             schemas.Token(
                 symbol=row.symbol,
@@ -205,10 +306,10 @@ def list_all_tokens(
                 if row.time
                 else "",
                 image=COIN_IMAGE_MAP.get(coin_key, ""),
-                priceChange=binance_metrics.get(row.symbol, {}).get("priceChange", 0),
-                priceChangePercent=binance_metrics.get(row.symbol, {}).get("priceChangePercent", 0),
-                volume=binance_metrics.get(row.symbol, {}).get("volume", 0),
-                quoteVolume=binance_metrics.get(row.symbol, {}).get("quoteVolume", 0),
+                priceChange=metrics.get("priceChange", 0),
+                priceChangePercent=metrics.get("priceChangePercent", 0),
+                volume=metrics.get("volume", 0),
+                quoteVolume=metrics.get("quoteVolume", 0),
             )
         )
     return tokens
@@ -225,14 +326,11 @@ def list_all_tokens(
         "- **symbol**: Trading pair (e.g. BTCUSDT).\n"
         "- **coin**: Base coin (e.g. BTC).\n"
         "- **chain**: Slug value from chains table.\n"
-        "- **price**: Latest cached price.\n"
-        "- **time**: Unix timestamp of the price.\n"
+        "- **price** / **time**: Latest row from f_coin_signal_1h (same as GET /tokens list).\n"
         "- **time_readable**: Human-readable time (e.g. YYYY-MM-DD HH:MM:SS UTC).\n"
         "- **image**: Coin image URL.\n"
-        "- **priceChange**: 24h price change (from Binance when available).\n"
-        "- **priceChangePercent**: 24h price change percentage.\n"
-        "- **volume**: 24h volume in base asset.\n"
-        "- **quoteVolume**: 24h volume in quote asset (e.g. USDT).\n"
+        "- **24h fields**: chain_id=1 → Binance ticker; else → production.coin_prices_30m (latest open_time), same as list.\n"
+        "Optional `chain` slug; if omitted and symbol exists on multiple chains, chain_id=1 is preferred.\n"
         "404 if symbol not found."
     ),
 )
@@ -245,13 +343,24 @@ def get_token(
     if chain and chain.strip() and chain_id == 0:
         raise HTTPException(status_code=400, detail="Chain not found")
     symbol_clean = _sanitize_symbol(symbol)
-    table_5m = tables["p5m"]
+    raw_upper = (symbol or "").strip().upper()
+    raw_esc = _sql_escape(raw_upper)
+    # Match list endpoint: latest price from f1h; allow path like DOT/USDT or DOTUSDT
+    table_1h = tables["f1h"]
     chain_filter = f"AND chain_id = {int(chain_id)}" if chain_id is not None else ""
+    symbol_predicate = (
+        f"(symbol = '{symbol_clean}' OR symbol = '{raw_esc}' "
+        f"OR upper(replace(symbol, '/', '')) = '{symbol_clean}')"
+    )
+    inner_where = f"WHERE 1=1 AND {symbol_predicate}\n            {chain_filter}"
     query = f"""
         SELECT
             symbol,
             chain_id,
-            left(symbol, char_length(symbol) - 4) as coin,
+            CASE
+                WHEN position('/' in symbol) > 0 THEN split_part(symbol, '/', 1)
+                ELSE left(symbol, char_length(symbol) - 4)
+            END as coin,
             close as price,
             open_time as time
         FROM (
@@ -261,11 +370,11 @@ def get_token(
                 close,
                 open_time,
                 row_number() over (PARTITION by symbol, chain_id order by open_time desc) AS r
-            FROM {table_5m}
-            WHERE symbol = '{symbol_clean}'
-            {chain_filter}
+            FROM {table_1h}
+            {inner_where}
         ) latest_prices
         WHERE r = 1
+        ORDER BY CASE WHEN chain_id = 1 THEN 0 ELSE 1 END, open_time DESC
         LIMIT 1
     """
     try:
@@ -278,8 +387,13 @@ def get_token(
         raise HTTPException(status_code=404, detail="Token not found")
 
     coin_key = (row.coin or "").strip().lower()
-    binance_metrics = _fetch_binance_tickers([symbol_clean]).get(symbol_clean, {})
     cid = getattr(row, "chain_id", 1) or 1
+    if int(cid) == 1:
+        metrics = _fetch_binance_tickers([row.symbol or symbol_clean]).get(
+            row.symbol or symbol_clean, {}
+        )
+    else:
+        metrics = _fetch_24h_from_coin_prices_30m_one(db, int(cid), row.symbol or "")
     chain_val = get_slug_for_chain_id(db, int(cid))
     return schemas.Token(
         symbol=row.symbol,
@@ -291,8 +405,8 @@ def get_token(
         if row.time
         else "",
         image=COIN_IMAGE_MAP.get(coin_key, ""),
-        priceChange=binance_metrics.get("priceChange", 0),
-        priceChangePercent=binance_metrics.get("priceChangePercent", 0),
-        volume=binance_metrics.get("volume", 0),
-        quoteVolume=binance_metrics.get("quoteVolume", 0),
+        priceChange=metrics.get("priceChange", 0),
+        priceChangePercent=metrics.get("priceChangePercent", 0),
+        volume=metrics.get("volume", 0),
+        quoteVolume=metrics.get("quoteVolume", 0),
     )
