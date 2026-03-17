@@ -26,7 +26,7 @@ class ProfileResponse(CustomBaseModel):
     """Response model for user profile"""
 
     wallet_address: str = ""
-    chain: str = "cardano"
+    chain: str = "Polkadot"
 
 
 class VaultEarning(CustomBaseModel):

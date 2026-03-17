@@ -14,7 +14,7 @@ from app.db.session import get_db
 import app.schemas.vault as schemas
 from app.services import price_cache
 
-SCHEMA = settings.SCHEMA_2
+SCHEMA = settings.SCHEMA_1
 
 router = APIRouter()
 group_tags: List[str] = ["Vault"]
@@ -24,10 +24,10 @@ def _get_vaults(
     db: Session,
     *,
     vault_id: Optional[str] = None,
+    chain_id: int = 2,
     status: str = "active",
     limit: int = 20,
     offset: int = 0,
-    chain_id: int,
 ) -> dict:
     """
     Shared vault fetcher with caching.
@@ -65,19 +65,15 @@ def _get_vaults(
             v.id,
             CASE
                 WHEN vs.state IS NOT NULL THEN vs.state
-                WHEN extract(epoch from now()) < v.trading_time THEN 'open'
-                WHEN extract(epoch from now()) < v.withdrawal_time THEN 'trading'
-                WHEN extract(epoch from now()) < v.closed_time THEN 'withdrawable'
                 ELSE 'closed'
             END AS state,
             v.name AS vault_name,
             v.summary,
             v.description,
             v.address,
-            v.pool_id,
             vs.tvl_usd,
             vs.max_drawdown,
-            v.depositing_time AS start_time,
+            v.start_time AS start_time,
             vs.return_percent,
             v.logo_url AS icon_url,
             COUNT(*) OVER() AS total_count
@@ -89,7 +85,7 @@ def _get_vaults(
         LEFT JOIN {SCHEMA}.vault v ON vs.vault_id = v.id
         WHERE 1=1
             {id_filter}
-        ORDER BY v.depositing_time DESC
+        ORDER BY v.start_time DESC
         {limit_sql}
         """
     )
@@ -106,7 +102,6 @@ def _get_vaults(
                 "summary": str(row.summary) if row.summary else None,
                 "description": str(row.description) if row.description else None,
                 "address": str(row.address) if row.address else "",
-                "pool_id": str(row.pool_id) if row.pool_id else "",
                 "annual_return": round(annual_return, 2),
                 "tvl_usd": float(row.tvl_usd) if row.tvl_usd else 0.0,
                 "max_drawdown": float(row.max_drawdown) if row.max_drawdown else 0.0,
@@ -152,7 +147,7 @@ def _get_vault_stats_data(
             vs.trade_per_month,
             vs.total_fees_paid,
             ts.decision_cycle,
-            v.depositing_time AS depositing_time
+            v.start_time AS start_time
         FROM {SCHEMA}.vault_state vs
         LEFT JOIN {SCHEMA}.vault v ON vs.vault_id = v.id
         LEFT JOIN {SCHEMA}.trade_strategies ts ON (
@@ -181,7 +176,7 @@ def _get_vault_stats_data(
 
     annual_return = float(result.return_percent) if result.return_percent else 0.0
     start_time = (
-        result.depositing_time if result.depositing_time else result.trade_start_time
+        result.start_time if result.start_time else result.trade_start_time
     )
     dc_map = {
         "1h": "1 hour",
@@ -255,22 +250,11 @@ def _fetch_vault_item(db: Session, vault_id: str, chain_id: int) -> Optional[dic
     status_code=http_status.HTTP_200_OK,
 )
 def get_vaults_by_status(
-    status: str = Query(
-        "active",
-        description="Filter by status: active, inactive, or all (default: active)",
-    ),
-    chain_id: int = Query(
-        ...,
-        ge=1,
-        description="Chain ID to scope the vault data.",
-    ),
+    status: str = Query("active", description="Filter by status: active, inactive, or all (default: active)"),
+    chain_id: int = Query(2, ge=1, description="Chain ID to scope the vault data."),
     page: int = Query(1, ge=1, description="Page number (default: 1)"),
-    limit: int = Query(
-        20, ge=1, le=100, description="Items per page (default: 20, max: 100)"
-    ),
-    offset: Optional[int] = Query(
-        None, description="Number of items to skip (alternative to page)"
-    ),
+    limit: int = Query(20, ge=1, le=100, description="Items per page (default: 20, max: 100)"),
+    offset: Optional[int] = Query(None, description="Number of items to skip (alternative to page)"),
     db: Session = Depends(get_db),
 ) -> schemas.VaultListResponse:
     """
@@ -344,11 +328,7 @@ def get_vaults_by_status(
 )
 def get_vault_info(
     id: str,
-    chain_id: int = Query(
-        ...,
-        ge=1,
-        description="Chain ID that owns the requested vault.",
-    ),
+    chain_id: int = Query(2, ge=1, description="Chain ID that owns the requested vault."),
     db: Session = Depends(get_db),
 ) -> schemas.VaultInfo:
     """
@@ -683,8 +663,14 @@ def get_vault_positions(
         """
     )
 
-    results = db.execute(positions_query).fetchall()
-    total = int(results[0].total_count) if results and len(results) > 0 else 0
+    results = []
+    try:
+        results = db.execute(positions_query).fetchall()
+    except Exception as e:
+        print(f"Error executing get_vault_positions: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    
+    total = int(results[0].total_count) if results else 0
 
     positions = []
     for row in results:
