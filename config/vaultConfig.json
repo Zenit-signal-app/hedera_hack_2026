@@ -1,0 +1,28 @@
+{
+  "hedera_local": {
+    "token1": "0x0000000000000000000000000000000000000000",
+    "token2": "0x0000000000000000000000000000000000000000",
+    "maxShareholders": 5
+  },
+  "hedera_testnet": {
+    "token1": "0x0000000000000000000000000000000000000000",
+    "token2": "0x0000000000000000000000000000000000000000",
+    "maxShareholders": 5,
+    "chainId": 296,
+    "rpcUrl": "https://testnet.hashio.io/api"
+  },
+  "hedera_mainnet": {
+    "token1": "0x0000000000000000000000000000000000000000",
+    "token2": "0x0000000000000000000000000000000000000000",
+    "maxShareholders": 50,
+    "chainId": 295,
+    "rpcUrl": "https://mainnet.hashio.io/api"
+  },
+  "custom": {
+    "token1": "0x0000000000000000000000000000000000000000",
+    "token2": "0x0000000000000000000000000000000000000000",
+    "maxShareholders": 10,
+    "chainId": 0,
+    "rpcUrl": ""
+  }
+}

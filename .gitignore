@@ -1,0 +1,26 @@
+# Node modules
+node_modules/
+
+# Build output
+out/
+
+# Configuration files
+.env
+
+# Lock files
+foundry.lock
+package-lock.json
+skills-lock.json
+uv.lock
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Ignore lib folder
+lib/
+docs/
+
+# Other IDE specific files
+.vscode/
+.DS_Store

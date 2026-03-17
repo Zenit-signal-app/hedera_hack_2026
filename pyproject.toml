@@ -1,0 +1,13 @@
+[project]
+name = "solidity-vault"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "base58>=2.1.1",
+    "dotenv>=0.9.9",
+    "tabulate>=0.10.0",
+    "web3>=7.14.1",
+    "pyyaml>=6.0",
+]
