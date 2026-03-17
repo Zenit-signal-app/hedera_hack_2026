@@ -14,7 +14,8 @@ export default async function ConditionalLayout({
 	const headersList = await headers();
 	const pathname = headersList.get("x-pathname") || "";
 
-	if (pathname === "/") {
+	const landingPages = ["/", "/terms", "/privacy"];
+	if (landingPages.includes(pathname)) {
 		return <>{children}</>;
 	}
 

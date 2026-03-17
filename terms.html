@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Service - Zenit</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
+    <link rel="apple-touch-icon" href="logo.png">
+    <style>
+        /* Terms content styles */
+        .terms-content {
+            background: var(--bg-color);
+            padding: 3rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        .terms-content [data-custom-class='body'],
+        .terms-content [data-custom-class='body'] * {
+            background: transparent !important;
+        }
+
+        .terms-content [data-custom-class='title'],
+        .terms-content [data-custom-class='title'] * {
+            font-family: Arial !important;
+            font-size: 26px !important;
+            color: #000000 !important;
+        }
+
+        .terms-content [data-custom-class='subtitle'],
+        .terms-content [data-custom-class='subtitle'] * {
+            font-family: Arial !important;
+            color: #595959 !important;
+            font-size: 14px !important;
+        }
+
+        .terms-content [data-custom-class='heading_1'],
+        .terms-content [data-custom-class='heading_1'] * {
+            font-family: Arial !important;
+            font-size: 19px !important;
+            color: #000000 !important;
+        }
+
+        .terms-content [data-custom-class='heading_2'],
+        .terms-content [data-custom-class='heading_2'] * {
+            font-family: Arial !important;
+            font-size: 17px !important;
+            color: #000000 !important;
+        }
+
+        .terms-content [data-custom-class='body_text'],
+        .terms-content [data-custom-class='body_text'] * {
+            color: #595959 !important;
+            font-size: 14px !important;
+            font-family: Arial !important;
+        }
+
+        .terms-content [data-custom-class='link'],
+        .terms-content [data-custom-class='link'] * {
+            color: #3030F1 !important;
+            font-size: 14px !important;
+            font-family: Arial !important;
+            word-break: break-word !important;
+        }
+
+        .terms-content ul {
+            list-style-type: square;
+        }
+
+        .terms-content ul>li>ul {
+            list-style-type: circle;
+        }
+
+        .terms-content ul>li>ul>li>ul {
+            list-style-type: square;
+        }
+
+        .terms-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        .terms-content table th,
+        .terms-content table td {
+            border: 1px solid black;
+            padding: 0.5rem;
+            text-align: left;
+        }
+
+        .terms-content table th {
+            background-color: #f5f5f5;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="container">
+                <div class="nav-brand">
+                    <a href="index.html">
+                        <img src="logo.png" alt="Zenit Logo" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div class="logo-placeholder" style="display: none;">
+                            <span>ZENIT</span>
+                        </div>
+                    </a>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="privacy.html">Privacy Policy</a></li>
+                    <li><a href="terms.html" class="active">Terms of Service</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="page-header">
+            <div class="container">
+                <h1>Terms of Service</h1>
+                <p class="page-subtitle">Last updated: February 24, 2026</p>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <div class="container">
+                <div class="content-wrapper">
+                    <div class="terms-content" id="terms-content">
+                        <p>Loading terms of service...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Load terms content from terms.txt
+        fetch('terms.txt')
+            .then(response => response.text())
+            .then(html => {
+                // Extract the body content (everything after the style tag)
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                // Find the div with data-custom-class='body'
+                const bodyContent = doc.querySelector('[data-custom-class="body"]');
+                if (bodyContent) {
+                    document.getElementById('terms-content').innerHTML = bodyContent.innerHTML;
+                } else {
+                    // Fallback: extract content after style tag
+                    const styleEnd = html.indexOf('</style>');
+                    if (styleEnd !== -1) {
+                        const content = html.substring(styleEnd + 8);
+                        // Remove the closing divs and script at the end
+                        const cleanContent = content.replace(/<br><div>.*$/s, '');
+                        document.getElementById('terms-content').innerHTML = cleanContent;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading terms:', error);
+                document.getElementById('terms-content').innerHTML =
+                    '<p>Error loading terms of service. Please refresh the page or contact us at nploc101999@gmail.com</p>';
+            });
+    </script>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <img src="logo.png" alt="Zenit Logo" class="logo-img small" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="logo-placeholder small" style="display: none;">
+                        <span>ZENIT</span>
+                    </div>
+                </div>
+                <div class="footer-links">
+                    <a href="privacy.html">Privacy Policy</a>
+                    <a href="terms.html">Terms of Service</a>
+                </div>
+                <div class="footer-address">
+                    <p>2 Vuong Thua Vu street, Ha Noi, 100000, Vietnam</p>
+                </div>
+                <div class="footer-copyright">
+                    <p>&copy; 2024 Zenit. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+
+</html>
