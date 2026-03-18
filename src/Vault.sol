@@ -7,13 +7,55 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-/**
- * @title Vault
- * @dev A configurable vault that manages deposits, withdrawals, and manager operations
- * based on manual state transitions. Only token1 can be deposited.
- */
+interface IHederaTokenService {
+    function transferToken(
+        address token,
+        address sender,
+        address receiver,
+        int64 amount
+    ) external returns (int256 responseCode);
+
+    function transferTokens(
+        address token,
+        address[] calldata sender,
+        address[] calldata receiver,
+        int64[] calldata amount
+    ) external returns (int256 responseCode);
+
+    function approve(
+        address token,
+        address spender,
+        int64 amount
+    ) external returns (int256 responseCode);
+
+    function transferFrom(
+        address token,
+        address from,
+        address to,
+        int64 amount
+    ) external returns (int256 responseCode);
+
+    function associateToken(
+        address account,
+        address token
+    ) external returns (int256 responseCode);
+
+    function dissociateToken(
+        address account,
+        address token
+    ) external returns (int256 responseCode);
+
+    function getAccountTokenBalance(
+        address account,
+        address token
+    ) external view returns (int256 responseCode, uint256 balance);
+}
+
 contract Vault is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
+
+    address private constant HTS = address(0x167);
+    int256 private constant HTS_SUCCESS = 22;
 
     enum VaultState {
         Closed,
@@ -21,8 +63,6 @@ contract Vault is ReentrancyGuard, Ownable {
         Running,
         Withdraw
     }
-
-    // ============ Events ============
 
     event Deposited(address indexed shareholder, uint256 amount, uint256 shares);
     event Withdrawn(address indexed shareholder, uint256 amount, uint256 shares);
@@ -35,8 +75,6 @@ contract Vault is ReentrancyGuard, Ownable {
     event DepositsClosed();
     event VaultUpdated(address indexed token1, address indexed token2, uint256 maxShareholders);
     event VaultClosed();
-
-    // ============ Custom Errors ============
 
     error Vault__ZeroAddress();
     error Vault__SameTokens();
@@ -59,49 +97,24 @@ contract Vault is ReentrancyGuard, Ownable {
     error Vault__InvalidRecipient();
     error Vault__CannotRecoverVaultToken();
     error Vault__InvalidTokenForApproval();
+    error Vault__HtsTransferFailed();
+    error Vault__HtsApprovalFailed();
+    error Vault__HtsTransferFromFailed();
+    error Vault__TokenNotAssociated();
 
-    // ============ State Variables ============
-
-    /// @notice The token that can be deposited into the vault
     IERC20 public token1;
-
-    /// @notice The second token (available for manager operations)
     IERC20 public token2;
-
-    /// @notice Maximum number of shareholders allowed
     uint256 public maxShareholders;
-
-    /// @notice Snapshot of total token1 balance at the start of withdrawal phase
     uint256 public withdrawalSnapshotBalance;
-
-    /// @notice Snapshot of total shares at the start of withdrawal phase
     uint256 public withdrawalSnapshotShares;
-
-    /// @notice Total shares issued
     uint256 public totalShares;
-
-    /// @notice Current vault phase
     VaultState public state;
-
-    /// @notice Manager address that can call any address
     address public manager;
-
-    /// @notice Whether deposits are closed (packed with vaultClosed into same slot)
     bool public depositsClosed;
-
-    /// @notice Mapping of shareholder address to their share amount
     mapping(address => uint256) public shares;
-
-    /// @notice Mapping of shareholder to index in shareholders array (plus one)
     mapping(address => uint256) private shareholderIndexPlusOne;
-
-    /// @notice Whitelisted targets that manager can call via execute
     mapping(address => bool) public allowedTargets;
-
-    /// @notice Array of all shareholders
     address[] public shareholders;
-
-    // ============ Modifiers ============
 
     modifier onlyState(VaultState expectedState) {
         _onlyState(expectedState);
@@ -132,8 +145,6 @@ contract Vault is ReentrancyGuard, Ownable {
         _onlyWhenClosedOrNoShareholders();
         _;
     }
-
-    // ============ Internal Modifier Helpers (reduces bytecode via single JUMP) ============
 
     function _onlyState(VaultState expectedState) internal view {
         if (state != expectedState) revert Vault__InvalidState();
@@ -167,6 +178,102 @@ contract Vault is ReentrancyGuard, Ownable {
         }
     }
 
+    function _isHts(address token) internal view returns (bool) {
+        uint256 size;
+        assembly {
+            size := extcodesize(token)
+        }
+        return size == 0;
+    }
+
+    function _htsSafeTransfer(address token, address to, uint256 amount) internal {
+        int256 response = IHederaTokenService(HTS).transferToken(
+            token,
+            address(this),
+            to,
+            // HTS requires int64 - amount is guaranteed to fit for token transfers
+            int64(uint64(amount))
+        );
+        if (response != HTS_SUCCESS) revert Vault__HtsTransferFailed();
+    }
+
+    function _htsSafeTransferFrom(address token, address from, address to, uint256 amount) internal {
+        int256 response = IHederaTokenService(HTS).transferFrom(
+            token,
+            from,
+            to,
+            // HTS requires int64 - amount is guaranteed to fit for token transfers
+            int64(uint64(amount))
+        );
+        if (response != HTS_SUCCESS) revert Vault__HtsTransferFromFailed();
+    }
+
+    function _htsSafeApprove(address token, address spender, uint256 amount) internal {
+        int256 response = IHederaTokenService(HTS).approve(
+            token,
+            spender,
+            // HTS requires int64 - amount is guaranteed to fit for token transfers
+            int64(uint64(amount))
+        );
+        if (response != HTS_SUCCESS) revert Vault__HtsApprovalFailed();
+    }
+
+    function _htsGetBalance(address token, address account) internal view returns (uint256) {
+        (, uint256 balance) = IHederaTokenService(HTS).getAccountTokenBalance(account, token);
+        return balance;
+    }
+
+    function _checkAssociation(address token, address account) internal view {
+        uint256 balance = _htsGetBalance(token, account);
+        if (balance == 0 && _isHts(token)) {
+            uint256 erc20Balance = IERC20(token).balanceOf(account);
+            if (erc20Balance == 0) {
+                revert Vault__TokenNotAssociated();
+            }
+        }
+    }
+
+    function _safeTransferToken(address token, address to, uint256 amount) internal {
+        if (_isHts(token)) {
+            _htsSafeTransfer(token, to, amount);
+        } else {
+            IERC20(token).safeTransfer(to, amount);
+        }
+    }
+
+    function _safeTransferFromToken(address token, address from, address to, uint256 amount) internal {
+        if (_isHts(token)) {
+            _htsSafeTransferFrom(token, from, to, amount);
+        } else {
+            IERC20(token).safeTransferFrom(from, to, amount);
+        }
+    }
+
+    function _safeApproveToken(address token, address spender, uint256 amount) internal {
+        if (_isHts(token)) {
+            if (amount == 0) {
+                _htsSafeApprove(token, spender, 0);
+            } else {
+                _htsSafeApprove(token, spender, amount);
+            }
+        } else {
+            IERC20 erc = IERC20(token);
+            uint256 current = erc.allowance(address(this), spender);
+            if (current != 0) {
+                erc.approve(spender, 0);
+            }
+            erc.approve(spender, amount);
+        }
+    }
+
+    function _getTokenBalance(address token) internal view returns (uint256) {
+        if (_isHts(token)) {
+            return _htsGetBalance(token, address(this));
+        } else {
+            return IERC20(token).balanceOf(address(this));
+        }
+    }
+
     function _closeVault() internal {
         VaultState fromState = state;
         state = VaultState.Closed;
@@ -194,15 +301,6 @@ contract Vault is ReentrancyGuard, Ownable {
         delete shareholderIndexPlusOne[shareholder];
     }
 
-    // ============ Constructor ============
-
-    /**
-     * @notice Initialize the vault with configuration parameters
-     * @param _token1 The ERC20 token that can be deposited into the vault
-     * @param _token2 The second ERC20 token (available for manager operations)
-     * @param _maxShareholders Maximum number of shareholders allowed
-     * @param _manager Address that can call any address
-     */
     constructor(address _token1, address _token2, uint256 _maxShareholders, address _manager) Ownable(msg.sender) {
         if (_token1 == address(0)) revert Vault__ZeroAddress();
         if (_token2 == address(0)) revert Vault__ZeroAddress();
@@ -237,7 +335,7 @@ contract Vault is ReentrancyGuard, Ownable {
         if (totalShares == 0) revert Vault__NoSharesToWithdraw();
 
         state = VaultState.Withdraw;
-        withdrawalSnapshotBalance = token1.balanceOf(address(this));
+        withdrawalSnapshotBalance = _getTokenBalance(address(token1));
         withdrawalSnapshotShares = totalShares;
         emit StateChanged(VaultState.Running, VaultState.Withdraw);
     }
@@ -267,19 +365,12 @@ contract Vault is ReentrancyGuard, Ownable {
         }
     }
 
-    // ============ External Functions ============
-
-    /**
-     * @notice Deposit token1 into the vault (only in Deposit state)
-     * @param amount Amount of token1 to deposit
-     */
     function deposit(uint256 amount) external onlyState(VaultState.Deposit) notMaxShareholders nonReentrant {
         if (amount == 0) revert Vault__ZeroAmount();
         if (depositsClosed) revert Vault__DepositsClosed();
 
-        token1.safeTransferFrom(msg.sender, address(this), amount);
+        _safeTransferFromToken(address(token1), msg.sender, address(this), amount);
 
-        // shares are 1:1 with deposited token1 amount
         totalShares += amount;
 
         if (shares[msg.sender] == 0) {
@@ -290,20 +381,12 @@ contract Vault is ReentrancyGuard, Ownable {
 
         emit Deposited(msg.sender, amount, amount);
 
-        // Close deposits once the shareholder cap is reached
         if (shareholders.length >= maxShareholders) {
             depositsClosed = true;
             emit DepositsClosed();
         }
     }
 
-    /**
-     * @notice Withdraw token1 from the vault to a batch of shareholders (only manager, only in Withdraw state)
-     * @dev Manager can call this multiple times with different batches to avoid gas limits.
-     *      The first call snapshots the total balance and shares; subsequent calls use the same snapshot
-     *      to ensure fair proportional distribution. The vault closes when all shares are distributed.
-     * @param shareholdersToWithdraw Array of shareholder addresses to process in this batch
-     */
     function withdraw(address[] calldata shareholdersToWithdraw)
         external
         onlyState(VaultState.Withdraw)
@@ -320,7 +403,6 @@ contract Vault is ReentrancyGuard, Ownable {
         uint256 snapshotBalance = withdrawalSnapshotBalance;
         uint256 snapshotShares = withdrawalSnapshotShares;
 
-        // Process each shareholder in the batch
         uint256 len = shareholdersToWithdraw.length;
         address lastProcessed;
         for (uint256 i = 0; i < len;) {
@@ -328,21 +410,17 @@ contract Vault is ReentrancyGuard, Ownable {
             uint256 userShares = shares[shareholder];
 
             if (userShares > 0) {
-                // Calculate withdrawal amount based on snapshot ratio
                 uint256 withdrawalAmount = (userShares * snapshotBalance) / snapshotShares;
 
-                // Effects: clear shares before transfer (CEI)
                 shares[shareholder] = 0;
                 totalShares -= userShares;
                 _removeShareholder(shareholder);
 
-                // Interactions: transfer token1 to shareholder
                 if (withdrawalAmount > 0) {
-                    token1.safeTransfer(shareholder, withdrawalAmount);
+                    _safeTransferToken(address(token1), shareholder, withdrawalAmount);
                 }
 
                 emit Withdrawn(shareholder, withdrawalAmount, userShares);
-                // remember last processed beneficiary (used to sweep rounding dust)
                 lastProcessed = shareholder;
             }
 
@@ -351,17 +429,11 @@ contract Vault is ReentrancyGuard, Ownable {
             }
         }
 
-        // If all shares have been distributed, sweep any rounding dust to the
-        // last processed shareholder (if any) and then close the vault. Using
-        // the contract's current token1 balance after transfers yields the
-        // rounding remainder (if any) because `withdrawalSnapshotBalance` was
-        // captured at `stateToWithdraw()` and only withdrawals reduce the
-        // contract balance during the Withdraw phase.
         if (totalShares == 0) {
             if (lastProcessed != address(0)) {
-                uint256 remaining = token1.balanceOf(address(this));
+                uint256 remaining = _getTokenBalance(address(token1));
                 if (remaining > 0) {
-                    token1.safeTransfer(lastProcessed, remaining);
+                    _safeTransferToken(address(token1), lastProcessed, remaining);
                     emit Withdrawn(lastProcessed, remaining, 0);
                 }
             }
@@ -371,6 +443,8 @@ contract Vault is ReentrancyGuard, Ownable {
     }
 
     function userWithdraw() external onlyDepositOrWithdraw nonReentrant {
+        _checkAssociation(address(token1), msg.sender);
+
         uint256 userShares = shares[msg.sender];
         if (userShares == 0) revert Vault__NoSharesToWithdraw();
 
@@ -388,7 +462,7 @@ contract Vault is ReentrancyGuard, Ownable {
         }
 
         if (withdrawalAmount > 0) {
-            token1.safeTransfer(msg.sender, withdrawalAmount);
+            _safeTransferToken(address(token1), msg.sender, withdrawalAmount);
         }
 
         if (state == VaultState.Deposit && shareholders.length < maxShareholders) {
@@ -397,13 +471,10 @@ contract Vault is ReentrancyGuard, Ownable {
 
         emit UserWithdrawn(msg.sender, withdrawalAmount, userShares);
 
-        // If this call completed the final withdrawal round, sweep any
-        // residual rounding dust to the caller (they are the last
-        // withdrawer) and close the vault.
         if (state == VaultState.Withdraw && totalShares == 0) {
-            uint256 remaining = token1.balanceOf(address(this));
+            uint256 remaining = _getTokenBalance(address(token1));
             if (remaining > 0) {
-                token1.safeTransfer(msg.sender, remaining);
+                _safeTransferToken(address(token1), msg.sender, remaining);
                 emit UserWithdrawn(msg.sender, remaining, 0);
             }
 
@@ -411,12 +482,6 @@ contract Vault is ReentrancyGuard, Ownable {
         }
     }
 
-    /**
-     * @notice Update vault configuration (only manager)
-     * @param _token1 New token1 address
-     * @param _token2 New token2 address
-     * @param _maxShareholders New maximum shareholders
-     */
     function updateVault(address _token1, address _token2, uint256 _maxShareholders)
         external
         onlyOwnerOrManager
@@ -432,7 +497,6 @@ contract Vault is ReentrancyGuard, Ownable {
         token2 = IERC20(_token2);
         maxShareholders = _maxShareholders;
 
-        // Reset vault state to allow new operations
         state = VaultState.Closed;
         depositsClosed = false;
         withdrawalSnapshotBalance = 0;
@@ -449,13 +513,6 @@ contract Vault is ReentrancyGuard, Ownable {
         emit VaultUpdated(_token1, _token2, _maxShareholders);
     }
 
-    /**
-     * @notice Manager can call any address (only in Running state)
-     * @dev Target cannot be token1 or token2 to prevent direct manipulation of vault balances.
-     * @param target Address to call
-     * @param data Calldata to send to target
-     * @return result Return data from the call
-     */
     function execute(address target, bytes calldata data)
         external
         onlyManager
@@ -474,15 +531,6 @@ contract Vault is ReentrancyGuard, Ownable {
         return returnData;
     }
 
-    /**
-     * @notice Approve a spender (e.g., DEX router) to spend vault's tokens
-     * @dev Only allows approving token1 or token2. This is separated from execute()
-     *      because execute() blocks direct calls to token contracts for safety.
-     *      The manager needs this to approve DEX routers before swapping.
-     * @param token The token to approve (must be token1 or token2)
-     * @param spender The address to approve (e.g., DEX router)
-     * @param amount The amount to approve
-     */
     function approveToken(address token, address spender, uint256 amount)
         external
         onlyManager
@@ -493,45 +541,19 @@ contract Vault is ReentrancyGuard, Ownable {
         }
         if (spender == address(0)) revert Vault__ZeroAddress();
 
-        IERC20 erc = IERC20(token);
-        // ERC20.approve should be used with care. To support tokens
-        // that require resetting allowance to zero before setting a new value,
-        // zero it first when necessary.
-        uint256 current = erc.allowance(address(this), spender);
-        if (current != 0) {
-            erc.approve(spender, 0);
-        }
-        erc.approve(spender, amount);
+        _safeApproveToken(token, spender, amount);
 
         emit TokenApproved(token, spender, amount);
     }
 
-    // ============ View Functions ============
-
-    /**
-     * @notice Get the number of shareholders
-     * @return Number of shareholders
-     */
     function getShareholderCount() external view returns (uint256) {
         return shareholders.length;
     }
 
-    /**
-     * @notice Get all shareholders
-     * @return Array of shareholder addresses
-     */
     function getShareholders() external view returns (address[] memory) {
         return shareholders;
     }
 
-    /**
-     * @notice Get current vault state
-     * @return _totalShares Total shares issued
-     * @return _totalBalance Total token1 balance
-     * @return _shareholderCount Number of shareholders
-     * @return _depositsClosed Whether deposits are closed
-     * @return _state Current vault phase
-     */
     function getVaultState()
         external
         view
@@ -543,27 +565,14 @@ contract Vault is ReentrancyGuard, Ownable {
             VaultState _state
         )
     {
-        return (totalShares, token1.balanceOf(address(this)), shareholders.length, depositsClosed, state);
+        return (totalShares, _getTokenBalance(address(token1)), shareholders.length, depositsClosed, state);
     }
 
-    /**
-     * @notice Calculate withdrawal amount for a given share amount (uses live balance, not snapshot)
-     * @param shareAmount Amount of shares to calculate for
-     * @return withdrawalAmount Amount of token1 that would be withdrawn
-     */
     function calculateWithdrawalAmount(uint256 shareAmount) external view returns (uint256 withdrawalAmount) {
         if (totalShares == 0) return 0;
-        return (shareAmount * token1.balanceOf(address(this))) / totalShares;
+        return (shareAmount * _getTokenBalance(address(token1))) / totalShares;
     }
 
-    // ============ Emergency Functions ============
-
-    /**
-     * @notice Emergency function to recover stuck tokens (only owner)
-     * @param _token Token to recover
-     * @param _to Address to send tokens to
-     * @param _amount Amount to recover
-     */
     function emergencyRecover(address _token, address _to, uint256 _amount) external onlyOwner {
         if (_to == address(0)) revert Vault__InvalidRecipient();
         if (_amount == 0) revert Vault__ZeroAmount();
@@ -571,6 +580,6 @@ contract Vault is ReentrancyGuard, Ownable {
             revert Vault__CannotRecoverVaultToken();
         }
 
-        IERC20(_token).safeTransfer(_to, _amount);
+        _safeTransferToken(_token, _to, _amount);
     }
 }
