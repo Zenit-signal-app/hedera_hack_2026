@@ -1,12 +1,18 @@
 #!/usr/bin/env node
 
 /**
- * Deploy Vault contract using @hashgraph/sdk with auto-association
+ * Deploy Vault contract with auto-association
+ * 
+ * This script:
+ * 1. Generates VaultConfig.sol from config/vaultConfig.json
+ * 2. Builds the contract with Forge
+ * 3. Deploys via Foundry (forge script)
+ * 4. Updates contract with auto-association via JS SDK
  * 
  * Usage:
+ *   node scripts/deploy-vault.js --network hedera_testnet
+ *   node scripts/deploy-vault.js --network hedera_local --max-shareholders 10
  *   node scripts/deploy-vault.js --network hedera_testnet --token1 0.0.8271323 --token2 0.0.8271324
- *   node scripts/deploy-vault.js --network hedera_local --token1 0.0.123 --token2 0.0.456 --max-shareholders 10
- *   node scripts/deploy-vault.js --network custom --rpc-url http://localhost:7546 --token1 0x... --token2 0x...
  * 
  * Required environment variables (in .env):
  *   OPERATOR_ID: Hedera account ID (e.g., 0.0.123456)
@@ -15,6 +21,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 const { parseArgs } = require('util');
 const dotenv = require('dotenv');
 
@@ -27,43 +34,41 @@ Usage:
 Options:
   --network <name>          Network: hedera_local, hedera_testnet, hedera_mainnet, custom (required)
   --rpc-url <url>          Custom RPC URL (required for custom network)
-  --token1 <token-id>      Token1 address (required, e.g., 0.0.8271323 or 0x...)
-  --token2 <token-id>      Token2 address (required)
-  --max-shareholders <n>  Max shareholders (default: 5)
+  --token1 <token-id>      Token1 address (auto-loaded from config/vaultConfig.json)
+  --token2 <token-id>      Token2 address (auto-loaded from config/vaultConfig.json)
+  --max-shareholders <n>  Max shareholders (auto-loaded from config, default: 5)
   --manager <address>     Manager address (default: OPERATOR_ID)
-  --gas <n>               Gas limit (default: 3000000)
-  --save-keys              Save private keys to deployment file (DANGEROUS)
+  --dry-run               Simulate deployment without broadcasting
+  --skip-build            Skip forge build
   --help                   Show this help
 
-Environment variables (in .env):
-  OPERATOR_ID              Hedera account ID (e.g., 0.0.123456)
-  OPERATOR_KEY             Private key (with 0x prefix)
-  HEDERA_LOCAL_RPC_URL   RPC URL for local network
-  HEDERA_TESTNET_RPC_URL RPC URL for testnet
-  HEDERA_MAINNET_RPC_URL RPC URL for mainnet
-  CUSTOM_RPC_URL          RPC URL for custom network
+Configuration:
+  Token addresses and max shareholders are loaded from config/vaultConfig.json
+  CLI arguments override config values when provided.
 `;
 
 const scriptDir = path.dirname(__filename);
 const projectDir = path.dirname(scriptDir);
 const envFile = path.join(projectDir, '.env');
+const configFile = path.join(projectDir, 'config', 'vaultConfig.json');
+const configGenScript = path.join(projectDir, 'config', 'genConfig.js');
 
 dotenv.config({ path: envFile });
 
-const {
-  Client,
-  PrivateKey,
-  AccountId,
-  ContractCreateFlow,
-  ContractFunctionParams,
-} = require('@hashgraph/sdk');
+function loadConfig(network) {
+  if (!fs.existsSync(configFile)) {
+    return null;
+  }
+  const config = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+  return config[network] || null;
+}
 
 function parsePrivateKey(keyStr) {
   try {
-    return PrivateKey.fromStringECDSA(keyStr);
+    return require('@hashgraph/sdk').PrivateKey.fromStringECDSA(keyStr);
   } catch (e) {
     try {
-      return PrivateKey.fromStringED25519(keyStr);
+      return require('@hashgraph/sdk').PrivateKey.fromStringED25519(keyStr);
     } catch (e2) {
       throw new Error(`Invalid private key format: ${keyStr}`);
     }
@@ -73,12 +78,10 @@ function parsePrivateKey(keyStr) {
 function parseAddress(addrStr) {
   if (!addrStr) return null;
   
-  // If it's already in hex format (0x...), use as-is
   if (addrStr.startsWith('0x')) {
     return addrStr;
   }
   
-  // If it's in Hedera format (0.0.xxxxx), convert to hex
   if (addrStr.includes('.')) {
     const parts = addrStr.split('.');
     if (parts.length === 3) {
@@ -87,7 +90,6 @@ function parseAddress(addrStr) {
     }
   }
   
-  // Treat as raw hex string
   return addrStr.startsWith('0x') ? addrStr : '0x' + addrStr;
 }
 
@@ -114,10 +116,10 @@ function loadEnv(network, rpcUrl) {
   const operatorKeyStr = process.env.OPERATOR_KEY;
 
   if (!operatorIdStr) {
-    throw new Error('OPERATOR_ID not set. Add to .env file (e.g., OPERATOR_ID=0.0.123456)');
+    throw new Error('OPERATOR_ID not set in .env');
   }
   if (!operatorKeyStr) {
-    throw new Error('OPERATOR_KEY not set. Add to .env file (e.g., OPERATOR_KEY=0x...)');
+    throw new Error('OPERATOR_KEY not set in .env');
   }
 
   if (network === 'custom') {
@@ -129,141 +131,127 @@ function loadEnv(network, rpcUrl) {
 
   const netConfig = NETWORKS[network];
   if (!netConfig) {
-    throw new Error(`Unknown network: ${network}. Use: ${Object.keys(NETWORKS).join(', ')}, custom`);
+    throw new Error(`Unknown network: ${network}`);
   }
 
   return { operatorIdStr, operatorKeyStr, rpcUrl: netConfig.rpcUrl };
 }
 
-function createClient(network, rpcUrl, operatorIdStr, operatorKeyStr) {
+function runCommand(cmd, description) {
+  console.log(`  Running: ${description}...`);
+  try {
+    execSync(cmd, { cwd: projectDir, stdio: 'pipe' });
+    return true;
+  } catch (e) {
+    console.error(`    Command failed: ${e.message}`);
+    if (e.stdout) console.error(e.stdout.toString());
+    if (e.stderr) console.error(e.stderr.toString());
+    return false;
+  }
+}
+
+function parseVaultYaml(yamlPath) {
+  if (!fs.existsSync(yamlPath)) {
+    throw new Error(`Deployment file not found: ${yamlPath}`);
+  }
+  
+  const content = fs.readFileSync(yamlPath, 'utf8');
+  const result = {
+    contractAddress: null,
+    transactionHash: null,
+    status: null,
+  };
+  
+  const addressMatch = content.match(/contract_address:\s*(0x[a-fA-F0-9]+)/);
+  if (addressMatch) {
+    result.contractAddress = addressMatch[1];
+  }
+  
+  const txMatch = content.match(/transaction_hash:\s*"?(0x[a-fA-F0-9]+)"?/);
+  if (txMatch) {
+    result.transactionHash = txMatch[1];
+  }
+  
+  const statusMatch = content.match(/status:\s*(\w+)/);
+  if (statusMatch) {
+    result.status = statusMatch[1];
+  }
+  
+  return result;
+}
+
+async function updateAutoAssociation(network, rpcUrl, contractAddress, operatorIdStr, operatorKeyStr) {
+  const { Client, PrivateKey, AccountId, ContractUpdateTransaction } = require('@hashgraph/sdk');
+  
   const operatorId = AccountId.fromString(operatorIdStr);
   const operatorKey = parsePrivateKey(operatorKeyStr);
 
   let client;
-
   if (network === 'custom') {
     client = Client.forNetwork({ [rpcUrl]: { chainId: 0 } });
-  } else if (network === 'hedera_local') {
-    client = Client.forNetwork({ [rpcUrl]: { chainId: NETWORKS.hedera_local.chainId } });
   } else if (network === 'hedera_testnet') {
     client = Client.forTestnet();
   } else if (network === 'hedera_mainnet') {
     client = Client.forMainnet();
+  } else {
+    client = Client.forNetwork({ [rpcUrl]: { chainId: NETWORKS[network]?.chainId || 298 } });
   }
 
   client.setOperator(operatorId, operatorKey);
-  client._operatorKey = operatorKey;
-  
-  return client;
-}
 
-function loadBytecode() {
-  const artifactPath = path.join(projectDir, 'out', 'Vault.sol', 'Vault.json');
-  
-  if (!fs.existsSync(artifactPath)) {
-    throw new Error(`Vault artifact not found at ${artifactPath}. Run 'forge build' first.`);
-  }
-  
-  const artifact = JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
-  
-  if (!artifact.bytecode || !artifact.bytecode.object) {
-    throw new Error('Invalid artifact: missing bytecode.object');
-  }
-  
-  return '0x' + artifact.bytecode.object;
-}
+  console.log(`  Updating contract with auto-association (-1)...`);
 
-async function deployVault(client, args, operatorId, operatorKey) {
-  const bytecode = loadBytecode();
-  
-  const token1Address = parseAddress(args.token1);
-  const token2Address = parseAddress(args.token2);
-  const managerAddress = args.manager ? parseAddress(args.manager) : parseAddress(operatorId.toString());
-  
-  const constructorParams = new ContractFunctionParams()
-    .addAddress(token1Address)
-    .addAddress(token2Address)
-    .addUint256(args.maxShareholders)
-    .addAddress(managerAddress);
-  
-  const contractCreateFlow = new ContractCreateFlow()
-    .setBytecode(bytecode)
-    .setGas(args.gas)
-    .setMaxAutomaticTokenAssociations(-1)
-    .setAdminKey(operatorKey)
-    .setConstructorParameters(constructorParams);
-  
-  const response = await contractCreateFlow.execute(client);
+  const tx = new ContractUpdateTransaction()
+    .setContractId(contractAddress)
+    .setMaxAutomaticTokenAssociations(-1);
+
+  const response = await tx.execute(client);
   const receipt = await response.getReceipt(client);
-  
-  if (!receipt.contractId) {
-    throw new Error(`Contract deployment failed. Status: ${receipt.status}`);
+
+  client.close();
+
+  if (receipt.status.toString() !== 'SUCCESS') {
+    throw new Error(`Update failed with status: ${receipt.status}`);
   }
-  
+
   return {
-    contractId: receipt.contractId,
-    transactionId: response.transactionId,
     transactionHash: response.transactionHash?.toString(),
   };
 }
 
-function saveDeployment(network, rpcUrl, deployment, args, adminKey) {
-  const deployDir = path.join(projectDir, 'deploy', network);
+function updateVaultYaml(network, rpcUrl, deployment, args) {
+  const deployFile = path.join(projectDir, 'deploy', network, 'vault.yaml');
   
-  if (!fs.existsSync(deployDir)) {
-    fs.mkdirSync(deployDir, { recursive: true });
+  if (!fs.existsSync(deployFile)) {
+    return;
   }
 
-  const deployFile = path.join(deployDir, 'vault.yaml');
-  const timestamp = new Date().toISOString();
+  let content = fs.readFileSync(deployFile, 'utf8');
   
-  const token1Hex = parseAddress(args.token1);
-  const token2Hex = parseAddress(args.token2);
-  const managerHex = args.manager ? parseAddress(args.manager) : parseAddress(deployment.operatorIdStr);
+  // Update or add max_automatic_token_associations
+  if (content.includes('max_automatic_token_associations:')) {
+    content = content.replace(
+      /max_automatic_token_associations:.*/,
+      `max_automatic_token_associations: -1`
+    );
+  } else {
+    content = content.replace(
+      /deployment:/,
+      `deployment:
+  max_automatic_token_associations: -1`
+    );
+  }
   
-  const yamlContent = `# Vault Deployment Info
-# Generated: ${timestamp}
+  // Add update transaction hash if available
+  if (deployment.updateTransactionHash) {
+    content = content.replace(
+      /timestamp:.*/,
+      `timestamp: ${new Date().toISOString()}
+  update_transaction_hash: "${deployment.updateTransactionHash}"`
+    );
+  }
 
-network:
-  name: ${network}
-  chain_id: ${NETWORKS[network]?.chainId || 0}
-  chain_name: ${NETWORKS[network]?.name || 'Custom Network'}
-
-deployment:
-  status: success
-  exit_code: 0
-  contract_address: ${deployment.contractAddress}
-  transaction_hash: "${deployment.transactionHash}"
-  timestamp: ${timestamp}
-  max_automatic_token_associations: -1
-
-manager:
-  address: ${managerHex}
-
-tokens:
-  token1: ${token1Hex}
-  token2: ${token2Hex}
-
-configuration:
-  max_shareholders: ${args.maxShareholders}
-  constructor_args:
-    token1: ${token1Hex}
-    token2: ${token2Hex}
-    max_shareholders: ${args.maxShareholders}
-    manager: ${managerHex}
-
-rpc:
-  url: ${rpcUrl}
-
-${args.saveKeys ? `keys:
-  admin_key: ${adminKey.toString()}
-` : `keys:
-  admin_key: [REDACTED]
-`}`;
-  
-  fs.writeFileSync(deployFile, yamlContent);
-
-  return deployFile;
+  fs.writeFileSync(deployFile, content);
 }
 
 async function main() {
@@ -273,65 +261,51 @@ async function main() {
   }
 
   const options = {
-    network: {
-      type: 'string',
-    },
-    'rpc-url': {
-      type: 'string',
-    },
-    token1: {
-      type: 'string',
-    },
-    token2: {
-      type: 'string',
-    },
-    'max-shareholders': {
-      type: 'string',
-      default: '5',
-    },
-    manager: {
-      type: 'string',
-    },
-    gas: {
-      type: 'string',
-      default: '3000000',
-    },
-    'save-keys': {
-      type: 'boolean',
-      default: false,
-    },
+    network: { type: 'string' },
+    'rpc-url': { type: 'string' },
+    token1: { type: 'string' },
+    token2: { type: 'string' },
+    'max-shareholders': { type: 'string', default: '5' },
+    manager: { type: 'string' },
+    'dry-run': { type: 'boolean', default: false },
+    'skip-build': { type: 'boolean', default: false },
   };
 
   const { values } = parseArgs({ options, allowPositionals: false });
 
   if (!values.network) {
     console.error('Error: --network is required');
-    console.error('Usage: node scripts/deploy-vault.js --network <network> --token1 <addr> --token2 <addr>');
     console.error('Run with --help for more options');
     process.exit(1);
   }
 
-  if (!values.token1 || !values.token2) {
-    console.error('Error: --token1 and --token2 are required');
-    console.error('Usage: node scripts/deploy-vault.js --network <network> --token1 <addr> --token2 <addr>');
-    console.error('Run with --help for more options');
-    process.exit(1);
-  }
+  const network = values.network;
+  const config = loadConfig(network);
 
   const args = {
-    network: values.network,
+    network,
     rpcUrl: values['rpc-url'],
-    token1: values.token1,
-    token2: values.token2,
-    maxShareholders: parseInt(values['max-shareholders'], 10),
+    token1: values.token1 || (config ? config.token1 : null),
+    token2: values.token2 || (config ? config.token2 : null),
+    maxShareholders: parseInt(values['max-shareholders'], 10) || (config ? config.maxShareholders : 5),
     manager: values.manager,
-    gas: parseInt(values.gas, 10),
-    saveKeys: values['save-keys'],
+    dryRun: values['dry-run'],
+    skipBuild: values['skip-build'],
   };
+
+  if (!args.token1 || args.token1 === '0x0000000000000000000000000000000000000000') {
+    console.error(`Error: --token1 is required for ${network}`);
+    process.exit(1);
+  }
+
+  if (!args.token2 || args.token2 === '0x0000000000000000000000000000000000000000') {
+    console.error(`Error: --token2 is required for ${network}`);
+    process.exit(1);
+  }
 
   console.log('');
   console.log('='.repeat(50));
-  console.log('  Vault Deployment (with Auto-Association)');
+  console.log('  Vault Deployment with Auto-Association');
   console.log('='.repeat(50));
   console.log('');
 
@@ -348,57 +322,106 @@ async function main() {
   console.log(`Token1:               ${args.token1}`);
   console.log(`Token2:               ${args.token2}`);
   console.log(`Max Shareholders:     ${args.maxShareholders}`);
-  console.log(`Manager:              ${args.manager || 'OPERATOR_ID (default)'} `);
-  console.log(`Gas Limit:            ${args.gas}`);
-  console.log(`Auto-Associations:    -1 (unlimited)`);
+  console.log(`Dry Run:              ${args.dryRun}`);
   console.log('');
 
-  let client;
-  let operatorKey;
-  let operatorIdStr;
-  try {
-    client = createClient(args.network, env.rpcUrl, env.operatorIdStr, env.operatorKeyStr);
-    operatorIdStr = env.operatorIdStr;
-    operatorKey = client._operatorKey;
-
-    console.log('Deploying Vault contract...');
-    
-    const deployment = await deployVault(client, args, client.operatorAccountId, operatorKey);
-    
-    const contractAddress = deployment.contractId.toAddress();
-    
-    console.log('');
-    console.log(`Contract Address:    ${contractAddress}`);
-    console.log(`Transaction Hash:    ${deployment.transactionHash}`);
-    console.log('');
-
-    const deployFile = saveDeployment(
-      args.network,
-      env.rpcUrl,
-      {
-        contractId: deployment.contractId,
-        contractAddress: contractAddress,
-        transactionHash: deployment.transactionHash,
-        operatorIdStr: operatorIdStr,
-      },
-      args,
-      operatorKey
-    );
-
-    console.log(`Deployment saved:    ${deployFile}`);
-    console.log('');
-    console.log('='.repeat(50));
-    console.log('  Success! Vault deployed with auto-association');
-    console.log('='.repeat(50));
-
-    client.close();
-  } catch (e) {
-    console.error(`Error: ${e.message}`);
-    if (e.stack) {
-      console.error(e.stack);
-    }
+  // Step 1: Generate VaultConfig.sol
+  console.log('Step 1: Generate VaultConfig.sol');
+  if (!fs.existsSync(configGenScript)) {
+    console.error('Error: config/genConfig.js not found');
     process.exit(1);
   }
+  
+  if (!runCommand(`node config/genConfig.js ${args.network}`, 'Generate config')) {
+    process.exit(1);
+  }
+  console.log('');
+
+  // Step 2: Build with Forge
+  if (!args.skipBuild) {
+    console.log('Step 2: Build contract with Forge');
+    if (!runCommand('forge build', 'Forge build')) {
+      process.exit(1);
+    }
+    console.log('');
+  }
+
+  // Step 3: Deploy via Foundry
+  console.log('Step 3: Deploy via Foundry');
+  const forgeCmd = args.dryRun
+    ? `forge script script/Vault.s.sol:VaultScript --rpc-url ${env.rpcUrl}`
+    : `forge script script/Vault.s.sol:VaultScript --rpc-url ${env.rpcUrl} --broadcast`;
+  
+  if (!runCommand(forgeCmd, args.dryRun ? 'Forge dry-run' : 'Forge broadcast')) {
+    process.exit(1);
+  }
+  console.log('');
+
+  // Step 4: Parse deployment output
+  console.log('Step 4: Parse deployment output');
+  const vaultYamlPath = path.join(projectDir, 'deploy', args.network, 'vault.yaml');
+  let deployment;
+  try {
+    deployment = parseVaultYaml(vaultYamlPath);
+    console.log(`  Contract Address:   ${deployment.contractAddress}`);
+    console.log(`  Transaction Hash:   ${deployment.transactionHash}`);
+    console.log(`  Status:            ${deployment.status}`);
+  } catch (e) {
+    console.error(`  Error parsing deployment: ${e.message}`);
+    process.exit(1);
+  }
+  
+  if (deployment.status !== 'success') {
+    console.error('  Deployment failed!');
+    process.exit(1);
+  }
+  
+  if (!deployment.contractAddress) {
+    console.error('  Could not find contract address in deployment');
+    process.exit(1);
+  }
+  console.log('');
+
+  if (args.dryRun) {
+    console.log('Dry run complete - skipping auto-association update');
+    console.log('');
+    console.log('='.repeat(50));
+    console.log('  Success! (dry-run)');
+    console.log('='.repeat(50));
+    process.exit(0);
+  }
+
+  // Step 5: Update with auto-association
+  console.log('Step 5: Update contract with auto-association');
+  try {
+    const updateResult = await updateAutoAssociation(
+      args.network,
+      env.rpcUrl,
+      deployment.contractAddress,
+      env.operatorIdStr,
+      env.operatorKeyStr
+    );
+    
+    deployment.updateTransactionHash = updateResult.transactionHash;
+    console.log(`  Update Tx Hash:     ${updateResult.transactionHash}`);
+  } catch (e) {
+    console.error(`  Warning: Could not update auto-association: ${e.message}`);
+    console.error('  You can update manually later with:');
+    console.error(`    node scripts/update-vault-auto-association.js --network ${args.network} --contract ${deployment.contractAddress}`);
+  }
+  console.log('');
+
+  // Update vault.yaml with auto-association info
+  updateVaultYaml(args.network, env.rpcUrl, deployment, args);
+
+  console.log('='.repeat(50));
+  console.log('  Success! Vault deployed with auto-association');
+  console.log('='.repeat(50));
+  console.log('');
+  console.log(`Deployment file: ${vaultYamlPath}`);
 }
 
-main();
+main().catch(e => {
+  console.error(`Error: ${e.message}`);
+  process.exit(1);
+});

@@ -47,7 +47,9 @@ The Vault supports both HTS (native Hedera tokens) and ERC20 tokens seamlessly. 
 
 ### Association
 
-- Deposits assume tokens are already associated with the vault
+The Vault contract is deployed with unlimited automatic token associations (`maxAutomaticTokenAssociations: -1`), meaning users can send any HTS token directly to the vault without requiring a separate association transaction.
+
+- Deposits assume tokens are already associated (auto-associated by default)
 - `userWithdraw()` checks if the account is associated with HTS tokens before withdrawal
 
 ## Prerequisites
@@ -108,7 +110,48 @@ You can also find interface ABIs in `out/I*.json` for interaction scripts.
 
 Get testnet HBAR: https://portal.hedera.com/faucet
 
-## Configuration
+## Deployment
+
+### Option 1: JavaScript SDK (Recommended - with Auto-Association)
+
+The recommended way to deploy with automatic token associations enabled:
+
+```bash
+# Deploy to testnet (auto-loads config from vaultConfig.json)
+node scripts/deploy-vault.js --network hedera_testnet
+
+# Deploy with options
+node scripts/deploy-vault.js --network hedera_testnet --max-shareholders 10
+
+# Deploy to local node
+node scripts/deploy-vault.js --network hedera_local
+
+# Dry-run to test without broadcasting
+node scripts/deploy-vault.js --network hedera_testnet --dry-run
+```
+
+This script:
+1. Generates `VaultConfig.sol` from `config/vaultConfig.json`
+2. Builds the contract with Forge
+3. Deploys via Foundry
+4. Updates the contract with unlimited auto-associations (`-1`)
+
+### Option 2: Foundry Only
+
+Deploy directly with Foundry (no auto-association):
+
+```bash
+# Generate config for testnet
+node config/genConfig.js hedera_testnet
+
+# Build
+forge build
+
+# Deploy
+forge script script/Vault.s.sol:VaultScript --rpc-url https://testnet.hashio.io/api --broadcast
+```
+
+### Configuration
 
 Edit `config/vaultConfig.json` and regenerate:
 

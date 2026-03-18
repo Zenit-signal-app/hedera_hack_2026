@@ -49,8 +49,8 @@ forge clean            # Clear build artifacts
 ```
 src/           - Main contract files (Vault.sol, VaultConfig.sol)
 script/        - Forge deployment scripts (Vault.s.sol)
-scripts/       - Shell helper scripts (local node, deploy-custom) — git-ignored
-test/          - Test files (currently empty; use forge test when added)
+scripts/       - JavaScript deployment scripts (deploy-vault.js, create-hts-token.js)
+test/          - Test files
 config/        - Config generator (genConfig.js, vaultConfig.json)
 docs/          - Documentation (currently empty)
 ```
@@ -167,15 +167,21 @@ The `custom` network also supports optional `chainId` and `rpcUrl` metadata fiel
 cp .env.example .env
 # Edit .env with your OPERATOR_KEY and RPC URLs
 
-# Standard networks
-forge script script/Vault.s.sol:VaultScript --rpc-url <network> --broadcast
+# Deploy with auto-association (recommended)
+node scripts/deploy-vault.js --network hedera_testnet
 
-# Custom network (uses deploy-custom.sh with balance check + confirmation)
-bash scripts/deploy-custom.sh
+# Deploy to local
+node scripts/deploy-vault.js --network hedera_local
 
-# Local network via helper script
-bash scripts/deploy-custom.sh --network hedera_local
+# Dry-run to test
+node scripts/deploy-vault.js --network hedera_testnet --dry-run
 ```
+
+The script:
+1. Generates `VaultConfig.sol` from `config/vaultConfig.json`
+2. Builds with Forge
+3. Deploys via Foundry
+4. Updates contract with unlimited auto-associations (`-1`)
 
 `scripts/deploy-custom.sh` writes deployment artifacts to:
 
@@ -191,48 +197,36 @@ so failed deployments are auditable/debuggable.
 
 ### Token Deployment
 
-Deploy ERC20 tokens (USDC, TOKEN_A) to a Hedera network:
+Deploy HTS fungible tokens using the JavaScript SDK:
 
 ```bash
-# Deploy tokens to local node (uses OPERATOR_KEY from .env)
-bash scripts/deploy-token.sh
+# Deploy token to testnet
+node scripts/create-hts-token.js \
+  --network hedera_testnet \
+  --name "My Token" \
+  --symbol MTK \
+  --initial-supply 1000000
 
-# Deploy to local with explicit RPC
-bash scripts/deploy-token.sh hedera_local http://localhost:7546
-
-# Deploy to testnet
-bash scripts/deploy-token.sh hedera_testnet https://testnet.hashio.io/api
+# Deploy to local
+node scripts/create-hts-token.js \
+  --network hedera_local \
+  --name "Test Token" \
+  --symbol TT \
+  --decimals 6 \
+  --initial-supply 1000000
 ```
 
-The script deploys:
-- **USDC**: 6 decimals, 1,000,000 initial supply
-- **TOKEN_A**: 18 decimals, 1,000,000 initial supply
-
-Deployment artifacts are written to `deploy/<network>/token.yaml`.
+Deployment artifacts are written to `deploy/<network>/hts-token.json`.
 
 ### Local Development Node (Hiero)
 To run a local Hedera dev environment using Hiero Local Node:
 
 ```bash
-# One-time setup: clone hiero-local-node and install dependencies
-bash scripts/setup-local-node.sh
+# Start local node (requires Docker)
+docker compose up -d
 
-# Start node (spins up Docker containers)
-bash scripts/start-local-node.sh
-
-# Stop when done
-bash scripts/stop-local-node.sh
+# JSON-RPC endpoint: http://localhost:7546
 ```
-
-The Hiero Local Node includes:
-- Consensus Node, Mirror Node and explorer
-- JSON-RPC Relay at `http://localhost:7546`
-- Block Node, Grafana UI, and Prometheus UI
-
-The `start-local-node.sh` script:
-- Generates a single `OPERATOR_KEY` in `.env` (used for all networks)
-- Starts all Hiero containers via `npm run start`
-- JSON-RPC endpoint: `http://localhost:7546`
 
 Note: `forge test` runs on Anvil, NOT a Hedera node. For Hedera-specific testing, deploy to the local dev node.
 
