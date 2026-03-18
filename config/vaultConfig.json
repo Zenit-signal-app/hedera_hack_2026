@@ -5,8 +5,8 @@
     "maxShareholders": 5
   },
   "hedera_testnet": {
-    "token1": "0x0000000000000000000000000000000000000000",
-    "token2": "0x0000000000000000000000000000000000000000",
+    "token1": "0x323e0DB5F8149898dCF3Bba0bc0D2981D967Dda5",
+    "token2": "0x992c980E9F6e76Ca231A20863e274B19dd792b3A",
     "maxShareholders": 5,
     "chainId": 296,
     "rpcUrl": "https://testnet.hashio.io/api"

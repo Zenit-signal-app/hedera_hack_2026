@@ -1,0 +1,15 @@
+# Token Deployment
+network:
+  name: hedera_testnet
+  rpc_url: https://testnet.hashio.io/api
+tokens:
+  - name: USD Coin
+    symbol: USDC
+    address: 0x323e0DB5F8149898dCF3Bba0bc0D2981D967Dda5
+    decimals: 6
+    initial_supply: 1000000000000
+  - name: Token A
+    symbol: TOKEN_A
+    address: 0x992c980E9F6e76Ca231A20863e274B19dd792b3A
+    decimals: 18
+    initial_supply: 2003764205206896640

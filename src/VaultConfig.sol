@@ -11,7 +11,7 @@ library VaultConfig {
     // Current Network Configuration (hedera_testnet)
     // Target Chain ID: 296
     // Target RPC URL: https://testnet.hashio.io/api
-    address constant TOKEN1 = address(0x0000000000000000000000000000000000000000);
-    address constant TOKEN2 = address(0x0000000000000000000000000000000000000000);
+    address constant TOKEN1 = address(0x323e0DB5F8149898dCF3Bba0bc0D2981D967Dda5);
+    address constant TOKEN2 = address(0x992c980E9F6e76Ca231A20863e274B19dd792b3A);
     uint256 constant MAX_SHAREHOLDERS = 5;
 }

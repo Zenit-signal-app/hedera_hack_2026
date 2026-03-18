@@ -180,6 +180,24 @@ def cmd_ss58_decode(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_show_address(args: argparse.Namespace) -> None:
+    priv_key = get_operator_private_key(args.private_key)
+    # Use Web3.eth.account directly to avoid needing a connected RPC provider
+    from eth_account import Account
+    account = Account.from_key(priv_key)
+    print(
+        json.dumps(
+            {
+                "address": account.address,
+                "private_key_used": priv_key[:6] + "..." + priv_key[-4:]
+                if priv_key
+                else "None",
+            },
+            indent=2,
+        )
+    )
+
+
 def cmd_chain_info(args: argparse.Namespace) -> None:
     rpc_url = get_rpc_url(args.network, args.rpc_url)
     w3 = get_web3(rpc_url)
@@ -789,6 +807,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     add_network_args(p_chain_info)
     p_chain_info.set_defaults(func=cmd_chain_info)
+
+    p_show_address = subparsers.add_parser(
+        "show-address", help="Show EVM address for a private key"
+    )
+    p_show_address.add_argument(
+        "--private-key", help="Private key (defaults to OPERATOR_KEY in .env)"
+    )
+    p_show_address.set_defaults(func=cmd_show_address)
 
     p_check_balance = subparsers.add_parser(
         "check-balance", help="Check native and token balances"

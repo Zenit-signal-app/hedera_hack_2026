@@ -1,0 +1,20 @@
+No files changed, compilation skipped
+Script ran successfully.
+
+== Logs ==
+  Vault deployed to: 0xc16050a8bf86A002E61473ddaD8c1e87Bd62D986
+  Token1 address: 0x323e0DB5F8149898dCF3Bba0bc0D2981D967Dda5
+  Token2 address: 0x992c980E9F6e76Ca231A20863e274B19dd792b3A
+  Max shareholders: 5
+  Manager address: 0xE24B0E44B6a83153eEF2ce3E952cdfb369C37060
+
+SKIPPING ON CHAIN SIMULATION.
+
+
+==========================
+
+ONCHAIN EXECUTION COMPLETE & SUCCESSFUL.
+
+Transactions saved to: /home/loc/Desktop/work/code/zenit/hedera_vault/broadcast/Vault.s.sol/296/run-latest.json
+
+Sensitive values saved to: /home/loc/Desktop/work/code/zenit/hedera_vault/cache/Vault.s.sol/296/run-latest.json

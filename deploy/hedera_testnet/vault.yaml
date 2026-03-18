@@ -1,0 +1,29 @@
+# Vault Deployment Info
+# Generated: 2026-03-18T03:03:24Z
+
+network:
+  name: hedera_testnet
+  chain_id: 296
+  chain_name: Hedera Testnet
+
+deployment:
+  status: success
+  exit_code: 0
+  contract_address: 0xc16050a8bf86A002E61473ddaD8c1e87Bd62D986
+  transaction_hash: "0x63982dfb13299a4cd7e378f811674fb0a67fd06bee1a3f9a681c04e8e720e490"
+  timestamp: 2026-03-18T03:03:24Z
+  block_number: 32877654
+  raw_log_file: /home/loc/Desktop/work/code/zenit/hedera_vault/deploy/hedera_testnet/vault.deploy.log
+
+manager:
+  address: 0xE24B0E44B6a83153eEF2ce3E952cdfb369C37060
+
+tokens:
+  token1: 0x323e0DB5F8149898dCF3Bba0bc0D2981D967Dda5
+  token2: 0x992c980E9F6e76Ca231A20863e274B19dd792b3A
+
+configuration:
+  max_shareholders: 5
+
+rpc:
+  url: https://testnet.hashio.io/api
