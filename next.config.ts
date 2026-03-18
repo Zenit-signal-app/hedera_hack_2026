@@ -9,7 +9,8 @@ const nextConfig: NextConfig = {
 			"minswap.org",
 			"api.seerbot.io",
 			"cryptologos.cc",
-			"localhost"
+			"localhost",
+			"zenit-api.seerbot.io",
 		],
 		qualities: [25, 50, 75, 100],
 	},

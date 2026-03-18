@@ -31,6 +31,13 @@ export function middleware(request: NextRequest) {
 		});
 	}
 
+	// Always redirect to /asset-vault
+	if (currentPath !== "/asset-vault" && !currentPath.startsWith("/asset-vault/")) {
+		const url = request.nextUrl.clone();
+		url.pathname = "/asset-vault";
+		return NextResponse.redirect(url);
+	}
+
 	return NextResponse.next({
 		request: {
 			headers: requestHeaders,
@@ -40,6 +47,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
 	matcher: [
-		"/((?!api|_next/static|_next/image|favicon.ico|manifest.json).*)",
+		"/((?!api|_next/static|_next/image|favicon.ico|manifest.json|images|icons|fonts|static|messages).*)",
 	],
 };

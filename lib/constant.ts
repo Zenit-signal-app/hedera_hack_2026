@@ -3,38 +3,60 @@ export const IS_TESTNET = NETWORK_ENV === "testnet";
 
 export const NETWORK_CONFIG = {
 	solana: {
-		rpc: process.env.NEXT_PUBLIC_SOLANA_RPC || (IS_TESTNET ? "https://api.devnet.solana.com" : "https://api.mainnet-beta.solana.com"),
-		explorer: IS_TESTNET ? "https://solscan.io/tx/" : "https://solscan.io/tx/", // For Solana explorer, we will append ?cluster=devnet in the service wrapper
+		rpc:
+			process.env.NEXT_PUBLIC_SOLANA_RPC ||
+			(IS_TESTNET
+				? "https://api.devnet.solana.com"
+				: "https://api.mainnet-beta.solana.com"),
+		explorer: IS_TESTNET
+			? "https://solscan.io/tx/"
+			: "https://solscan.io/tx/", // For Solana explorer, we will append ?cluster=devnet in the service wrapper
 	},
 	polkadot: {
-		rpc: process.env.NEXT_PUBLIC_POLKADOT_RPC || (IS_TESTNET ? "wss://westend-rpc.polkadot.io" : "wss://rpc.polkadot.io"),
-		rpc_http: process.env.NEXT_PUBLIC_POLKADOT_RPC_HTTP || (IS_TESTNET ? "https://westend-rpc.polkadot.io" : "https://rpc.polkadot.io"),
-		explorer: IS_TESTNET ? "https://westend.subscan.io/extrinsic/" : "https://polkadot.subscan.io/extrinsic/",
+		rpc:
+			process.env.NEXT_PUBLIC_POLKADOT_RPC ||
+			(IS_TESTNET
+				? "wss://westend-rpc.polkadot.io"
+				: "wss://rpc.polkadot.io"),
+		rpc_http:
+			process.env.NEXT_PUBLIC_POLKADOT_RPC_HTTP ||
+			(IS_TESTNET
+				? "https://westend-rpc.polkadot.io"
+				: "https://rpc.polkadot.io"),
+		explorer: IS_TESTNET
+			? "https://westend.subscan.io/extrinsic/"
+			: "https://polkadot.subscan.io/extrinsic/",
 	},
 	hedera: {
-		rpc: process.env.NEXT_PUBLIC_HEDERA_RPC || (IS_TESTNET ? "https://testnet.mirrornode.hedera.com" : "https://mainnet-public.mirrornode.hedera.com"),
-		explorer: IS_TESTNET ? "https://hashscan.io/testnet/transaction/" : "https://hashscan.io/mainnet/transaction/",
-	}
+		rpc:
+			process.env.NEXT_PUBLIC_HEDERA_RPC ||
+			(IS_TESTNET
+				? "https://testnet.mirrornode.hedera.com"
+				: "https://mainnet-public.mirrornode.hedera.com"),
+		explorer: IS_TESTNET
+			? "https://hashscan.io/testnet/transaction/"
+			: "https://hashscan.io/mainnet/transaction/",
+	},
 };
 
 export const listNavigators = [
-	{
-		text: "Analysis",
-		url: "/analysis",
-	},
+	// {
+	// 	text: "Analysis",
+	// 	url: "/analysis",
+	// },
 
 	{
 		text: "Asset Vault",
 		url: "/asset-vault",
 	},
-	{
-		text: "AI Assistant",
-		url: "/ai-assistant",
-	},
-	{
-		text: "PortFolio",
-		url: "/portfolio",
-	},
+	// {
+	// 	text: "AI Assistant",
+	// 	url: "/ai-assistant",
+	// },
+	// {
+	// 	text: "PortFolio",
+	// 	url: "/portfolio",
+	// },
 ];
 
 // ─── Multi-Chain Support ───────────────────────────────────────────────────────
@@ -227,5 +249,5 @@ export const DEFAULT_CHAIN_TOKENS: Record<ChainId, DefaultChainToken[]> = {
 
 // Flat list of all supported wallets across chains (used by ModalConnectWallet)
 export const SUPPORTED_WALLETS = CHAIN_DEFINITIONS.flatMap((chain) =>
-	chain.wallets.map((w) => ({ ...w, chainId: chain.id }))
+	chain.wallets.map((w) => ({ ...w, chainId: chain.id })),
 );

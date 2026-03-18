@@ -335,6 +335,10 @@ body {
 	overflow-x: hidden;
 }
 
+.background-container {
+	position: relative;
+}
+
 .background-container::before {
 	content: "";
 	background-image: url("/images/background_main.png");

@@ -12,27 +12,27 @@ import Link from "next/link";
 import { useIsMobile } from "@/src/components/hooks/useIsMobile";
 
 const listNavigators = [
-	{
-		logo: <AnalysisIcon1 size={32} />,
-		text: "Analysis",
-		url: "/analysis",
-	},
+	// {
+	// 	logo: <AnalysisIcon1 size={32} />,
+	// 	text: "Analysis",
+	// 	url: "/analysis",
+	// },
 
 	{
 		logo: <VaultIcon size={32} />,
 		text: "Asset Vault",
 		url: "/asset-vault",
 	},
-	{
-		logo: <AIAsistantIcon size={32} />,
-		text: "AI Assistant",
-		url: "/ai-assistant",
-	},
-	{
-		logo: <PortfolioIcon size={32} />,
-		text: "PortFolio",
-		url: "/portfolio",
-	},
+	// {
+	// 	logo: <AIAsistantIcon size={32} />,
+	// 	text: "AI Assistant",
+	// 	url: "/ai-assistant",
+	// },
+	// {
+	// 	logo: <PortfolioIcon size={32} />,
+	// 	text: "PortFolio",
+	// 	url: "/portfolio",
+	// },
 ];
 const Navigator = () => {
 	const pathname = usePathname();
@@ -41,7 +41,10 @@ const Navigator = () => {
 		<div className="flex w-full lg:h-full h-max flex-col gap-y-4 items-start py-4 px-3 bg-primary-950">
 			{isMobile ? null : (
 				<>
-					<Link href="/" className="flex items-center gap-x-1 text-2xl font-bold font-quicksand">
+					<Link
+						href="/"
+						className="flex items-center gap-x-1 text-2xl font-bold font-quicksand"
+					>
 						<Image
 							className=""
 							width={36}
@@ -69,7 +72,7 @@ const Navigator = () => {
 								isActive
 									? "bg-black text-white rounded-md"
 									: "text-dark-gray-200",
-								"flex items-center gap-x-3 w-full py-2"
+								"flex items-center gap-x-3 w-full py-2 lg:px-4",
 							)}
 							href={item.url}
 						>
