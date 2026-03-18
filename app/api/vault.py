@@ -531,19 +531,10 @@ def get_vault_values(
     # Build query for vault_balance_snapshots
     base_query = f"""
         select vbs.timestamp, vbs.{closing_price_column} as closing_price 
-        from (
-        select case when closed_time is not null and closed_time < EXTRACT(EPOCH FROM now())::BIGINT then closed_time
-                else EXTRACT(EPOCH FROM now())::BIGINT
-            end end_time
-        from {SCHEMA}.vault
-        where id = '{id}'
-            AND chain_id = {chain_id}
-        ) v
-        JOIN {SCHEMA}.vault_balance_snapshots vbs on vbs.vault_id = '{id}'
+         from {SCHEMA}.vault_balance_snapshots vbs
+         where vbs.vault_id = '{id}'
             AND vbs.chain_id = {chain_id}
-            and vbs.timestamp < v.end_time
-            and vbs.timestamp > v.end_time - {count_back} * {resolution_seconds}
-            and vbs.timestamp % {resolution_seconds} = 0
+            and mod(vbs.timestamp, {resolution_seconds}) = 0
         ORDER BY timestamp ASC
     """
     vault_exists = _fetch_vault_item(db, vault_id=id, chain_id=chain_id)
