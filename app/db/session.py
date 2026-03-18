@@ -38,6 +38,7 @@ def get_tables(schema: str = settings.SCHEMA_1) -> dict:
     
     return {
     'p5m': schema+'coin_prices_5m',
+    'p30m': schema+'coin_prices_30m',
     'p1h': schema+'coin_prices_1h',
     'f5m': schema+'f_coin_signal_5m',
     'f10m': schema+'f_coin_signal_10m',
