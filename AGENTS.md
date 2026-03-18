@@ -240,6 +240,28 @@ Note: `forge test` runs on Anvil, NOT a Hedera node. For Hedera-specific testing
 
 ## Related Documentation
 
+### HTS Token Support
+
+The Vault uses the Hedera Token Service (HTS) precompile (`0x167`) to interact with native Hedera tokens. Key implementation details:
+
+- **IHederaTokenService interface**: Defined in `src/Vault.sol` for HTS precompile calls
+- **HTS detection**: `_isHts()` checks if token has empty bytecode (HTS tokens have no EVM code)
+- **Helper functions**:
+  - `_htsSafeTransfer()` - transfer tokens via HTS
+  - `_htsSafeTransferFrom()` - transferFrom via HTS
+  - `_htsSafeApprove()` - approve via HTS
+  - `_htsGetBalance()` - get HTS token balance
+  - `_safeTransferToken()` / `_safeTransferFromToken()` / `_safeApproveToken()` - unified wrappers
+- **int64 amounts**: HTS requires `int64` - cast from `uint256` with inline comment explaining safety
+- **Response codes**: HTS returns `int256` response code (22 = SUCCESS) - must check manually
+
+### Association Handling
+
+- Deposit functions assume vault is already associated with tokens
+- `userWithdraw()` calls `_checkAssociation()` to verify account is associated with HTS tokens
+
+---
+
 - `.agents/skills/solidity-development/SKILL.md` - Development patterns
 - `.agents/skills/solidity-security/SKILL.md` - Security best practices
 - `README.md` - Project overview

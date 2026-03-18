@@ -32,6 +32,23 @@ State transitions are triggered manually by the owner or manager via `stateToDep
 - **Configurable**: Token addresses and max shareholders via config files
 - **Emergency reconfiguration**: Owner/manager can update vault config at any state
 - **Security**: ReentrancyGuard, SafeERC20, access control, CEI pattern
+- **HTS Token Support**: Native support for both HTS (Hedera Token Service) and ERC20 tokens
+
+## HTS Token Support
+
+The Vault supports both HTS (native Hedera tokens) and ERC20 tokens seamlessly. Token type is auto-detected based on bytecode size (HTS tokens have no EVM bytecode).
+
+### Key Implementation Details
+
+- **HTS Detection**: Tokens with empty bytecode are treated as HTS
+- **Unified API**: All token operations use wrapper functions that handle both types
+- **int64 Conversion**: HTS requires `int64` amounts (handled automatically)
+- **Response Codes**: HTS returns response codes instead of reverting (handled with `HTS_SUCCESS = 22`)
+
+### Association
+
+- Deposits assume tokens are already associated with the vault
+- `userWithdraw()` checks if the account is associated with HTS tokens before withdrawal
 
 ## Prerequisites
 
