@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import Loader from "@/components/common/loading/loader";
 import { useWalletStore } from "@/store/walletStore";
 import { getServerChainId } from "@/services/chainServices";
+import { CHAIN_NATIVE_SYMBOL } from "@/lib/vault-transaction";
+import type { ChainId } from "@/lib/constant";
 
 interface RedeemModalProps {
 	isOpen: boolean;
@@ -31,6 +33,7 @@ const RedeemModal = ({
 	const [redeemAmount, setRedeemAmount] = useState(0);
 	const [isLoading, setIsLoading] = useState(false);
 	const { activeChain } = useWalletStore();
+	const nativeSymbol = activeChain ? CHAIN_NATIVE_SYMBOL[activeChain as ChainId] : "ADA";
 
 	const safeMaxAmount = useMemo(() => {
 		return Number.isFinite(maxAmount) ? Math.max(maxAmount, 0) : 0;
@@ -67,13 +70,13 @@ const RedeemModal = ({
 		}
 
 		if (redeemAmount < safeMinAmount) {
-			toast.error(`Minimum withdraw is ${safeMinAmount} ADA`);
+			toast.error(`Minimum withdraw is ${safeMinAmount} ${nativeSymbol}`);
 			return;
 		}
 
 		if (redeemAmount > safeMaxAmount) {
 			toast.error(
-				`Redeem amount exceeds your deposit value (Max: ${safeMaxAmount.toFixed(2)} ADA)`,
+				`Redeem amount exceeds your deposit value (Max: ${safeMaxAmount.toFixed(2)} ${nativeSymbol})`,
 			);
 			return;
 		}
@@ -128,11 +131,12 @@ const RedeemModal = ({
 							disabled={isLoading || safeMaxAmount <= 0}
 							className="text-xs text-primary-600 hover:text-primary-500 disabled:opacity-50"
 						>
-							Max: {safeMaxAmount.toFixed(2)} ADA
+							Max: {safeMaxAmount.toFixed(2)} {nativeSymbol}
 						</button>
 					</div>
 					<AmountSlider
-						label="Amount (ADA)"
+						unit={nativeSymbol}
+						label={`Amount (${nativeSymbol})`}
 						min={safeMinAmount}
 						max={safeMaxAmount}
 						value={redeemAmount}

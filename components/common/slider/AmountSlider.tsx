@@ -27,7 +27,7 @@ const AmountSlider = ({
 	step = 0.01,
 	disabled,
 	onChange,
-	unit = "ADA",
+	unit = "DOT",
 }: AmountSliderProps) => {
 	const safeMin = Number.isFinite(min) ? Math.max(min, 0) : 0;
 	const safeMax = Number.isFinite(max) ? Math.max(max, 0) : 0;

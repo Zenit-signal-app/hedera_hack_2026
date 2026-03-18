@@ -260,6 +260,7 @@ const DepositModal = ({
 						</button>
 					</div>
 					<AmountSlider
+						unit={nativeSymbol}
 						label={`Amount (${nativeSymbol})`}
 						min={safeMinDeposit}
 						max={safeMaxDeposit}
