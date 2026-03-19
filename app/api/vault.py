@@ -67,6 +67,8 @@ def _get_vaults(
                 WHEN vs.state IS NOT NULL THEN vs.state
                 ELSE 'closed'
             END AS state,
+            t.contract_address AS token_address,
+            t.name AS token_name,
             v.name AS vault_name,
             v.summary,
             v.description,
@@ -83,6 +85,7 @@ def _get_vaults(
             {state_filter}
         ) vs
         LEFT JOIN {SCHEMA}.vault v ON vs.vault_id = v.id
+        LEFT JOIN {SCHEMA}.tokens t ON v.token_id = t.id
         WHERE 1=1
             {id_filter}
         ORDER BY v.start_time DESC
@@ -96,6 +99,8 @@ def _get_vaults(
         items.append(
             {
                 "id": str(row.id) if row.id else "",
+                "token_address": str(row.token_address) if row.token_address else "",
+                "token_name": str(row.token_name) if row.token_name else "",
                 "state": str(row.state) if row.state else "",
                 "icon_url": str(row.icon_url) if row.icon_url else None,
                 "vault_name": str(row.vault_name) if row.vault_name else "",
@@ -152,7 +157,6 @@ def _get_vault_stats_data(
         LEFT JOIN {SCHEMA}.vault v ON vs.vault_id = v.id
         LEFT JOIN {SCHEMA}.trade_strategies ts ON (
             ts.id = v.strategy_id
-            AND ts.chain_id = {chain_id}
         )
         WHERE vs.vault_id = '{vid}'
             AND vs.chain_id = {chain_id}
@@ -277,6 +281,8 @@ def get_vaults_by_status(
     - vaults: List of vault items:
       - id: Vault UUID
       - state: Vault state
+      - token_address: Token contract address from token table
+      - token_name: Token name from token table
       - icon_url: Vault icon URL (optional)
       - vault_name: Vault name
       - summary: Vault summary (optional)
@@ -306,6 +312,8 @@ def get_vaults_by_status(
         vaults.append(
             schemas.VaultListItem(
                 id=item.get("id", ""),
+                token_address=item.get("token_address", ""),
+                token_name=item.get("token_name", ""),
                 state=item.get("state", ""),
                 icon_url=item.get("icon_url"),
                 vault_name=item.get("vault_name", ""),
@@ -378,10 +386,8 @@ def get_vault_info(
     item = _fetch_vault_item(db, vault_id=id, chain_id=chain_id)
     if not item:
         raise HTTPException(status_code=404, detail="Vault not found")
-
     # Get stats data
     stats_data = _get_vault_stats_data(db, vault_id=id, chain_id=chain_id)
-
     # Merge the data (stats_data takes precedence for overlapping fields)
     item.update(
         {

@@ -10,6 +10,8 @@ class VaultListItem(CustomBaseModel):
     """Vault list item for /vaults/{status} endpoint"""
 
     id: str = ""  # uuid
+    token_address: str = ""  # Token contract address from token table
+    token_name: str = ""  # Token name from token table
     state: str = ""  # open, trading, withdrawable, closed
     icon_url: Optional[str] = None
     vault_name: str = ""
@@ -35,6 +37,8 @@ class VaultInfo(CustomBaseModel):
 
     id: str = ""  # uuid
     state: str = ""  # open, trading, withdrawable, closed
+    token_address: str = ""  # Token contract address from token table
+    token_name: str = ""  # Token name from token table
     icon_url: Optional[str] = None
     vault_name: str = ""
     vault_type: str = "Zenit Vault"
