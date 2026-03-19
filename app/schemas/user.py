@@ -35,6 +35,7 @@ class VaultEarning(CustomBaseModel):
     vault_id: str = ""  # Changed from int to str (UUID)
     vault_name: str = ""
     vault_address: str = ""
+    token_address: str = ""  # Token contract address from token table
     total_deposit: float = 0.0
     current_amount: float = 0.0
     roi: float = 0.0  # Return on Investment percentage

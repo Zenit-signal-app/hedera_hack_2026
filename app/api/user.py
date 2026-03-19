@@ -88,8 +88,9 @@ def _get_user_vault_earning(
     wallet_address = wallet_address.strip().lower()
 
     base_query = (
-        db.query(UserEarning, Vault)
+        db.query(UserEarning, Vault, Token)
         .join(Vault, UserEarning.vault_id == Vault.id)
+        .join(Token, Vault.token_id == Token.id)
         .filter(
             UserEarning.wallet_address == wallet_address,
             UserEarning.chain_id == chain_id,
@@ -111,7 +112,7 @@ def _get_user_vault_earning(
     # Convert to earnings format
     earnings = []
 
-    for earning, vault in earnings_data:
+    for earning, vault, token in earnings_data:
         # Calculate ROI (Return on Investment)
         # ROI = ((current_amount + total_withdrawal - total_deposit) / total_deposit) * 100
         total_deposit = float(earning.total_deposit or 0)
@@ -131,11 +132,16 @@ def _get_user_vault_earning(
             bool(earning.is_redeemed) if earning.is_redeemed is not None else False
         )
 
+        token_address = (
+            str(token.contract_address) if token and token.contract_address else ""
+        )
+
         earnings.append(
             VaultEarning(
                 vault_id=str(earning.vault_id),
                 vault_name=str(vault.name) if vault.name else "",
                 vault_address=str(vault.address) if vault.address else "",
+                token_address=token_address,
                 total_deposit=round(total_deposit, 2),
                 current_amount=round(current_amount, 2),
                 roi=round(roi, 2),
@@ -179,7 +185,7 @@ def get_vault_earnings(
     - offset: Number of earnings to skip for pagination (default: 0)
 
     Returns:
-    - earnings: List of vault earnings (vault_id, vault_name, vault_address, total_deposit, current_amount, roi, is_redeemed)
+    - earnings: List of vault earnings (vault_id, vault_name, vault_address, token_address, total_deposit, current_amount, roi, is_redeemed)
     - total, page, limit: Pagination
 
     *Sample wallet address:* addr1vyrq3xwa5gs593ftfpy2lzjjwzksdt0fkjjwge4ww6p53dqy4w5wm
