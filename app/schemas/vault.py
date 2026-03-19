@@ -114,3 +114,15 @@ class VaultPositionsResponse(CustomBaseModel):
     limit: int = 20
     positions: List[VaultPosition] = Field(default_factory=list)
 
+
+class VaultContributeResponse(CustomBaseModel):
+    """User earning info for a specific vault"""
+
+    total_deposit: float = 0.0
+    total_withdrawal: float = 0.0
+    current_amount: float = 0.0
+    min_deposit: float = 1.0
+    min_withdrawal: float = 0.5
+    max_withdrawal: float = 0.5
+    profit_rate: float = 0.0
+    is_redeemed: bool = False

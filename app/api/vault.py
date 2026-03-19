@@ -151,10 +151,7 @@ def _get_vault_stats_data(
         FROM {SCHEMA}.vault_state vs
         LEFT JOIN {SCHEMA}.vault v ON vs.vault_id = v.id
         LEFT JOIN {SCHEMA}.trade_strategies ts ON (
-            (
-                ts.quote_token_id = v.token_id 
-                OR ts.base_token_id = v.token_id
-            )
+            ts.id = v.strategy_id
             AND ts.chain_id = {chain_id}
         )
         WHERE vs.vault_id = '{vid}'
@@ -727,3 +724,92 @@ def get_vault_positions(
         positions=positions,
     )
 
+
+@router.get(
+    "/{id}/contribute",
+    tags=group_tags,
+    response_model=schemas.VaultContributeResponse,
+    status_code=http_status.HTTP_200_OK,
+)
+def get_vault_contribute(
+    id: str,
+    wallet_address: str = Query(
+        ..., description="Wallet address of the user (required)"
+    ),
+    is_redeemed: Optional[bool] = Query(
+        None, description="Whether the user has redeemed their position (one-time withdrawal)"
+    ),
+    db: Session = Depends(get_db),
+) -> schemas.VaultContributeResponse:
+    """
+    Get user's contribute info for a specific vault.
+
+    Path Parameters:
+    - id: Vault UUID
+
+    Query Parameters:
+    - wallet_address: Wallet address of the user (required)
+    - is_redeemed: Whether the user has redeemed their position (one-time withdrawal)
+    Returns:
+    - total_deposit: Total amount deposited by the user
+    - profit_rate: Profit rate of the user
+    - is_redeemed: Whether the user has redeemed their position (one-time withdrawal)
+
+    *Sample vault ID:* e13d48c8-9725-4405-8746-b84be7acc5c2
+    *Sample wallet address:* addr1vyrq3xwa5gs593ftfpy2lzjjwzksdt0fkjjwge4ww6p53dqy4w5wm
+    """
+    id = id.strip().lower()
+    # check if id is a valid uuid
+    try:
+        uuid.UUID(id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid vault ID")
+    
+    wallet_address = wallet_address.strip().lower()
+    
+    # Query user earning for this specific vault
+    is_redeemed_filter = ""
+    if is_redeemed:
+        is_redeemed_filter = "AND ue.is_redeemed = true"
+    else:
+        is_redeemed_filter = "AND ue.is_redeemed = false"
+
+    data_sql = text(
+        f"""
+        SELECT 
+            ue.total_deposit,
+            ue.total_withdrawal,
+            ue.current_amount,
+            ue.current_amount / ue.total_deposit - 1 as profit_rate,
+            ue.is_redeemed
+        FROM {SCHEMA}.user_earnings ue
+        WHERE ue.vault_id = '{id}' AND ue.wallet_address = '{wallet_address}'
+        {is_redeemed_filter}
+        LIMIT 1
+        """
+    )
+    result = db.execute(data_sql).fetchone()
+    
+    if not result:
+        # Return default values if no record found
+        return schemas.VaultContributeResponse(
+            total_deposit=0,
+            total_withdrawal=0,
+            current_amount=0,
+            min_deposit=1,
+            min_withdrawal=0,
+            max_withdrawal=0,
+            profit_rate=0,
+            is_redeemed=False,
+        )
+    
+    return schemas.VaultContributeResponse(
+        total_deposit=round(float(result.total_deposit), 6) if result.total_deposit else 0.0,
+        total_withdrawal=round(float(result.total_withdrawal), 6) if result.total_withdrawal else 0.0,
+        current_amount=round(float(result.current_amount), 6) if result.current_amount else 0.0,
+        min_deposit=1.0,
+        min_withdrawal=0.5,
+        max_withdrawal=round(float(result.current_amount - result.total_withdrawal), 6),
+        profit_rate=round(float(result.profit_rate), 6) if result.profit_rate else 0.0,
+        is_redeemed=bool(result.is_redeemed) if result.is_redeemed is not None else False,
+    )

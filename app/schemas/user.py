@@ -135,7 +135,7 @@ class VaultTransaction(CustomBaseModel):
     vault_id: str = ""  # Changed from int to str (UUID)
     vault_name: Optional[str] = None
     wallet_address: str = ""
-    action: str = ""  # 'deposit', 'withdrawal', 'claim', 'reinvest'
+    action: str = ""  # 'deposit', 'withdrawal'
     amount: float = 0.0
     token_id: str = ""
     token_symbol: Optional[str] = None
