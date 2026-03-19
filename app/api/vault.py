@@ -172,9 +172,7 @@ def _get_vault_stats_data(
         return {}
 
     annual_return = float(result.return_percent) if result.return_percent else 0.0
-    start_time = (
-        result.start_time if result.start_time else result.trade_start_time
-    )
+    start_time = result.start_time if result.start_time else result.trade_start_time
     dc_map = {
         "1h": "1 hour",
         "4h": "4 hours",
@@ -186,7 +184,7 @@ def _get_vault_stats_data(
     decision_cycle = (
         dc_map.get(str(result.decision_cycle), str(result.decision_cycle))
         if str(result.decision_cycle)
-        else '1h'
+        else "1h"
     )
     return {
         "state": str(result.state) if result.state else "",
@@ -197,7 +195,9 @@ def _get_vault_stats_data(
         else None,
         "trade_end_time": int(result.trade_end_time) if result.trade_end_time else None,
         "start_amount": float(result.start_amount) if result.start_amount else 0.0,
-        "current_amount": float(result.current_amount) if result.current_amount else 0.0,
+        "current_amount": float(result.current_amount)
+        if result.current_amount
+        else 0.0,
         "return_percent": float(result.return_percent)
         if result.return_percent
         else 0.0,
@@ -247,11 +247,18 @@ def _fetch_vault_item(db: Session, vault_id: str, chain_id: int) -> Optional[dic
     status_code=http_status.HTTP_200_OK,
 )
 def get_vaults_by_status(
-    status: str = Query("active", description="Filter by status: active, inactive, or all (default: active)"),
+    status: str = Query(
+        "active",
+        description="Filter by status: active, inactive, or all (default: active)",
+    ),
     chain_id: int = Query(2, ge=1, description="Chain ID to scope the vault data."),
     page: int = Query(1, ge=1, description="Page number (default: 1)"),
-    limit: int = Query(20, ge=1, le=100, description="Items per page (default: 20, max: 100)"),
-    offset: Optional[int] = Query(None, description="Number of items to skip (alternative to page)"),
+    limit: int = Query(
+        20, ge=1, le=100, description="Items per page (default: 20, max: 100)"
+    ),
+    offset: Optional[int] = Query(
+        None, description="Number of items to skip (alternative to page)"
+    ),
     db: Session = Depends(get_db),
 ) -> schemas.VaultListResponse:
     """
@@ -273,8 +280,8 @@ def get_vaults_by_status(
       - icon_url: Vault icon URL (optional)
       - vault_name: Vault name
       - summary: Vault summary (optional)
+      - summary: Vault summary (optional)
       - address: Vault script address
-      - pool_id: Vault pool id (policy_id.asset_name)
       - annual_return: Vault annual return
       - tvl_usd: Vault TVL in USD
       - max_drawdown: Vault max drawdown (optional)
@@ -304,7 +311,6 @@ def get_vaults_by_status(
                 vault_name=item.get("vault_name", ""),
                 summary=item.get("summary"),
                 address=item.get("address", ""),
-                pool_id=item.get("pool_id", ""),
                 annual_return=float(item.get("annual_return", 0.0) or 0.0),
                 tvl_usd=float(item.get("tvl_usd", 0.0) or 0.0),
                 max_drawdown=float(item.get("max_drawdown", 0.0) or 0.0),
@@ -325,7 +331,9 @@ def get_vaults_by_status(
 )
 def get_vault_info(
     id: str,
-    chain_id: int = Query(2, ge=1, description="Chain ID that owns the requested vault."),
+    chain_id: int = Query(
+        2, ge=1, description="Chain ID that owns the requested vault."
+    ),
     db: Session = Depends(get_db),
 ) -> schemas.VaultInfo:
     """
@@ -344,7 +352,6 @@ def get_vault_info(
     - blockchain: Blockchain
     - blockchain_logo: Blockchain logo URL (optional)
     - address: Vault address
-    - pool_id: Vault pool id (policy_id.asset_name)
     - summary: Vault summary (optional)
     - description: Vault description (optional)
     - annual_return: Vault annual return
@@ -391,7 +398,7 @@ def get_vault_info(
                 "trade_per_month", item.get("trade_per_month", 0.0)
             ),
             "decision_cycle": stats_data.get(
-                "decision_cycle", item.get("decision_cycle", '1h')
+                "decision_cycle", item.get("decision_cycle", "1h")
             ),
         }
     )
@@ -512,8 +519,8 @@ def get_vault_values(
     resolution = resolution.lower().strip() if resolution else "1d"
     n_row = 0
     if resolution == "1w":
-        n_row = 7*3
-        resolution_seconds = 8*3600
+        n_row = 7 * 3
+        resolution_seconds = 8 * 3600
     elif resolution == "1m":
         n_row = 30
         resolution_seconds = 86400
@@ -657,7 +664,7 @@ def get_vault_positions(
     except Exception as e:
         print(f"Error executing get_vault_positions: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-    
+
     total = int(results[0].total_count) if results else 0
 
     positions = []
@@ -737,7 +744,8 @@ def get_vault_contribute(
         ..., description="Wallet address of the user (required)"
     ),
     is_redeemed: Optional[bool] = Query(
-        None, description="Whether the user has redeemed their position (one-time withdrawal)"
+        None,
+        description="Whether the user has redeemed their position (one-time withdrawal)",
     ),
     db: Session = Depends(get_db),
 ) -> schemas.VaultContributeResponse:
@@ -764,9 +772,9 @@ def get_vault_contribute(
         uuid.UUID(id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid vault ID")
-    
+
     wallet_address = wallet_address.strip().lower()
-    
+
     # Query user earning for this specific vault
     is_redeemed_filter = ""
     if is_redeemed:
@@ -789,7 +797,7 @@ def get_vault_contribute(
         """
     )
     result = db.execute(data_sql).fetchone()
-    
+
     if not result:
         # Return default values if no record found
         return schemas.VaultContributeResponse(
@@ -802,14 +810,22 @@ def get_vault_contribute(
             profit_rate=0,
             is_redeemed=False,
         )
-    
+
     return schemas.VaultContributeResponse(
-        total_deposit=round(float(result.total_deposit), 6) if result.total_deposit else 0.0,
-        total_withdrawal=round(float(result.total_withdrawal), 6) if result.total_withdrawal else 0.0,
-        current_amount=round(float(result.current_amount), 6) if result.current_amount else 0.0,
+        total_deposit=round(float(result.total_deposit), 6)
+        if result.total_deposit
+        else 0.0,
+        total_withdrawal=round(float(result.total_withdrawal), 6)
+        if result.total_withdrawal
+        else 0.0,
+        current_amount=round(float(result.current_amount), 6)
+        if result.current_amount
+        else 0.0,
         min_deposit=1.0,
         min_withdrawal=0.5,
         max_withdrawal=round(float(result.current_amount - result.total_withdrawal), 6),
         profit_rate=round(float(result.profit_rate), 6) if result.profit_rate else 0.0,
-        is_redeemed=bool(result.is_redeemed) if result.is_redeemed is not None else False,
+        is_redeemed=bool(result.is_redeemed)
+        if result.is_redeemed is not None
+        else False,
     )

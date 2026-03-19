@@ -136,7 +136,6 @@ def _get_user_vault_earning(
                 vault_id=str(earning.vault_id),
                 vault_name=str(vault.name) if vault.name else "",
                 vault_address=str(vault.address) if vault.address else "",
-                pool_id=str(vault.pool_id) if getattr(vault, "pool_id", None) else "",
                 total_deposit=round(total_deposit, 2),
                 current_amount=round(current_amount, 2),
                 roi=round(roi, 2),
@@ -180,7 +179,7 @@ def get_vault_earnings(
     - offset: Number of earnings to skip for pagination (default: 0)
 
     Returns:
-    - earnings: List of vault earnings (vault_id, vault_name, vault_address, pool_id, total_deposit, current_amount, roi, is_redeemed)
+    - earnings: List of vault earnings (vault_id, vault_name, vault_address, total_deposit, current_amount, roi, is_redeemed)
     - total, page, limit: Pagination
 
     *Sample wallet address:* addr1vyrq3xwa5gs593ftfpy2lzjjwzksdt0fkjjwge4ww6p53dqy4w5wm

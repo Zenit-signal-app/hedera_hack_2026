@@ -15,7 +15,6 @@ class VaultListItem(CustomBaseModel):
     vault_name: str = ""
     summary: Optional[str] = None
     address: str = ""
-    pool_id: str = ""
     annual_return: float = 0.0
     tvl_usd: float = 0.0
     max_drawdown: float = 0.0
@@ -41,9 +40,10 @@ class VaultInfo(CustomBaseModel):
     vault_type: str = "Zenit Vault"
     vault_type_logo: str = settings.HOST + "/static/images/Zenit.png"
     blockchain: str = "polkadot"
-    blockchain_logo: str = "https://s2.coinmarketcap.com/static/img/coins/128x128/6636.png"
+    blockchain_logo: str = (
+        "https://s2.coinmarketcap.com/static/img/coins/128x128/6636.png"
+    )
     address: str = ""
-    pool_id: str = ""
     summary: Optional[str] = None
     annual_return: float = 0.0
     tvl_usd: float = 0.0
