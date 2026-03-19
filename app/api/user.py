@@ -64,7 +64,6 @@ def _get_latest_price(db: Session, symbol: str) -> Optional[float]:
     return None
 
 
-
 def _get_user_vault_earning(
     db: Session,
     wallet_address: str,
@@ -75,19 +74,19 @@ def _get_user_vault_earning(
 ) -> tuple[List[VaultEarning], int]:
     """
     Core function to get user vault earnings.
-    
+
     Args:
         db: Database session
         wallet_address: User's wallet address
         vault_id: Optional vault ID to filter by
         limit: Maximum number of results
         offset: Pagination offset
-    
+
     Returns:
         Tuple of (list of VaultEarning, total count)
     """
     wallet_address = wallet_address.strip().lower()
-    
+
     base_query = (
         db.query(UserEarning, Vault)
         .join(Vault, UserEarning.vault_id == Vault.id)
@@ -250,13 +249,10 @@ def get_user_swaps(
     limit = max(1, min(100, limit))
     offset = (page - 1) * limit
 
-    base_query = (
-        db.query(SwapTransaction)
-        .filter(
-            SwapTransaction.status == "completed",
-            SwapTransaction.wallet_address == wallet_address,
-            SwapTransaction.chain_id == chain_id,
-        )
+    base_query = db.query(SwapTransaction).filter(
+        SwapTransaction.status == "completed",
+        SwapTransaction.wallet_address == wallet_address,
+        SwapTransaction.chain_id == chain_id,
     )
     total = base_query.count()
     swaps = (
@@ -402,7 +398,7 @@ def get_vault_transactions(
     - limit: Number of records per page (default: 20, max: 100)
 
     Returns:
-    - List of vault transactions (deposits, withdrawals, claims, reinvests)
+    - List of vault transactions (deposit, withdrawal)
 
     *Sample wallet address:* addr1vyrq3xwa5gs593ftfpy2lzjjwzksdt0fkjjwge4ww6p53dqy4w5wm
     """
@@ -426,10 +422,7 @@ def get_vault_transactions(
 
     total = base_query.count()
     transactions = (
-        base_query.order_by(VaultLog.timestamp.desc())
-        .limit(limit)
-        .offset(offset)
-        .all()
+        base_query.order_by(VaultLog.timestamp.desc()).limit(limit).offset(offset).all()
     )
 
     # Get unique token IDs
@@ -449,9 +442,7 @@ def get_vault_transactions(
     transaction_data = []
     for log, vault in transactions:
         token_symbol = (
-            token_info_map.get(str(log.token_id), None)
-            if log.token_id
-            else None
+            token_info_map.get(str(log.token_id), None) if log.token_id else None
         )
 
         transaction_data.append(
@@ -461,15 +452,11 @@ def get_vault_transactions(
                 vault_name=vault.name if vault else None,
                 wallet_address=str(log.wallet_address),
                 action=str(log.action),
-                amount=float(log.amount)
-                if log.amount is not None
-                else 0.0,
+                amount=float(log.amount) if log.amount is not None else 0.0,
                 token_id=str(log.token_id) if log.token_id else "",
                 token_symbol=token_symbol,
                 txn=str(log.txn) if log.txn else "",
-                timestamp=int(log.timestamp)
-                if log.timestamp is not None
-                else 0,
+                timestamp=int(log.timestamp) if log.timestamp is not None else 0,
                 status=str(log.status) if log.status else "pending",
                 fee=float(log.fee) if log.fee is not None else 0.0,
             )
@@ -491,7 +478,7 @@ def create_vault_transaction(
     db: Session = Depends(get_db),
 ) -> Message:
     """
-    Save a user vault transaction (deposit / withdraw / claim / reinvest).
+    Save a user vault transaction (deposit / withdraw).
 
     Payload:
     - wallet_address, chain_id, vault_id, action, amount, token_id, txn
@@ -517,7 +504,52 @@ def create_vault_transaction(
     except Exception as e:
         print(f"Error saving vault transaction: {e}")
         db.rollback()
-        raise HTTPException(
-            status_code=500, detail="Failed to save vault transaction"
+        raise HTTPException(status_code=500, detail="Failed to save vault transaction")
+
+    try:
+        earning = (
+            db.query(UserEarning)
+            .filter(
+                UserEarning.wallet_address == payload.wallet_address,
+                UserEarning.vault_id == payload.vault_id,
+                UserEarning.chain_id == payload.chain_id,
+            )
+            .first()
         )
+
+        action = payload.action.lower()
+        if not earning:
+            initial_current = payload.amount if action == "deposit" else 0
+            earning = UserEarning(
+                wallet_address=payload.wallet_address,
+                chain_id=payload.chain_id,
+                vault_id=payload.vault_id,
+                total_deposit=payload.amount if action == "deposit" else 0,
+                total_withdrawal=payload.amount if action == "withdraw" else 0,
+                current_amount=initial_current,
+                last_updated_timestamp=timestamp,
+                is_redeemed=False if action == "deposit" else payload.amount <= 0,
+            )
+            db.add(earning)
+        else:
+            if action == "deposit":
+                if earning.is_redeemed or False:
+                    earning.is_redeemed = False
+                earning.total_deposit = (earning.total_deposit or 0) + payload.amount
+                earning.current_amount = (earning.current_amount or 0) + payload.amount
+            elif action == "withdraw":
+                earning.total_withdrawal = (
+                    earning.total_withdrawal or 0
+                ) + payload.amount
+                earning.current_amount = (earning.current_amount or 0) - payload.amount
+                if earning.current_amount <= 0:
+                    earning.is_redeemed = True
+                    earning.current_amount = 0
+
+            earning.last_updated_timestamp = timestamp
+        db.commit()
+    except Exception as e:
+        print(f"Error updating user earnings: {e}")
+        db.rollback()
+
     return Message(message="success")
