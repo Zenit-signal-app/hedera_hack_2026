@@ -167,6 +167,9 @@ def get_vault_earnings(
         ge=1,
         description="Chain ID to scope the vault earnings.",
     ),
+    vault_id: Optional[str] = Query(
+        None, description="Vault ID to scope the vault earnings."
+    ),
     limit: int = Query(
         default=20, ge=1, le=100, description="Maximum number of earnings to return"
     ),
@@ -181,6 +184,7 @@ def get_vault_earnings(
     Query Parameters:
     - wallet_address: Wallet address of the user (required)
     - chain_id: Chain ID to scope the vault earnings.
+    - vault_id: Vault ID to scope the vault earnings.
     - limit: Maximum number of earnings to return (default: 20, max: 100)
     - offset: Number of earnings to skip for pagination (default: 0)
 
@@ -194,7 +198,7 @@ def get_vault_earnings(
         db=db,
         wallet_address=wallet_address,
         chain_id=chain_id,
-        vault_id=None,
+        vault_id=vault_id,
         limit=limit,
         offset=offset,
     )
