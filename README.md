@@ -8,7 +8,7 @@ Monorepo cho **Zenit Perpetual DEX** chạy trên **Hedera Testnet** (EVM `chain
 |--------|--------|
 | `perpetual-dex/` | Mã nguồn chính: contracts, `frontend/`, `keeper/` |
 | `perpetual-dex/README.md` | Tổng quan kỹ thuật chi tiết (tiếng Anh) |
-| `perpetual-dex/command.md` | Lệnh chạy nhanh dev (frontend + keeper) |
+| `perpetual-dex/command.example.md` | Lệnh chạy dev (mẫu; copy thành `command.md` nếu cần — `command.md` không nằm trong git) |
 | `perpetual-dex/Deployment_Guide.md` | Hướng dẫn triển khai / env |
 
 ## Chạy nhanh (development)
