@@ -1,0 +1,30 @@
+{
+  "name": "zenit-keeper",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/keeper/src/index.js",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@hashgraph/sdk": "^2.81.0",
+    "@prisma/client": "^6.5.0",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.16.0",
+    "fastify": "^5.8.2",
+    "viem": "^2.39.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "prisma": "^6.5.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

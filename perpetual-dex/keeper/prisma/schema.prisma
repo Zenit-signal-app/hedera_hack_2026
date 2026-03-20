@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+  // Windows fix: avoid dll.node rename EPERM by using the binary engine.
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Order (position with TP/SL targets) ─────────────────────────────────────
+
+model Order {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Wallet that owns this order
+  walletAddress String
+
+  // Market symbol (e.g. "BTCUSD", "ETHUSD", "DOTUSD")
+  market String
+
+  /**
+   * Enforces "only 1 Open order per wallet+market".
+   * When status=Open, this is `${lower(walletAddress)}:${market}`.
+   * When status!=Open, this is null (so historical rows don't collide).
+   */
+  openKey String? @unique
+
+  // Position direction
+  side Side
+
+  // Margin deposited by the user (in zUSDC, stored as string to preserve precision)
+  marginAmount String
+
+  // Leverage multiplier (1–25)
+  leverage Int
+
+  // Effective position size = marginAmount × leverage
+  positionSize String
+
+  // Price at which the position was opened
+  entryPrice Float
+
+  // Estimated liquidation price
+  liquidationPrice Float
+
+  // Absolute take-profit price target
+  takeProfitPrice Float?
+
+  // Absolute stop-loss price target
+  stopLossPrice Float?
+
+  // Current order status
+  status OrderStatus @default(Open)
+
+  // Price at which the order was closed/filled (null while open)
+  closePrice Float?
+
+  // Close reason code:
+  // 0 = Manual (user-initiated close)
+  // 1 = TP (Take profit) - keeper-triggered
+  // 2 = SL (Stop loss) - keeper-triggered
+  // 3 = Liquidated (forced liquidation) - keeper-triggered
+  closeReasonCode Int @default(0) @map("close_reason")
+
+  // Final PnL captured from on-chain PositionClosed/PositionLiquidated event.
+  // Stored as string to preserve exact int256 value (18-decimal fixed-point).
+  finalPnl String? @map("final_pnl")
+
+  // On-chain tx hash for the open transaction
+  openTxHash String?
+
+  // Optional: unique on-chain event identity (txHash:logIndex) for idempotency
+  openEventId String? @unique
+  openLogIndex Int?
+
+  // On-chain tx hash for the close/fill transaction
+  closeTxHash String?
+
+  // Timestamp when the position was opened on-chain
+  openedAt DateTime @default(now())
+
+  // Timestamp when the position was closed/filled
+  closedAt DateTime? @map("closed_at")
+
+  @@index([walletAddress])
+  @@index([status])
+  @@index([market, status])
+}
+
+enum Side {
+  Long
+  Short
+}
+
+enum OrderStatus {
+  Open
+  Closed
+  Filled
+  Liquidated
+  Cancelled
+}
