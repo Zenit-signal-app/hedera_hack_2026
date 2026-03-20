@@ -26,6 +26,7 @@ from app.schemas.auth import (
     TelegramLoginRequest,
     TelegramLoginResponse,
     UserTeleResponse,
+    RefreshResponse,
 )
 from app.db.chain_resolve import get_slug_for_chain_id
 from app.services.firebase_auth import verify_id_token
