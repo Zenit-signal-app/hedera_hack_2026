@@ -341,6 +341,7 @@ def telegram_login(body: TelegramLoginRequest, db: Session = Depends(get_db)):
     try:
         # Pass your Bot Token from settings
         telegram_id = verify_telegram_auth(body.initData, settings.BOT_TOKEN)
+        telegram_id = str(telegram_id) # ensure it's a string so _sql returns a quoted string
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
