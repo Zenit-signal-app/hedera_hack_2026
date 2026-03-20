@@ -49,3 +49,22 @@ class LogoutRequest(BaseModel):
 class LogoutResponse(BaseModel):
     revoked: bool
 
+
+class TelegramLoginRequest(BaseModel):
+    initData: str
+
+
+class UserTeleResponse(BaseModel):
+    id: str
+    telegram_id: str
+    email: str
+    display_name: Optional[str] = None
+    photo_url: Optional[str] = None
+    provider: Optional[str] = None
+    role: str
+    chain: str = ""
+
+
+class TelegramLoginResponse(BaseModel):
+    tokens: TokenResponse
+    user: UserTeleResponse

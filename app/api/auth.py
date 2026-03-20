@@ -21,9 +21,11 @@ from app.schemas.auth import (
     LogoutRequest,
     LogoutResponse,
     RefreshRequest,
-    RefreshResponse,
     TokenResponse,
     UserResponse,
+    TelegramLoginRequest,
+    TelegramLoginResponse,
+    UserTeleResponse,
 )
 from app.db.chain_resolve import get_slug_for_chain_id
 from app.services.firebase_auth import verify_id_token
@@ -91,6 +93,7 @@ def _upsert_user(
     display_name: Optional[str],
     photo_url: Optional[str],
     provider: Optional[str],
+    telegram_id: Optional[str] = None,
 ) -> UserResponse:
     row = db.execute(
         text(
@@ -109,6 +112,7 @@ def _upsert_user(
                 f"""
                 UPDATE production.users
                 SET firebase_uid = {_sql(firebase_uid)},
+                    telegram_id = COALESCE({_sql(telegram_id)}, telegram_id),
                     display_name = {_sql(display_name)},
                     photo_url = {_sql(photo_url)},
                     provider = {_sql(provider)},
@@ -123,8 +127,8 @@ def _upsert_user(
         row = db.execute(
             text(
                 f"""
-                INSERT INTO production.users (firebase_uid, email, display_name, photo_url, provider, role)
-                VALUES ({_sql(firebase_uid)}, {_sql(email)}, {_sql(display_name)}, {_sql(photo_url)}, {_sql(provider)}, 'user')
+                INSERT INTO production.users (firebase_uid, email, display_name, photo_url, provider, role, telegram_id)
+                VALUES ({_sql(firebase_uid)}, {_sql(email)}, {_sql(display_name)}, {_sql(photo_url)}, {_sql(provider)}, 'user', {_sql(telegram_id)})
                 RETURNING id, firebase_uid, email, display_name, photo_url, provider, role, chain_id
                 """
             )
@@ -314,3 +318,59 @@ def logout(body: LogoutRequest, db: Session = Depends(get_db)) -> LogoutResponse
     db.commit()
     return LogoutResponse(revoked=bool(getattr(result, "rowcount", 0)))
 
+
+@router.post(
+    "/telegram/login",
+    response_model=TelegramLoginResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Login via Telegram Mini App initData",
+    description=(
+        "**Input:** Body with `initData` (string, required) — Telegram Mini App initData string.\n\n"
+        "**Output:** `TelegramLoginResponse` with:\n"
+        "- **tokens**: access_token (JWT for API calls), refresh_token, token_type (bearer), expires_in (seconds), issued_at (ISO timestamp).\n"
+        "- **user**: id (backend user ID in users), telegram_id, email, display_name, photo_url, provider (telegram), role, chain (slug value from chains table).\n"
+        "Validates the data via telegram_webapp_auth, upserts `production.users`, and issues a backend access + refresh tokens.\n\n"
+        "401 if token is invalid."
+    ),
+)
+def telegram_login(body: TelegramLoginRequest, db: Session = Depends(get_db)) -> TelegramLoginResponse:
+    from app.core.telegram_auth import verify_telegram_auth
+    telegram_id = verify_telegram_auth(init_data=body.initData)
+
+    import urllib.parse
+    import json
+    parsed = urllib.parse.parse_qs(body.initData)
+    user_json = parsed.get("user", ["{}"])[0]
+    user_info = json.loads(user_json)
+    
+    first_name = user_info.get("first_name", "")
+    last_name = user_info.get("last_name", "")
+    display_name = f"{first_name} {last_name}".strip() or f"User {telegram_id}"
+    photo_url = user_info.get("photo_url")
+    email = f"telegram_{telegram_id}@placeholder.com"
+    firebase_uid_placeholder = f"tele_{telegram_id}"
+
+    user = _upsert_user(
+        db=db,
+        firebase_uid=firebase_uid_placeholder,
+        email=email,
+        display_name=display_name,
+        photo_url=photo_url,
+        provider="telegram",
+        telegram_id=telegram_id,
+    )
+
+    tokens = _issue_tokens(db=db, user_id=user.id, email=user.email, provider=user.provider)
+
+    user_resp = UserTeleResponse(
+        id=user.id,
+        telegram_id=telegram_id,
+        email=user.email,
+        display_name=user.display_name,
+        photo_url=user.photo_url,
+        provider=user.provider,
+        role=user.role,
+        chain=user.chain,
+    )
+
+    return TelegramLoginResponse(tokens=tokens, user=user_resp)

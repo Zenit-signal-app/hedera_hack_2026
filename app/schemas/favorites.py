@@ -78,14 +78,6 @@ class FavoriteBulkDeleteResponse(CustomBaseModel):
     missing_symbols: List[str]
 
 
-class FavoriteBulkCreateTeleRequest(FavoriteBulkCreateRequest):
-    initData: str
-
-
-class FavoriteBulkDeleteTeleRequest(FavoriteBulkDeleteRequest):
-    initData: str
-
-
 class FavoriteToken(CustomBaseModel):
     """DTO representing a favorited token entry."""
 
