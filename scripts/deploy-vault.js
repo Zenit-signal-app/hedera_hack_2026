@@ -144,8 +144,7 @@ configuration:
   max_shareholders: ${config.maxShareholders || 5}
 
 rpc:
-  url: ${config.rpcUrl || '""'}
-`;
+  url: ${config.rpcUrl || '""'};
 
   const filePath = path.join(deployDir, 'vault.yaml');
   fs.writeFileSync(filePath, content);

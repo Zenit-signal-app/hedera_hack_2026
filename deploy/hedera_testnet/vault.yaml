@@ -7,6 +7,9 @@ network:
   chain_name: Hedera Testnet
 
 deployment:
+  contract_id: 0.0.8275170
+  contract_address: 0x00000000000000000000000000000000007e44e2
+  transaction_id: "0.0.6230104@1773834236.030346083"
   status: success
   exit_code: 0
   contract_id: 0.0.8275170
@@ -23,9 +26,6 @@ manager:
 tokens:
   token1: 0x00000000000000000000000000000000007e35db
   token2: 0x992c980E9F6e76Ca231A20863e274B19dd792b3A
-
-configuration:
   max_shareholders: 5
-
 rpc:
   url: "https://testnet.hashio.io/api"
