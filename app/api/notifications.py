@@ -13,8 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.router_decorated import APIRouter
-from app.core.user_context import get_current_user_chain_id
-from app.db.chain_resolve import get_slug_for_chain_id
+from app.db.chain_resolve import get_chain_id_for_slug, get_slug_for_chain_id
 from app.db.session import get_db, get_tables
 from app.schemas.notifications import SignalNotification
 
@@ -61,7 +60,7 @@ def _sql_esc(value: str) -> str:
         "**Query params (optional):**\n"
         "- **symbol**: Filter by symbol (e.g. BTCUSDT).\n"
         "- **timeframe**: Filter by timeframe (e.g. 30m, 1h).\n"
-        "Results are scoped to the authenticated user's chain.\n"
+        "- **chain**: Filter by chain string (treated as slug).\n"
         "- **limit**: Max notifications to return (1–500, default 100).\n\n"
         "**Response:** List of `SignalNotification`."
     ),
@@ -69,7 +68,7 @@ def _sql_esc(value: str) -> str:
 def list_notifications(
     symbol: Optional[str] = Query(None, description="Filter by symbol (e.g. BTCUSDT)."),
     timeframe: Optional[str] = Query(None, description="Filter by timeframe (e.g. 30m, 1h)."),
-    chain_id: int = Depends(get_current_user_chain_id),
+    chain: Optional[str] = Query(None, description="Filter by chain string (treated as slug from chains table)."),
     limit: int = Query(100, ge=1, le=500, description="Max number of notifications to return (default 100)."),
     db: Session = Depends(get_db),
 ) -> List[SignalNotification]:
@@ -89,7 +88,11 @@ def list_notifications(
     if timeframe is not None and timeframe.strip():
         tf_esc = _sql_esc(timeframe.strip().lower())
         conditions.append(f"timeframe = '{tf_esc}'")
-    conditions.append(f"chain_id = {int(chain_id)}")
+    if chain is not None and chain.strip():
+        cid = get_chain_id_for_slug(db, chain)
+        if cid == 0:
+            raise HTTPException(status_code=400, detail="Chain not found")
+        conditions.append(f"chain_id = {cid}")
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     query = f"""
         SELECT id, symbol, timeframe, message, image, chain_id, created_at

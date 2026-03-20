@@ -15,8 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.core.router_decorated import APIRouter
 from app.core.config import settings
-from app.core.user_context import get_current_user_chain_id
-from app.db.chain_resolve import get_slug_for_chain_id
+from app.db.chain_resolve import get_chain_id_for_slug, get_slug_for_chain_id
 from app.db.session import get_db, get_tables
 import app.schemas.prices as schemas
 
@@ -205,8 +204,7 @@ def _sanitize_symbol(symbol: str) -> str:
     response_model=List[schemas.Token],
     summary="List tokens",
     description=(
-        "**Input:** Query: `key` (optional), `offset` (≥0, default 0), `limit` (1–500, default 100). "
-        "Results are scoped to the authenticated user's chain.\n\n"
+        "**Input:** Query: `key` (optional), `chain` (optional chain string, treated as slug), `offset` (≥0, default 0), `limit` (1–500, default 100).\n\n"
         "**Output:** List of `Token`, each with:\n"
         "- **symbol**: Trading pair (e.g. BTCUSDT).\n"
         "- **coin**: Base coin (e.g. BTC).\n"
@@ -224,16 +222,19 @@ def _sanitize_symbol(symbol: str) -> str:
 )
 def list_all_tokens(
     key: Optional[str] = None,
-    chain_id: int = Depends(get_current_user_chain_id),
+    chain: Optional[str] = None,
     offset: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
 ) -> List[schemas.Token]:
+    chain_id = get_chain_id_for_slug(db, chain) if (chain and chain.strip()) else None
+    if chain and chain.strip() and chain_id == 0:
+        raise HTTPException(status_code=400, detail="Chain not found")
     offset = max(0, offset)
     limit = max(1, min(500, limit))
     table_1h = tables["f1h"]
     key_filter = _build_key_filter(key)
-    chain_filter = f"AND chain_id = {int(chain_id)}"
+    chain_filter = f"AND chain_id = {int(chain_id)}" if chain_id is not None else ""
     # key_filter and chain_filter both start with AND; need a base WHERE when key is empty
     inner_where = f"WHERE 1=1\n            {key_filter}\n            {chain_filter}"
 
@@ -320,7 +321,7 @@ def list_all_tokens(
     response_model=schemas.Token,
     summary="Get token by symbol",
     description=(
-        "**Input:** Path `symbol` (required). Results are scoped to the authenticated user's chain.\n\n"
+        "**Input:** Path `symbol` (required). Query: `chain` (optional chain string, treated as slug).\n\n"
         "**Output:** Single `Token` with:\n"
         "- **symbol**: Trading pair (e.g. BTCUSDT).\n"
         "- **coin**: Base coin (e.g. BTC).\n"
@@ -329,21 +330,24 @@ def list_all_tokens(
         "- **time_readable**: Human-readable time (e.g. YYYY-MM-DD HH:MM:SS UTC).\n"
         "- **image**: Coin image URL.\n"
         "- **24h fields**: chain_id=1 → Binance ticker; else → production.coin_prices_30m (latest open_time), same as list.\n"
-        "If the token exists on multiple chains, it is resolved within the authenticated user's chain.\n"
+        "Optional `chain` slug; if omitted and symbol exists on multiple chains, chain_id=1 is preferred.\n"
         "404 if symbol not found."
     ),
 )
 def get_token(
     symbol: str,
-    chain_id: int = Depends(get_current_user_chain_id),
+    chain: Optional[str] = None,
     db: Session = Depends(get_db),
 ) -> schemas.Token:
+    chain_id = get_chain_id_for_slug(db, chain) if (chain and chain.strip()) else None
+    if chain and chain.strip() and chain_id == 0:
+        raise HTTPException(status_code=400, detail="Chain not found")
     symbol_clean = _sanitize_symbol(symbol)
     raw_upper = (symbol or "").strip().upper()
     raw_esc = _sql_escape(raw_upper)
     # Match list endpoint: latest price from f1h; allow path like DOT/USDT or DOTUSDT
     table_1h = tables["f1h"]
-    chain_filter = f"AND chain_id = {int(chain_id)}"
+    chain_filter = f"AND chain_id = {int(chain_id)}" if chain_id is not None else ""
     symbol_predicate = (
         f"(symbol = '{symbol_clean}' OR symbol = '{raw_esc}' "
         f"OR upper(replace(symbol, '/', '')) = '{symbol_clean}')"

@@ -248,6 +248,8 @@ def get_user_swaps(
     - List of swap transactions with token information
 
     Query Parameters:
+    - chain_id: Chain ID to scope the swap history.
+
     *Sample wallet address:* addr1vyrq3xwa5gs593ftfpy2lzjjwzksdt0fkjjwge4ww6p53dqy4w5wm
     """
     wallet_address = wallet_address.strip().lower()
@@ -383,7 +385,7 @@ def get_vault_transactions(
     chain_id: int = Query(
         ...,
         ge=1,
-        description="Chain ID that owns the vault logs.",
+        description="Chain ID that owns the vault history.",
     ),
     page: int = Query(default=1, ge=1, description="Page number (default: 1)"),
     limit: int = Query(
