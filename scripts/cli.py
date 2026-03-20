@@ -2,15 +2,13 @@
 import argparse
 import json
 from pathlib import Path
+
 from eth_utils.crypto import keccak
-
-from tabulate import tabulate
-from web3 import Web3
-
-from lib.balance import get_native_balance, get_token_balance
+from lib.balance import get_native_balance, get_token_balance_with_assoc
 from lib.config import get_operator_private_key, get_rpc_url
 from lib.erc20 import approve, check_allowance, get_token_info, mint, transfer
 from lib.eth import get_web3
+from lib.hts import is_hts_token
 from lib.ss58 import (
     chain_id_to_network,
     prefix_to_network,
@@ -18,6 +16,8 @@ from lib.ss58 import (
     ss58_encode_h160,
 )
 from lib.utils import format_units, parse_token_amounts, to_checksum
+from tabulate import tabulate
+from web3 import Web3
 
 NETWORK_CHOICES = ["hedera_local", "hedera_testnet", "hedera_mainnet", "custom"]
 
@@ -49,9 +49,7 @@ def decode_error(selector: str, abi):
     try:
         for item in abi:
             if item.get("type") == "error":
-                signature = (
-                    f"{item['name']}({','.join(i['type'] for i in item['inputs'])})"
-                )
+                signature = f"{item['name']}({','.join(i['type'] for i in item['inputs'])})"
                 sig_hash = keccak(text=signature)[:4].hex()
                 if selector.lower() == "0x" + sig_hash:
                     return signature
@@ -184,14 +182,13 @@ def cmd_show_address(args: argparse.Namespace) -> None:
     priv_key = get_operator_private_key(args.private_key)
     # Use Web3.eth.account directly to avoid needing a connected RPC provider
     from eth_account import Account
+
     account = Account.from_key(priv_key)
     print(
         json.dumps(
             {
                 "address": account.address,
-                "private_key_used": priv_key[:6] + "..." + priv_key[-4:]
-                if priv_key
-                else "None",
+                "private_key_used": priv_key[:6] + "..." + priv_key[-4:] if priv_key else "None",
             },
             indent=2,
         )
@@ -230,29 +227,36 @@ def cmd_check_balance(args: argparse.Namespace) -> None:
 
     tokens = _load_network_tokens(args.network)
 
-    rows = [["NATIVE", "DEV", "-", "-", str(native_raw), str(native_fmt), "-"]]
+    rows = [["NATIVE", "HBAR", "-", "-", str(native_fmt), "-"]]
     for key in ["token1", "token2"]:
         token = to_checksum(tokens[key])
         if token == "0x0000000000000000000000000000000000000000":
             continue
+
+        hts_flag = is_hts_token(w3, token, args.network)
+
         try:
-            info = get_token_info(w3, token)
-            bal_raw = get_token_balance(w3, token, wallet)
+            info = get_token_info(w3, token, args.network)
+            bal_raw, is_associated = get_token_balance_with_assoc(w3, token, wallet, args.network)
             bal_fmt = format_units(int(bal_raw), int(info["decimals"]))
             supply_fmt = format_units(int(info["total_supply"]), int(info["decimals"]))
+
+            symbol = str(info["symbol"])
+            if hts_flag and not is_associated:
+                symbol += " (unassociated)"
+
             rows.append(
                 [
                     token,
-                    str(info["symbol"]),
+                    symbol,
                     str(info["name"]),
                     str(info["decimals"]),
-                    str(bal_raw),
                     bal_fmt,
                     supply_fmt,
                 ]
             )
         except Exception:
-            rows.append([token, "?", "?", "?", "?", "?", "?"])
+            rows.append([token, "?", "?", "?", "?", "?"])
 
     threshold = int(args.min_threshold_wei) if args.min_threshold_wei is not None else 0
     sufficient = native_raw >= threshold
@@ -284,9 +288,8 @@ def cmd_check_balance(args: argparse.Namespace) -> None:
                 "Symbol",
                 "Name",
                 "Decimals",
-                "Balance (raw)",
-                "Balance (fmt)",
-                "Total Supply (fmt)",
+                "Balance",
+                "Total Supply",
             ],
             tablefmt="github",
             disable_numparse=True,
@@ -330,12 +333,10 @@ def cmd_transfer(args: argparse.Namespace) -> None:
     print(f"Mode: {'DRY-RUN' if args.dry_run else 'LIVE'}")
 
     for token, amount in token_amounts:
-        info = get_token_info(w3, token)
-        balance = get_token_balance(w3, token, sender)
+        info = get_token_info(w3, token, args.network)
+        balance = get_token_balance_with_assoc(w3, token, sender, args.network)[0]
         if balance < amount:
-            raise ValueError(
-                f"Insufficient {info['symbol']} balance for {token}: have {balance}, need {amount}"
-            )
+            raise ValueError(f"Insufficient {info['symbol']} balance for {token}: have {balance}, need {amount}")
 
         allowance = check_allowance(w3, token, sender, recipient)
         print(
@@ -358,9 +359,7 @@ def cmd_transfer(args: argparse.Namespace) -> None:
                 allowance_after = check_allowance(w3, token, sender, recipient)
                 print(f"  allowance after approval: {allowance_after}")
                 if allowance_after < amount:
-                    raise ValueError(
-                        f"allowance still too low after approval: {allowance_after} < {amount}"
-                    )
+                    raise ValueError(f"allowance still too low after approval: {allowance_after} < {amount}")
             else:
                 print("  [dry-run] skip approve broadcast")
 
@@ -398,9 +397,7 @@ def cmd_vault_state(args: argparse.Namespace) -> None:
     rpc_url = get_rpc_url(args.network, args.rpc_url)
     w3 = get_web3(rpc_url)
 
-    deploy_path = (
-        Path(__file__).resolve().parents[1] / "deploy" / args.network / "vault.yaml"
-    )
+    deploy_path = Path(__file__).resolve().parents[1] / "deploy" / args.network / "vault.yaml"
     if not deploy_path.exists():
         raise FileNotFoundError(f"Deployment file not found: {deploy_path}")
 
@@ -425,7 +422,7 @@ def cmd_vault_state(args: argparse.Namespace) -> None:
     else:
         token2_addr = to_checksum(token2_addr_raw)
 
-    vault_abi_path = Path(__file__).resolve().parents[1] / "vault_abi.json"
+    vault_abi_path = Path(__file__).resolve().parents[1] / "ABI" / "vault_abi.json"
     if not vault_abi_path.exists():
         raise FileNotFoundError(f"Vault ABI not found: {vault_abi_path}")
 
@@ -448,8 +445,8 @@ def cmd_vault_state(args: argparse.Namespace) -> None:
     shareholder_count = vault.functions.getShareholderCount().call()
     shareholders = vault.functions.getShareholders().call()
 
-    info1 = get_token_info(w3, token1_addr) if token1_addr != "0x" * 20 else None
-    info2 = get_token_info(w3, token2_addr) if token2_addr != "0x" * 20 else None
+    info1 = get_token_info(w3, token1_addr, args.network) if token1_addr != "0x" * 20 else None
+    info2 = get_token_info(w3, token2_addr, args.network) if token2_addr != "0x" * 20 else None
 
     def fmt_token(addr: str, info: dict | None) -> str:
         if not info:
@@ -505,7 +502,7 @@ def cmd_mint(args: argparse.Namespace) -> None:
     w3 = get_web3(rpc_url)
     priv_key = get_operator_private_key(args.private_key)
     sender = w3.eth.account.from_key(priv_key).address
-    info = get_token_info(w3, token)
+    info = get_token_info(w3, token, args.network)
 
     print(f"Minter: {sender}")
     print(f"Recipient: {recipient}")
@@ -532,9 +529,7 @@ def cmd_mint(args: argparse.Namespace) -> None:
 def _load_vault(w3: Web3, network: str):
     import yaml
 
-    deploy_path = (
-        Path(__file__).resolve().parents[1] / "deploy" / network / "vault.yaml"
-    )
+    deploy_path = Path(__file__).resolve().parents[1] / "deploy" / network / "vault.yaml"
     if not deploy_path.exists():
         raise FileNotFoundError(f"Deployment file not found: {deploy_path}")
 
@@ -547,7 +542,7 @@ def _load_vault(w3: Web3, network: str):
     else:
         vault_addr = to_checksum(vault_addr_raw)
 
-    vault_abi_path = Path(__file__).resolve().parents[1] / "vault_abi.json"
+    vault_abi_path = Path(__file__).resolve().parents[1] / "ABI" / "vault_abi.json"
     if not vault_abi_path.exists():
         raise FileNotFoundError(f"Vault ABI not found: {vault_abi_path}")
 
@@ -618,32 +613,18 @@ def cmd_vault_state_transition(args: argparse.Namespace) -> None:
             print(f"Simulation failed: {e}")
         return
 
-    account = w3.eth.account.from_key(priv_key)
-    nonce = w3.eth.get_transaction_count(account.address, "pending")
+    vault_abi_path = Path(__file__).resolve().parents[1] / "ABI" / "vault_abi.json"
+    with open(vault_abi_path) as f:
+        vault_abi = json.load(f)
 
-    block = w3.eth.get_block("latest")
-    base_fee = block.get("baseFeePerGas", w3.to_wei(50, "gwei"))
-
-    tx_params = {
-        "from": account.address,
-        "nonce": nonce,
-        "gas": 100000000,
-        "chainId": w3.eth.chain_id,
-        "maxFeePerGas": base_fee * 2,
-        "maxPriorityFeePerGas": w3.to_wei(2, "gwei"),
-    }
-
-    tx = func.build_transaction(tx_params)
-    signed = account.sign_transaction(tx)
-    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-    receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
-
-    if receipt.status == 1:
-        print(f"Transaction successful: {w3.to_hex(tx_hash)}")
+    result = send_tx(w3, vault, func_name, [], priv_key)
+    if result["status"] == 1:
+        ok(f"State transition successful: {result['tx_hash']}")
         new_state = vault.functions.state().call()
         print(f"New state: {state_enum.get(new_state, str(new_state))}")
     else:
-        print(f"Transaction failed: {w3.to_hex(tx_hash)}")
+        error("State transition failed")
+        log_tx_error(result, vault_abi)
         raise SystemExit(1)
 
 
@@ -719,7 +700,7 @@ def cmd_vault_close(args: argparse.Namespace) -> None:
 
     vault, vault_addr = _load_vault(w3, args.network)
 
-    vault_abi_path = Path(__file__).resolve().parents[1] / "vault_abi.json"
+    vault_abi_path = Path(__file__).resolve().parents[1] / "ABI" / "vault_abi.json"
     with open(vault_abi_path) as f:
         vault_abi = json.load(f)
 
@@ -740,7 +721,7 @@ def cmd_vault_close(args: argparse.Namespace) -> None:
         elif current_state == 3:
             print("  1. (already in Withdraw state)")
         print(f"  2. withdraw({len(shareholders)}) - distribute to shareholders")
-        print(f"\n  Expected final state: Closed (0 shareholders)")
+        print("\n  Expected final state: Closed (0 shareholders)")
         return
 
     expected_state = current_state
@@ -753,10 +734,9 @@ def cmd_vault_close(args: argparse.Namespace) -> None:
             if expected_new_state is not None:
                 expected_state = expected_new_state
             return True
-        else:
-            error(f"{step_name} failed")
-            log_tx_error(result, vault_abi)
-            return False
+        error(f"{step_name} failed")
+        log_tx_error(result, vault_abi)
+        return False
 
     try:
         if current_state == 1:
@@ -780,10 +760,85 @@ def cmd_vault_close(args: argparse.Namespace) -> None:
 
         print(f"\n{BOLD}Vault closed successfully{NC}")
         print(f"Final state: {state_enum.get(expected_state, str(expected_state))}")
-        print(f"Final shareholders: 0")
+        print("Final shareholders: 0")
 
     except Exception as e:
         error(f"Close failed: {e}")
+        raise SystemExit(1)
+
+
+def cmd_vault_deposit(args: argparse.Namespace) -> None:
+    amount = int(args.amount)
+    if amount <= 0:
+        raise ValueError("--amount must be > 0")
+
+    rpc_url = get_rpc_url(args.network, args.rpc_url)
+    w3 = get_web3(rpc_url)
+    priv_key = get_operator_private_key(args.private_key)
+    sender = w3.eth.account.from_key(priv_key).address
+
+    vault, vault_addr = _load_vault(w3, args.network)
+    token1_addr = vault.functions.token1().call()
+
+    allowance = check_allowance(w3, token1_addr, sender, vault_addr)
+    if allowance < amount:
+        print(f"Allowance too low ({allowance} < {amount}). Approving...")
+        if not args.dry_run:
+            approve(w3, token1_addr, priv_key, vault_addr, amount, args.verbose)
+
+    print(f"Depositing {amount} to vault {vault_addr} from {sender}")
+    func = vault.functions.deposit(amount)
+
+    if args.dry_run:
+        print("[dry-run] Simulating deposit...")
+        try:
+            func.call({"from": sender})
+            print("Simulation succeeded.")
+        except Exception as e:
+            print(f"Simulation failed: {e}")
+        return
+
+    result = send_tx(w3, vault, "deposit", [amount], priv_key)
+    if result["status"] == 1:
+        ok(f"Deposit successful: {result['tx_hash']}")
+    else:
+        vault_abi_path = Path(__file__).resolve().parents[1] / "ABI" / "vault_abi.json"
+        with open(vault_abi_path) as f:
+            vault_abi = json.load(f)
+        error("Deposit failed")
+        log_tx_error(result, vault_abi)
+        raise SystemExit(1)
+
+
+def cmd_vault_withdraw(args: argparse.Namespace) -> None:
+    rpc_url = get_rpc_url(args.network, args.rpc_url)
+    w3 = get_web3(rpc_url)
+    priv_key = get_operator_private_key(args.private_key)
+    sender = w3.eth.account.from_key(priv_key).address
+
+    vault, vault_addr = _load_vault(w3, args.network)
+
+    print(f"Withdrawing from vault {vault_addr} for {sender}")
+    func = vault.functions.userWithdraw()
+
+    if args.dry_run:
+        print("[dry-run] Simulating userWithdraw...")
+        try:
+            func.call({"from": sender})
+            print("Simulation succeeded.")
+        except Exception as e:
+            print(f"Simulation failed: {e}")
+        return
+
+    result = send_tx(w3, vault, "userWithdraw", [], priv_key)
+    if result["status"] == 1:
+        ok(f"Withdrawal successful: {result['tx_hash']}")
+    else:
+        vault_abi_path = Path(__file__).resolve().parents[1] / "ABI" / "vault_abi.json"
+        with open(vault_abi_path) as f:
+            vault_abi = json.load(f)
+        error("Withdrawal failed")
+        log_tx_error(result, vault_abi)
         raise SystemExit(1)
 
 
@@ -793,32 +848,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_ss58_encode = subparsers.add_parser("ss58-encode", help="Convert H160 to SS58")
     p_ss58_encode.add_argument("address", help="0x-prefixed H160 address")
-    p_ss58_encode.add_argument(
-        "--prefix", type=int, default=42, help="SS58 prefix (default: 42)"
-    )
+    p_ss58_encode.add_argument("--prefix", type=int, default=42, help="SS58 prefix (default: 42)")
     p_ss58_encode.set_defaults(func=cmd_ss58_encode)
 
     p_ss58_decode = subparsers.add_parser("ss58-decode", help="Convert SS58 to H160")
     p_ss58_decode.add_argument("address", help="SS58 address")
     p_ss58_decode.set_defaults(func=cmd_ss58_decode)
 
-    p_chain_info = subparsers.add_parser(
-        "chain-info", help="Query chain ID and latest block"
-    )
+    p_chain_info = subparsers.add_parser("chain-info", help="Query chain ID and latest block")
     add_network_args(p_chain_info)
     p_chain_info.set_defaults(func=cmd_chain_info)
 
-    p_show_address = subparsers.add_parser(
-        "show-address", help="Show EVM address for a private key"
-    )
-    p_show_address.add_argument(
-        "--private-key", help="Private key (defaults to OPERATOR_KEY in .env)"
-    )
+    p_show_address = subparsers.add_parser("show-address", help="Show EVM address for a private key")
+    p_show_address.add_argument("--private-key", help="Private key (defaults to OPERATOR_KEY in .env)")
     p_show_address.set_defaults(func=cmd_show_address)
 
-    p_check_balance = subparsers.add_parser(
-        "check-balance", help="Check native and token balances"
-    )
+    p_check_balance = subparsers.add_parser("check-balance", help="Check native and token balances")
     p_check_balance.add_argument("wallet", help="Wallet address to inspect")
     add_network_args(p_check_balance)
     p_check_balance.add_argument(
@@ -830,14 +875,10 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print machine-readable JSON summary only",
     )
-    p_check_balance.add_argument(
-        "-v", "--verbose", action="store_true", help="Verbose output"
-    )
+    p_check_balance.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     p_check_balance.set_defaults(func=cmd_check_balance)
 
-    p_transfer = subparsers.add_parser(
-        "transfer", help="Transfer one or more ERC20 tokens"
-    )
+    p_transfer = subparsers.add_parser("transfer", help="Transfer one or more ERC20 tokens")
     add_network_args(p_transfer)
     p_transfer.add_argument("--to", required=True, help="Recipient address")
     p_transfer.add_argument(
@@ -845,48 +886,30 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Comma list: <address>#<amount>,<address>#<amount> using raw base units",
     )
-    p_transfer.add_argument(
-        "--private-key", help="Override sender private key (defaults to OPERATOR_KEY)"
-    )
-    p_transfer.add_argument(
-        "--dry-run", action="store_true", help="Simulate without broadcasting"
-    )
-    p_transfer.add_argument(
-        "-v", "--verbose", action="store_true", help="Verbose output"
-    )
+    p_transfer.add_argument("--private-key", help="Override sender private key (defaults to OPERATOR_KEY)")
+    p_transfer.add_argument("--dry-run", action="store_true", help="Simulate without broadcasting")
+    p_transfer.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     p_transfer.set_defaults(func=cmd_transfer)
 
-    p_mint = subparsers.add_parser(
-        "mint", help="Mint ERC20 tokens via mint(address,uint256)"
-    )
+    p_mint = subparsers.add_parser("mint", help="Mint ERC20 tokens via mint(address,uint256)")
     add_network_args(p_mint)
     p_mint.add_argument("--token", required=True, help="Token contract address")
     p_mint.add_argument("--to", required=True, help="Recipient address")
     p_mint.add_argument("--amount", required=True, help="Amount in raw base units")
-    p_mint.add_argument(
-        "--private-key", help="Override minter private key (defaults to OPERATOR_KEY)"
-    )
-    p_mint.add_argument(
-        "--dry-run", action="store_true", help="Simulate without broadcasting"
-    )
+    p_mint.add_argument("--private-key", help="Override minter private key (defaults to OPERATOR_KEY)")
+    p_mint.add_argument("--dry-run", action="store_true", help="Simulate without broadcasting")
     p_mint.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     p_mint.set_defaults(func=cmd_mint)
 
-    p_extract_abi = subparsers.add_parser(
-        "extract-abi", help="Extract ABI from compiled Vault.json to vault_abi.json"
-    )
+    p_extract_abi = subparsers.add_parser("extract-abi", help="Extract ABI from compiled Vault.json to vault_abi.json")
     p_extract_abi.set_defaults(func=cmd_extract_abi)
 
-    p_vault_state = subparsers.add_parser(
-        "vault-state", help="Read all vault state in one command"
-    )
+    p_vault_state = subparsers.add_parser("vault-state", help="Read all vault state in one command")
     add_network_args(p_vault_state)
     p_vault_state.add_argument("--json", action="store_true", help="Output as JSON")
     p_vault_state.set_defaults(func=cmd_vault_state)
 
-    p_vault_state_transition = subparsers.add_parser(
-        "vault-state-transition", help="Transition vault to a new state"
-    )
+    p_vault_state_transition = subparsers.add_parser("vault-state-transition", help="Transition vault to a new state")
     add_network_args(p_vault_state_transition)
     p_vault_state_transition.add_argument(
         "--state",
@@ -894,29 +917,17 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["deposit", "running", "withdraw", "close-deposits"],
         help="Target state",
     )
-    p_vault_state_transition.add_argument(
-        "--private-key", help="Override private key (defaults to OPERATOR_KEY)"
-    )
-    p_vault_state_transition.add_argument(
-        "--dry-run", action="store_true", help="Simulate without broadcasting"
-    )
+    p_vault_state_transition.add_argument("--private-key", help="Override private key (defaults to OPERATOR_KEY)")
+    p_vault_state_transition.add_argument("--dry-run", action="store_true", help="Simulate without broadcasting")
     p_vault_state_transition.set_defaults(func=cmd_vault_state_transition)
 
-    p_vault_reset = subparsers.add_parser(
-        "vault-reset", help="Reset vault (updateVault)"
-    )
+    p_vault_reset = subparsers.add_parser("vault-reset", help="Reset vault (updateVault)")
     add_network_args(p_vault_reset)
     p_vault_reset.add_argument("--token1", required=True, help="New token1 address")
     p_vault_reset.add_argument("--token2", required=True, help="New token2 address")
-    p_vault_reset.add_argument(
-        "--max-shareholders", required=True, help="New max shareholders"
-    )
-    p_vault_reset.add_argument(
-        "--private-key", help="Override private key (defaults to OPERATOR_KEY)"
-    )
-    p_vault_reset.add_argument(
-        "--dry-run", action="store_true", help="Simulate without broadcasting"
-    )
+    p_vault_reset.add_argument("--max-shareholders", required=True, help="New max shareholders")
+    p_vault_reset.add_argument("--private-key", help="Override private key (defaults to OPERATOR_KEY)")
+    p_vault_reset.add_argument("--dry-run", action="store_true", help="Simulate without broadcasting")
     p_vault_reset.set_defaults(func=cmd_vault_reset)
 
     p_vault_close = subparsers.add_parser(
@@ -924,13 +935,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="Close vault (full workflow: Running -> Withdraw -> Withdraw all)",
     )
     add_network_args(p_vault_close)
-    p_vault_close.add_argument(
-        "--private-key", help="Override private key (defaults to OPERATOR_KEY)"
-    )
-    p_vault_close.add_argument(
-        "--dry-run", action="store_true", help="Simulate without broadcasting"
-    )
+    p_vault_close.add_argument("--private-key", help="Override private key (defaults to OPERATOR_KEY)")
+    p_vault_close.add_argument("--dry-run", action="store_true", help="Simulate without broadcasting")
     p_vault_close.set_defaults(func=cmd_vault_close)
+
+    p_vault_deposit = subparsers.add_parser("vault-deposit", help="Deposit token1 into the vault")
+    add_network_args(p_vault_deposit)
+    p_vault_deposit.add_argument("--amount", required=True, help="Amount to deposit in base units")
+    p_vault_deposit.add_argument("--private-key", help="Override private key (defaults to OPERATOR_KEY)")
+    p_vault_deposit.add_argument("--dry-run", action="store_true", help="Simulate without broadcasting")
+    p_vault_deposit.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
+    p_vault_deposit.set_defaults(func=cmd_vault_deposit)
+
+    p_vault_withdraw = subparsers.add_parser("vault-withdraw", help="Withdraw your share from the vault")
+    add_network_args(p_vault_withdraw)
+    p_vault_withdraw.add_argument("--private-key", help="Override private key (defaults to OPERATOR_KEY)")
+    p_vault_withdraw.add_argument("--dry-run", action="store_true", help="Simulate without broadcasting")
+    p_vault_withdraw.set_defaults(func=cmd_vault_withdraw)
 
     return parser
 
