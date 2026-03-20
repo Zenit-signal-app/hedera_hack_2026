@@ -30,6 +30,10 @@ from app.schemas.auth import (
 )
 from app.db.chain_resolve import get_slug_for_chain_id
 from app.services.firebase_auth import verify_id_token
+from app.core.telegram_auth import verify_telegram_auth
+
+import urllib.parse
+import json
 
 router = APIRouter()
 group_tags: List[str] = ["Authentication"]
@@ -319,59 +323,65 @@ def logout(body: LogoutRequest, db: Session = Depends(get_db)) -> LogoutResponse
     db.commit()
     return LogoutResponse(revoked=bool(getattr(result, "rowcount", 0)))
 
+# from app.core.telegram_auth import verify_telegram_auth
+
+import urllib.parse
+import json
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from app.core.config import settings # Assuming your BOT_TOKEN is here
 
 @router.post(
     "/telegram/login",
     response_model=TelegramLoginResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Login via Telegram Mini App initData",
-    description=(
-        "**Input:** Body with `initData` (string, required) — Telegram Mini App initData string.\n\n"
-        "**Output:** `TelegramLoginResponse` with:\n"
-        "- **tokens**: access_token (JWT for API calls), refresh_token, token_type (bearer), expires_in (seconds), issued_at (ISO timestamp).\n"
-        "- **user**: id (backend user ID in users), telegram_id, email, display_name, photo_url, provider (telegram), role, chain (slug value from chains table).\n"
-        "Validates the data via telegram_webapp_auth, upserts `production.users`, and issues a backend access + refresh tokens.\n\n"
-        "401 if token is invalid."
-    ),
+    status_code=status.HTTP_200_OK
 )
-def telegram_login(body: TelegramLoginRequest, db: Session = Depends(get_db)) -> TelegramLoginResponse:
-    from app.core.telegram_auth import verify_telegram_auth
-    telegram_id = verify_telegram_auth(init_data=body.initData)
+def telegram_login(body: TelegramLoginRequest, db: Session = Depends(get_db)):
+    # 1. Validate and get Telegram ID
+    try:
+        # Pass your Bot Token from settings
+        telegram_id = verify_telegram_auth(body.initData, settings.BOT_TOKEN)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail=str(e)
+        )
 
-    import urllib.parse
-    import json
-    parsed = urllib.parse.parse_qs(body.initData)
-    user_json = parsed.get("user", ["{}"])[0]
-    user_info = json.loads(user_json)
+    # 2. Extract user info for the DB
+    # We use parse_qsl (list of tuples) to handle the string safely
+    init_params = dict(urllib.parse.parse_qsl(body.initData.strip()))
+    user_info = json.loads(init_params.get("user", "{}"))
     
     first_name = user_info.get("first_name", "")
     last_name = user_info.get("last_name", "")
     display_name = f"{first_name} {last_name}".strip() or f"User {telegram_id}"
-    photo_url = user_info.get("photo_url")
-    email = f"telegram_{telegram_id}@placeholder.com"
-    firebase_uid_placeholder = f"tele_{telegram_id}"
-
+    
+    # 3. DB Operations
     user = _upsert_user(
         db=db,
-        firebase_uid=firebase_uid_placeholder,
-        email=email,
+        firebase_uid=f"tele_{telegram_id}",
+        email=f"telegram_{telegram_id}@placeholder.com",
         display_name=display_name,
-        photo_url=photo_url,
+        photo_url=user_info.get("photo_url"),
         provider="telegram",
         telegram_id=telegram_id,
     )
 
+    # 4. Generate Tokens
     tokens = _issue_tokens(db=db, user_id=user.id, email=user.email, provider=user.provider)
 
-    user_resp = UserTeleResponse(
-        id=user.id,
-        telegram_id=telegram_id,
-        email=user.email,
-        display_name=user.display_name,
-        photo_url=user.photo_url,
-        provider=user.provider,
-        role=user.role,
-        chain=user.chain,
-    )
+    # 5. Return the full response (Ensure these match your UserTeleResponse model)
+    return {
+        "tokens": tokens,
+        "user": {
+            "id": str(user.id),              # Cast backend ID to string
+            "telegram_id": str(telegram_id), # Cast Telegram ID to string
+            "email": user.email,
+            "display_name": user.display_name,
+            "photo_url": user.photo_url,
+            "provider": user.provider,
+            "role": user.role,
+            "chain": user.chain,
+        }
+    }
 
-    return TelegramLoginResponse(tokens=tokens, user=user_resp)
