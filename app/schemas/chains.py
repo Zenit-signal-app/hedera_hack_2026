@@ -20,7 +20,7 @@ class SetChainRequest(CustomBaseModel):
 
 
 class SetChainTeleRequest(CustomBaseModel):
-    """Body for POST /chains – set the user's chain by telegram_id."""
+    """Body for POST /chains – set the user's chain by initData."""
 
-    telegram_id: str
+    initData: str
     chain: str

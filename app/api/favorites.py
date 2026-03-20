@@ -277,16 +277,18 @@ def _get_tele_user_id(db: Session, telegram_id: str) -> str:
 
 
 @router.get(
-    "/telegram/{telegram_id}",
+    "/telegram",
     response_model=List[schemas.FavoriteToken],
-    summary="List favorite tokens by telegram_id",
-    description="Returns the user's favorites ordered by symbol.",
+    summary="List favorite tokens by telegram initData",
+    description="Returns the user's favorites ordered by symbol. User authenticated via initData.",
 )
 def list_favorites_tele(
-    telegram_id: str,
+    initData: str,
     db: Session = Depends(get_db),
 ) -> List[schemas.FavoriteToken]:
     try:
+        from app.core.telegram_auth import verify_telegram_auth
+        telegram_id = verify_telegram_auth(init_data=initData)
         user_id = _get_tele_user_id(db, telegram_id)
         return list_favorites(user_id=user_id, db=db)
     except Exception:
@@ -297,14 +299,16 @@ def list_favorites_tele(
     "/telegram",
     response_model=List[schemas.FavoriteToken],
     status_code=status.HTTP_201_CREATED,
-    summary="Add favorite tokens by telegram_id",
-    description="Adds symbols to favorites for the user specified by telegram_id.",
+    summary="Add favorite tokens by telegram initData",
+    description="Adds symbols to favorites for the user specified by initData.",
 )
 def add_favorite_tele(
     body: schemas.FavoriteBulkCreateTeleRequest,
     db: Session = Depends(get_db),
 ) -> List[schemas.FavoriteToken]:
-    user_id = _get_tele_user_id(db, body.telegram_id)
+    from app.core.telegram_auth import verify_telegram_auth
+    telegram_id = verify_telegram_auth(init_data=body.initData)
+    user_id = _get_tele_user_id(db, telegram_id)
     req = schemas.FavoriteBulkCreateRequest(symbols=body.symbols)
     return add_favorite(body=req, user_id=user_id, db=db)
 
@@ -312,13 +316,15 @@ def add_favorite_tele(
 @router.delete(
     "/telegram",
     response_model=schemas.FavoriteBulkDeleteResponse,
-    summary="Remove favorite tokens by telegram_id",
-    description="Removes symbols from favorites for the user specified by telegram_id.",
+    summary="Remove favorite tokens by telegram initData",
+    description="Removes symbols from favorites for the user specified by initData.",
 )
 def remove_favorite_tele(
     body: schemas.FavoriteBulkDeleteTeleRequest,
     db: Session = Depends(get_db),
 ) -> schemas.FavoriteBulkDeleteResponse:
-    user_id = _get_tele_user_id(db, body.telegram_id)
+    from app.core.telegram_auth import verify_telegram_auth
+    telegram_id = verify_telegram_auth(init_data=body.initData)
+    user_id = _get_tele_user_id(db, telegram_id)
     req = schemas.FavoriteBulkDeleteRequest(symbols=body.symbols)
     return remove_favorite(body=req, user_id=user_id, db=db)

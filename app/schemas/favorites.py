@@ -79,11 +79,11 @@ class FavoriteBulkDeleteResponse(CustomBaseModel):
 
 
 class FavoriteBulkCreateTeleRequest(FavoriteBulkCreateRequest):
-    telegram_id: str
+    initData: str
 
 
 class FavoriteBulkDeleteTeleRequest(FavoriteBulkDeleteRequest):
-    telegram_id: str
+    initData: str
 
 
 class FavoriteToken(CustomBaseModel):

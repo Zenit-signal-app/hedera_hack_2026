@@ -63,6 +63,9 @@ class Settings(BaseSettings):
     # Chat GPT settings
     GPT_KEY: str | None
 
+    # Telegram Mini App Configuration
+    BOT_TOKEN: str | None = None
+
     # Third-party APIs
     COINGECKO_API_KEY: str | None = None
      

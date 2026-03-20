@@ -206,3 +206,4 @@ widgetsnbextension==4.0.7
 xyzservices==2025.4.0
 yarl==1.9.7
 yfinance==0.2.58
+telegram-webapp-auth

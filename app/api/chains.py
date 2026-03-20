@@ -134,11 +134,11 @@ def set_user_chain(
     tags=group_tags,
     response_model=Message,
     status_code=status.HTTP_200_OK,
-    summary="Set user chain via telegram_id",
+    summary="Set user chain via telegram initData",
     description=(
-        "Updates the user's chain_id by telegram_id. "
-        "**Body:** `telegram_id` (string, required), `chain` (string, required) – treated as slug, must exist in the chains table. "
-        "Returns `{ \"message\": \"success\" }` on success. 400 if chain not found; 404 if user not found."
+        "Updates the user's chain_id by validating Telegram initData. "
+        "**Body:** `initData` (string, required), `chain` (string, required) – treated as slug, must exist in the chains table. "
+        "Returns `{ \"message\": \"success\" }` on success. 400 if chain not found; 401 if invalid initData."
     ),
 )
 def set_user_chain_tele(
@@ -146,7 +146,8 @@ def set_user_chain_tele(
     db: Session = Depends(get_db),
 ) -> Message:
     chain = body.chain
-    telegram_id = body.telegram_id
+    from app.core.telegram_auth import verify_telegram_auth
+    telegram_id = verify_telegram_auth(init_data=body.initData)
 
     chain_id = get_chain_id_for_slug(db, chain)
     if chain_id == 0:
