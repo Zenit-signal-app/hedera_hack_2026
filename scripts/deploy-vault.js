@@ -110,25 +110,41 @@ function runCommand(cmd, desc) {
   }
 }
 
-function saveDeployment(network, deployment, config) {
+function saveDeployment(network, deployment, config, managerAddress, timestamp) {
   const deployDir = path.join(projectDir, 'deploy', network);
   if (!fs.existsSync(deployDir)) fs.mkdirSync(deployDir, { recursive: true });
 
-  const content = `# Vault deployment - ${network}
-# Generated: ${new Date().toISOString()}
+  const content = `# Vault Deployment Info
+# Generated: ${timestamp}
+
+network:
+  name: ${network}
+  chain_id: ${config.chainId || '""'}
+  chain_name: ${config.chainName || '""'}
 
 deployment:
-  contract_id: ${deployment.contractId}
-  contract_address: ${deployment.contractAddress}
-  transaction_id: "${deployment.transactionId}"
   status: success
-  max_automatic_token_associations: -1
+  exit_code: 0
+  contract_id: ${deployment.contractId || '""'}
+  contract_address: ${deployment.contractAddress || '""'}
+  transaction_hash: "${deployment.transactionId || '""'}"
+  timestamp: ${timestamp}
+  block_number: ""
+  raw_log_file: ${path.join(deployDir, 'vault.deploy.log')}
 
-config:
-  token1: ${config.token1}
-  token2: ${config.token2}
-  max_shareholders: ${config.maxShareholders}
-`;
+manager:
+  address: ${managerAddress || '""'}
+  ss58_address: ""
+
+tokens:
+  token1: ${config.token1 || '""'}
+  token2: ${config.token2 || '""'}
+
+configuration:
+  max_shareholders: ${config.maxShareholders || 5}
+
+rpc:
+  url: ${config.rpcUrl || '""'};
 
   const filePath = path.join(deployDir, 'vault.yaml');
   fs.writeFileSync(filePath, content);
@@ -269,11 +285,13 @@ async function main() {
 
   // Step 4: Save deployment
   console.log('\nStep 4: Save deployment info');
+  const timestamp = new Date().toISOString();
+  Object.assign(config, { token1, token2, maxShareholders });
   const deployFile = saveDeployment(network, {
     contractId,
     contractAddress,
     transactionId: response.transactionId.toString(),
-  }, { token1, token2, maxShareholders });
+  }, config, managerAddress, timestamp);
 
   console.log('\n' + '='.repeat(50));
   console.log('  Deployment successful!');
