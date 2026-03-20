@@ -1,6 +1,7 @@
 from app.core.router_decorated import APIRouter
 from app.core.config import settings
-from app.db.chain_resolve import get_chain_id_for_slug, get_slug_for_chain_id
+from app.core.user_context import get_current_user_chain_id
+from app.db.chain_resolve import get_slug_for_chain_id
 from app.db.session import get_db, get_tables
 from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -25,8 +26,9 @@ tables = get_tables(settings.SCHEMA_1)
             response_model=List[schemas.PriceHistory],
             summary="Get token price history",
             description=(
-                "**Input:** Query: `symbol` (required), `chain` (optional chain string, treated as slug), `timeframe` (5m, 30m, 1h, 4h, 1d; default 5m), "
-                "`limit` (1–1000, default 100), `from_time` (optional Unix seconds), `to_time` (optional Unix seconds).\n\n"
+                "**Input:** Query: `symbol` (required), `timeframe` (5m, 30m, 1h, 4h, 1d; default 5m), "
+                "`limit` (1–1000, default 100), `from_time` (optional Unix seconds), `to_time` (optional Unix seconds). "
+                "Results are scoped to the authenticated user's chain.\n\n"
                 "**Output:** List of `PriceHistory`, each with:\n"
                 "- **symbol**: Trading pair (e.g. BTCUSDT).\n"
                 "- **chain**: Slug value from chains table.\n"
@@ -41,11 +43,11 @@ tables = get_tables(settings.SCHEMA_1)
             ))
 def get_price_history(
     symbol: str,
-    chain: Optional[str] = None,
     timeframe: str = "5m",
     limit: int = 100,
     from_time: Optional[int] = None,
     to_time: Optional[int] = None,
+    chain_id: int = Depends(get_current_user_chain_id),
     db: Session = Depends(get_db),
 ) -> List[schemas.PriceHistory]:
     """Get price history for a token
@@ -99,12 +101,7 @@ def get_price_history(
         table_name = tables['p5m']
         timeframe = "5m"
     
-    chain_id = get_chain_id_for_slug(db, chain) if (chain and chain.strip()) else None
-    if chain and chain.strip() and chain_id == 0:
-        raise HTTPException(status_code=400, detail="Chain not found")
-    where_conditions = [f"symbol = '{symbol}'"]
-    if chain_id is not None:
-        where_conditions.append(f"chain_id = {int(chain_id)}")
+    where_conditions = [f"symbol = '{symbol}'", f"chain_id = {int(chain_id)}"]
     if from_time is not None:
         where_conditions.append(f"{time_column} >= {from_time}")
     if to_time is not None:
