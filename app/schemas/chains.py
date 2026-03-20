@@ -17,3 +17,10 @@ class SetChainRequest(CustomBaseModel):
     """Body for POST /chains – set the authenticated user's chain."""
 
     chain: str
+
+
+class SetChainTeleRequest(CustomBaseModel):
+    """Body for POST /chains – set the user's chain by telegram_id."""
+
+    telegram_id: str
+    chain: str

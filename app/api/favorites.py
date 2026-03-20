@@ -261,3 +261,64 @@ def remove_favorite(
         deleted_symbols=deleted_symbols,
         missing_symbols=missing_symbols,
     )
+
+
+def _get_tele_user_id(db: Session, telegram_id: str) -> str:
+    row = db.execute(
+        text(f"SELECT id FROM production.users_tele WHERE telegram_id = {_sql(telegram_id)}")
+    ).fetchone()
+    if not row:
+        email = f""
+        row = db.execute(
+            text(f"INSERT INTO production.users_tele (telegram_id, email) VALUES ({_sql(telegram_id)}, {_sql(email)}) RETURNING id")
+        ).fetchone()
+        db.commit()
+    return str(row.id)
+
+
+@router.get(
+    "/telegram/{telegram_id}",
+    response_model=List[schemas.FavoriteToken],
+    summary="List favorite tokens by telegram_id",
+    description="Returns the user's favorites ordered by symbol.",
+)
+def list_favorites_tele(
+    telegram_id: str,
+    db: Session = Depends(get_db),
+) -> List[schemas.FavoriteToken]:
+    try:
+        user_id = _get_tele_user_id(db, telegram_id)
+        return list_favorites(user_id=user_id, db=db)
+    except Exception:
+        return []
+
+
+@router.post(
+    "/telegram",
+    response_model=List[schemas.FavoriteToken],
+    status_code=status.HTTP_201_CREATED,
+    summary="Add favorite tokens by telegram_id",
+    description="Adds symbols to favorites for the user specified by telegram_id.",
+)
+def add_favorite_tele(
+    body: schemas.FavoriteBulkCreateTeleRequest,
+    db: Session = Depends(get_db),
+) -> List[schemas.FavoriteToken]:
+    user_id = _get_tele_user_id(db, body.telegram_id)
+    req = schemas.FavoriteBulkCreateRequest(symbols=body.symbols)
+    return add_favorite(body=req, user_id=user_id, db=db)
+
+
+@router.delete(
+    "/telegram",
+    response_model=schemas.FavoriteBulkDeleteResponse,
+    summary="Remove favorite tokens by telegram_id",
+    description="Removes symbols from favorites for the user specified by telegram_id.",
+)
+def remove_favorite_tele(
+    body: schemas.FavoriteBulkDeleteTeleRequest,
+    db: Session = Depends(get_db),
+) -> schemas.FavoriteBulkDeleteResponse:
+    user_id = _get_tele_user_id(db, body.telegram_id)
+    req = schemas.FavoriteBulkDeleteRequest(symbols=body.symbols)
+    return remove_favorite(body=req, user_id=user_id, db=db)

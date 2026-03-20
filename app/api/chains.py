@@ -14,7 +14,7 @@ from app.core.jwt_auth import verify_access_token
 from app.core.router_decorated import APIRouter
 from app.db.chain_resolve import get_chain_id_for_slug
 from app.db.session import get_db
-from app.schemas.chains import Chain, SetChainRequest
+from app.schemas.chains import Chain, SetChainRequest, SetChainTeleRequest
 from app.schemas.my_base_model import Message
 
 router = APIRouter()
@@ -125,5 +125,43 @@ def set_user_chain(
     db.execute(
         text(f"UPDATE {users_t} SET chain_id = {chain_id} WHERE id = {_sql(user_id)}")
     )
+    db.commit()
+    return Message(message="success")
+
+
+@router.post(
+    "/user/telegram/choose-chain",
+    tags=group_tags,
+    response_model=Message,
+    status_code=status.HTTP_200_OK,
+    summary="Set user chain via telegram_id",
+    description=(
+        "Updates the user's chain_id by telegram_id. "
+        "**Body:** `telegram_id` (string, required), `chain` (string, required) – treated as slug, must exist in the chains table. "
+        "Returns `{ \"message\": \"success\" }` on success. 400 if chain not found; 404 if user not found."
+    ),
+)
+def set_user_chain_tele(
+    body: SetChainTeleRequest,
+    db: Session = Depends(get_db),
+) -> Message:
+    chain = body.chain
+    telegram_id = body.telegram_id
+
+    chain_id = get_chain_id_for_slug(db, chain)
+    if chain_id == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="chain not found",
+        )
+
+    result = db.execute(
+        text(f"UPDATE production.users_tele SET chain_id = {chain_id} WHERE telegram_id = {_sql(telegram_id)} RETURNING id")
+    )
+    if not result.fetchone():
+        email = f""
+        db.execute(
+            text(f"INSERT INTO production.users_tele (telegram_id, email, chain_id) VALUES ({_sql(telegram_id)}, {_sql(email)}, {chain_id})")
+        )
     db.commit()
     return Message(message="success")

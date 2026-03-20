@@ -78,6 +78,14 @@ class FavoriteBulkDeleteResponse(CustomBaseModel):
     missing_symbols: List[str]
 
 
+class FavoriteBulkCreateTeleRequest(FavoriteBulkCreateRequest):
+    telegram_id: str
+
+
+class FavoriteBulkDeleteTeleRequest(FavoriteBulkDeleteRequest):
+    telegram_id: str
+
+
 class FavoriteToken(CustomBaseModel):
     """DTO representing a favorited token entry."""
 
