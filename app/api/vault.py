@@ -9,7 +9,6 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.user_context import get_current_user_chain_id
 from app.core.router_decorated import APIRouter
 from app.db.session import get_db
 import app.schemas.vault as schemas
@@ -256,7 +255,7 @@ def get_vaults_by_status(
         "active",
         description="Filter by status: active, inactive, or all (default: active)",
     ),
-    chain_id: int = Depends(get_current_user_chain_id),
+    chain_id: int = Query(2, ge=1, description="Chain ID to scope the vault data."),
     page: int = Query(1, ge=1, description="Page number (default: 1)"),
     limit: int = Query(
         20, ge=1, le=100, description="Items per page (default: 20, max: 100)"
@@ -340,7 +339,9 @@ def get_vaults_by_status(
 )
 def get_vault_info(
     id: str,
-    chain_id: int = Depends(get_current_user_chain_id),
+    chain_id: int = Query(
+        2, ge=1, description="Chain ID that owns the requested vault."
+    ),
     db: Session = Depends(get_db),
 ) -> schemas.VaultInfo:
     """
@@ -419,7 +420,11 @@ def get_vault_info(
 )
 def get_vault_stats(
     id: str,
-    chain_id: int = Depends(get_current_user_chain_id),
+    chain_id: int = Query(
+        ...,
+        ge=1,
+        description="Chain ID that owns the requested vault.",
+    ),
     db: Session = Depends(get_db),
 ) -> schemas.VaultStats:
     """
@@ -484,7 +489,11 @@ def get_vault_values(
     count_back: Optional[int] = Query(
         None, description="Number of bars to return from end"
     ),
-    chain_id: int = Depends(get_current_user_chain_id),
+    chain_id: int = Query(
+        ...,
+        ge=1,
+        description="Chain ID that owns the requested vault.",
+    ),
     db: Session = Depends(get_db),
 ) -> schemas.VaultValuesResponse:
     """
@@ -565,7 +574,11 @@ def get_vault_values(
 def get_vault_positions(
     id: str,
     status: Optional[str] = Query(None, description="Filter by status: open or closed"),
-    chain_id: int = Depends(get_current_user_chain_id),
+    chain_id: int = Query(
+        ...,
+        ge=1,
+        description="Chain ID that owns the requested vault.",
+    ),
     page: int = Query(1, ge=1, description="Page number (default: 1)"),
     limit: int = Query(
         20, ge=1, le=100, description="Items per page (default: 20, max: 100)"

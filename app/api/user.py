@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.router_decorated import APIRouter
-from app.core.user_context import get_current_user_chain_id
 from app.db.session import get_db, get_tables
 from app.models.tokens import Token
 from app.models.vault import SwapTransaction, UserEarning, Vault, VaultLog
@@ -163,7 +162,11 @@ def get_vault_earnings(
     wallet_address: str = Query(
         ..., description="Wallet address of the user (required)"
     ),
-    chain_id: int = Depends(get_current_user_chain_id),
+    chain_id: int = Query(
+        ...,
+        ge=1,
+        description="Chain ID to scope the vault earnings.",
+    ),
     vault_id: Optional[str] = Query(
         None, description="Vault ID to scope the vault earnings."
     ),
@@ -180,6 +183,7 @@ def get_vault_earnings(
 
     Query Parameters:
     - wallet_address: Wallet address of the user (required)
+    - chain_id: Chain ID to scope the vault earnings.
     - vault_id: Vault ID to scope the vault earnings.
     - limit: Maximum number of earnings to return (default: 20, max: 100)
     - offset: Number of earnings to skip for pagination (default: 0)
@@ -217,7 +221,11 @@ def get_user_swaps(
     wallet_address: str = Query(
         ..., description="Wallet address of the user (required)"
     ),
-    chain_id: int = Depends(get_current_user_chain_id),
+    chain_id: int = Query(
+        ...,
+        ge=1,
+        description="Chain ID filters the swap history.",
+    ),
     page: int = Query(default=1, ge=1, description="Page number (default: 1)"),
     limit: int = Query(
         default=20,
@@ -232,6 +240,7 @@ def get_user_swaps(
 
     Query Parameters:
     - wallet_address: Wallet address of the user (required)
+    - chain_id: Chain ID to scope the swap history.
     - page: Page number (default: 1)
     - limit: Number of records per page (default: 20, max: 100)
 
@@ -371,7 +380,11 @@ def get_vault_transactions(
     vault_id: Optional[str] = Query(
         default=None, description="Filter by vault ID (optional)"
     ),
-    chain_id: int = Depends(get_current_user_chain_id),
+    chain_id: int = Query(
+        ...,
+        ge=1,
+        description="Chain ID that owns the vault logs.",
+    ),
     page: int = Query(default=1, ge=1, description="Page number (default: 1)"),
     limit: int = Query(
         default=20,
@@ -387,6 +400,7 @@ def get_vault_transactions(
     Query Parameters:
     - wallet_address: Wallet address of the user (required)
     - vault_id: Filter by vault ID (optional)
+    - chain_id: Chain ID that owns the vault logs.
     - page: Page number (default: 1)
     - limit: Number of records per page (default: 20, max: 100)
 
