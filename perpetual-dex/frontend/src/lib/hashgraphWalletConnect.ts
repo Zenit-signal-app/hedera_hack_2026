@@ -6,11 +6,93 @@ import {
   HederaSessionEvent,
   type ExtensionData,
 } from "@hashgraph/hedera-wallet-connect";
-import { AccountId, Client, ContractExecuteTransaction, ContractId, LedgerId, TokenId, TransferTransaction } from "@hiero-ledger/sdk";
+import {
+  AccountId,
+  ContractExecuteTransaction,
+  ContractId,
+  LedgerId,
+  TokenAssociateTransaction,
+  TokenId,
+  TransferTransaction,
+} from "@hiero-ledger/sdk";
 import { Interface } from "ethers";
 import type { SessionTypes, SignClientTypes } from "@walletconnect/types";
 
 const HASHPACK_EXTENSION_ID = "gjagmgiddbbciopjhllkdnddhcglnemk";
+
+const DEFAULT_MIRROR = "https://testnet.mirrornode.hedera.com";
+
+function getMirrorBase(): string {
+  try {
+    const v = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_HEDERA_MIRROR_REST;
+    if (v && typeof v === "string" && v.trim()) return v.trim().replace(/\/$/, "");
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_MIRROR;
+}
+
+/**
+ * SDK TransactionId string → mirror REST id (e.g. `0.0.123@456.789` → `0.0.123-456-789`).
+ * Avoids `TransactionResponse.getReceipt(Client)` which can hit DAppSigner bugs (e.g. getByKey query).
+ */
+function hederaTxIdToMirrorPath(id: string): string {
+  const s = id.trim();
+  const at = s.indexOf("@");
+  if (at === -1) return s;
+  const account = s.slice(0, at);
+  const rest = s.slice(at + 1);
+  const dot = rest.indexOf(".");
+  const secs = dot === -1 ? rest : rest.slice(0, dot);
+  const nano = dot === -1 ? "0" : rest.slice(dot + 1);
+  return `${account}-${secs}-${nano}`;
+}
+
+async function waitForContractResultMirror(mirrorBase: string, mirrorPath: string): Promise<string> {
+  const encoded = encodeURIComponent(mirrorPath);
+  const maxAttempts = 45;
+  const intervalMs = 1000;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const url = `${mirrorBase}/api/v1/contracts/results/${encoded}`;
+      const r = await fetch(url);
+      if (r.ok || r.status === 206) {
+        const data = (await r.json()) as { result?: string };
+        if (data.result) return data.result;
+      }
+    } catch {
+      /* retry */
+    }
+    await new Promise((res) => setTimeout(res, intervalMs));
+  }
+  throw new Error("Timed out waiting for contract result on mirror node.");
+}
+
+async function waitForTransactionResultMirror(mirrorBase: string, mirrorPath: string): Promise<string> {
+  const encoded = encodeURIComponent(mirrorPath);
+  const maxAttempts = 45;
+  const intervalMs = 1000;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const url = `${mirrorBase}/api/v1/transactions/${encoded}`;
+      const r = await fetch(url);
+      if (r.ok) {
+        const data = (await r.json()) as { transactions?: { result?: string }[] };
+        const result = data.transactions?.[0]?.result;
+        if (result) return result;
+      }
+    } catch {
+      /* retry */
+    }
+    await new Promise((res) => setTimeout(res, intervalMs));
+  }
+  throw new Error("Timed out waiting for transaction on mirror node.");
+}
+
+function isUserRejectedError(e: unknown): boolean {
+  const s = e instanceof Error ? e.message : JSON.stringify(e);
+  return /USER_REJECT|user reject|user denied|rejected request|4001/i.test(s);
+}
 
 type ConnectResult = {
   accountId: string;
@@ -167,15 +249,29 @@ class HashgraphWalletConnectService {
       .setContractId(contractId)
       .setGas(gas)
       .setFunctionParameters(Buffer.from(calldata.slice(2), "hex"));
-    const response = await this.signer.call(tx);
+    let response;
+    try {
+      response = await this.signer.call(tx);
+    } catch (e) {
+      if (isUserRejectedError(e)) {
+        throw new Error("Transaction was rejected in the wallet.");
+      }
+      throw e;
+    }
     if (!response?.transactionId) {
       throw new Error(`Contract call failed: ${functionName}`);
     }
-    const receipt = await response.getReceipt(Client.forTestnet());
-    if (receipt.status.toString() !== "SUCCESS") {
-      throw new Error(`Contract call failed: ${receipt.status.toString()}`);
+    const txIdStr = response.transactionId.toString();
+    const mirrorPath = hederaTxIdToMirrorPath(txIdStr);
+    const st = await waitForContractResultMirror(getMirrorBase(), mirrorPath);
+    if (st !== "SUCCESS") {
+      const hint =
+        st === "CONTRACT_REVERT_EXECUTED"
+          ? " (contract reverted — check Approve, token association, balance, gas, and that the contract address matches deployment)"
+          : "";
+      throw new Error(`Contract call failed: ${st}${hint}`);
     }
-    return response.transactionId.toString();
+    return txIdStr;
   }
 
   async transferHtsTokenToDex(tokenId: string, dexEvmAddress: string, amountRaw: bigint): Promise<string> {
@@ -189,15 +285,58 @@ class HashgraphWalletConnectService {
     const tx = new TransferTransaction()
       .addTokenTransfer(TokenId.fromString(tokenId), from, -Number(amountRaw))
       .addTokenTransfer(TokenId.fromString(tokenId), to, Number(amountRaw));
-    const response = await this.signer.call(tx);
+    let response;
+    try {
+      response = await this.signer.call(tx);
+    } catch (e) {
+      if (isUserRejectedError(e)) throw new Error("Transaction was rejected in the wallet.");
+      throw e;
+    }
     if (!response?.transactionId) {
       throw new Error("HTS transfer failed");
     }
-    const receipt = await response.getReceipt(Client.forTestnet());
-    if (receipt.status.toString() !== "SUCCESS") {
-      throw new Error(`HTS transfer failed: ${receipt.status.toString()}`);
+    const txIdStr = response.transactionId.toString();
+    const mirrorPath = hederaTxIdToMirrorPath(txIdStr);
+    const st = await waitForTransactionResultMirror(getMirrorBase(), mirrorPath);
+    if (st !== "SUCCESS") {
+      throw new Error(`HTS transfer failed: ${st}`);
     }
-    return response.transactionId.toString();
+    return txIdStr;
+  }
+
+  /**
+   * Associate the connected Hedera account with an HTS token (e.g. zUSDC).
+   * Required before ERC-20 `approve` / `transfer` on the HTS facade often works reliably in HashPack.
+   * No-op if already associated (returns "already-associated").
+   */
+  async associateHtsToken(tokenId: string): Promise<string> {
+    if (!this.signer || !this.accountId) throw new Error("HashPack signer is not connected");
+    const tx = new TokenAssociateTransaction()
+      .setAccountId(AccountId.fromString(this.accountId))
+      .setTokenIds([TokenId.fromString(tokenId)]);
+    try {
+      let response;
+      try {
+        response = await this.signer.call(tx);
+      } catch (err) {
+        if (isUserRejectedError(err)) throw new Error("Transaction was rejected in the wallet.");
+        throw err;
+      }
+      if (!response?.transactionId) throw new Error("Token associate failed");
+      const txIdStr = response.transactionId.toString();
+      const mirrorPath = hederaTxIdToMirrorPath(txIdStr);
+      const st = await waitForTransactionResultMirror(getMirrorBase(), mirrorPath);
+      if (st !== "SUCCESS") {
+        throw new Error(`Token associate failed: ${st}`);
+      }
+      return txIdStr;
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      if (/ALREADY_ASSOCIATED|already associated|179|TOKEN_ALREADY_ASSOCIATED/i.test(m)) {
+        return "already-associated";
+      }
+      throw e;
+    }
   }
 
   private async resolveEvmAddress(accountId: string): Promise<string> {
@@ -209,25 +348,55 @@ class HashgraphWalletConnectService {
     return evm;
   }
 
+  /**
+   * Mirror `/api/v1/contracts/{evm}` often has no entry for HTS long-zero ERC-20 addresses.
+   * In that case Hedera SDK can still build a ContractId from the EVM address (shard 0, realm 0).
+   */
   private async resolveContractId(contractEvmAddress: string): Promise<ContractId> {
     const key = contractEvmAddress.toLowerCase();
     const cached = this.contractIdCache.get(key);
     if (cached) return cached;
-    const resp = await fetch(`https://testnet.mirrornode.hedera.com/api/v1/contracts/${contractEvmAddress}`);
-    if (!resp.ok) throw new Error(`Cannot resolve contract id: ${contractEvmAddress}`);
-    const data = (await resp.json()) as { contract_id?: string };
-    if (!data.contract_id) throw new Error(`Missing contract_id for ${contractEvmAddress}`);
-    const contractId = ContractId.fromString(data.contract_id);
-    this.contractIdCache.set(key, contractId);
-    return contractId;
+
+    try {
+      const resp = await fetch(`https://testnet.mirrornode.hedera.com/api/v1/contracts/${contractEvmAddress}`);
+      if (resp.ok) {
+        const data = (await resp.json()) as { contract_id?: string };
+        if (data.contract_id) {
+          const contractId = ContractId.fromString(data.contract_id);
+          this.contractIdCache.set(key, contractId);
+          return contractId;
+        }
+      }
+    } catch {
+      // fall through to fromEvmAddress
+    }
+
+    try {
+      const contractId = ContractId.fromEvmAddress(0, 0, contractEvmAddress);
+      this.contractIdCache.set(key, contractId);
+      return contractId;
+    } catch {
+      throw new Error(`Cannot resolve contract id: ${contractEvmAddress}`);
+    }
   }
 
   private async resolveDexAccountId(contractEvmAddress: string): Promise<AccountId> {
-    const resp = await fetch(`https://testnet.mirrornode.hedera.com/api/v1/contracts/${contractEvmAddress}`);
-    if (!resp.ok) throw new Error(`Cannot resolve contract account id: ${contractEvmAddress}`);
-    const data = (await resp.json()) as { contract_id?: string };
-    if (!data.contract_id) throw new Error(`Missing contract_id for ${contractEvmAddress}`);
-    return AccountId.fromString(data.contract_id);
+    try {
+      const resp = await fetch(`https://testnet.mirrornode.hedera.com/api/v1/contracts/${contractEvmAddress}`);
+      if (resp.ok) {
+        const data = (await resp.json()) as { contract_id?: string };
+        if (data.contract_id) {
+          return AccountId.fromString(data.contract_id);
+        }
+      }
+    } catch {
+      // fall through
+    }
+    try {
+      return AccountId.fromEvmAddress(0, 0, contractEvmAddress);
+    } catch {
+      throw new Error(`Cannot resolve contract account id: ${contractEvmAddress}`);
+    }
   }
 
   private persistLocalSession(): void {

@@ -41,7 +41,12 @@ function detectHashPackInjected(): boolean {
   return false;
 }
 
-export default function HashPackConnectButton() {
+type HashPackConnectButtonProps = {
+  /** Use `center` inside centered cards (e.g. Stake); default `end` matches the header bar. */
+  align?: "center" | "end";
+};
+
+export default function HashPackConnectButton({ align = "end" }: HashPackConnectButtonProps) {
   const [accountId, setAccountId] = useState<string>(() => localStorage.getItem("zenit:wallet:accountId") ?? "");
   const [availability, setAvailability] = useState<"yes" | "no" | "unknown">("unknown");
   const [connecting, setConnecting] = useState<boolean>(false);
@@ -108,12 +113,15 @@ export default function HashPackConnectButton() {
     setAccountId("");
   };
 
+  const wrap = align === "center" ? "items-center" : "items-end";
+
   if (accountId) {
     return (
-      <div className="flex flex-col items-end gap-1.5">
+      <div className={`flex flex-col gap-1.5 ${wrap}`}>
         <button
+          type="button"
           onClick={onDisconnect}
-          className="rounded-xl bg-[#1f2338] px-4 py-2 text-sm font-semibold text-white border border-[#363a59] hover:bg-[#2a2f4a]"
+          className="rounded-2xl border border-slate-600/50 bg-[#12151f] px-4 py-2.5 text-sm font-semibold text-slate-100 shadow-inner hover:border-slate-500/60 hover:bg-[#1a1f2e]"
         >
           {accountId} (Disconnect)
         </button>
@@ -123,12 +131,12 @@ export default function HashPackConnectButton() {
 
   if (availability === "no") {
     return (
-      <div className="flex flex-col items-end gap-1.5">
+      <div className={`flex flex-col gap-1.5 ${wrap}`}>
         <a
           href="https://www.hashpack.app/download"
           target="_blank"
           rel="noreferrer"
-          className="rounded-xl bg-[#1f2338] px-4 py-2 text-sm font-semibold text-white border border-[#363a59] hover:bg-[#2a2f4a]"
+          className="rounded-2xl border border-emerald-500/25 bg-emerald-950/30 px-5 py-2.5 text-sm font-semibold text-emerald-200 hover:border-emerald-400/35 hover:bg-emerald-950/50"
         >
           Install HashPack
         </a>
@@ -137,13 +145,14 @@ export default function HashPackConnectButton() {
   }
 
   return (
-    <div className="flex flex-col items-end gap-1.5">
+    <div className={`flex flex-col gap-1.5 ${wrap}`}>
       <button
+        type="button"
         onClick={onConnect}
         disabled={connecting}
-        className="rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-2 text-sm font-semibold text-white hover:from-blue-600 hover:to-blue-700 disabled:opacity-60"
+        className="rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-950/40 transition hover:from-emerald-500 hover:to-teal-400 disabled:opacity-60"
       >
-        {connecting ? "Connecting..." : "Connect Wallet"}
+        {connecting ? "Connecting…" : "Connect Wallet"}
       </button>
     </div>
   );

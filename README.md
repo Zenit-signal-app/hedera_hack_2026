@@ -34,3 +34,5 @@ Nếu UI báo **Failed to fetch** khi xin faucet: kiểm tra keeper đang chạy
 - `perpetual-dex/README.md` — kiến trúc và biến môi trường
 - `perpetual-dex/keeper/README.md` — API keeper
 - `perpetual-dex/frontend/README.md` — giao diện và wallet
+
+# hedera_stake_hackathon_2026

@@ -23,6 +23,20 @@ npm run dev
 
 Vite prints the local URL (often `http://localhost:5173` or `http://127.0.0.1:3000`).
 
+## On-ramp (Onramper)
+
+Route: **`/onramp`** — “Buy crypto” in the nav embeds the **hosted** Onramper widget (`https://buy.onramper.com`) in an iframe.
+
+The npm/GitHub package [`onramper/widget`](https://github.com/onramper/widget) is **deprecated**; integration follows [Onramper’s current docs](https://docs.onramper.com/docs/integration-steps).
+
+Set in `.env`:
+
+```bash
+VITE_ONRAMPER_API_KEY=your_key_from_onramper_dashboard
+```
+
+Without a key, the page shows setup instructions instead of the iframe.
+
 ## Build
 
 ```bash
