@@ -8,7 +8,11 @@
   "description": "",
   "main": "create-wallets.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy:exchange:mainnet": "npm run deploy:exchange:mainnet --prefix perpetual-dex",
+    "deploy:exchange:testnet": "npm run deploy:exchange:testnet --prefix perpetual-dex",
+    "diagnose:aggregator:mainnet": "npm run diagnose:aggregator:mainnet --prefix perpetual-dex",
+    "register:adapter:mainnet": "npm run register:adapter:mainnet --prefix perpetual-dex"
   },
   "keywords": [],
   "author": "",

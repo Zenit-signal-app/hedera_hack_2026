@@ -40,7 +40,8 @@ export function getSaucerSwapHbarToTokenFunctionName():
 export function decodeV1RouterAddressPath(encodedPath: `0x${string}` | undefined): `0x${string}`[] | null {
   if (!encodedPath || encodedPath === "0x" || encodedPath.length < 10) return null;
   try {
-    const [path] = AbiCoder.defaultAbiCoder().decode(["address[]"], encodedPath) as [`0x${string}`[]];
+    const decoded = AbiCoder.defaultAbiCoder().decode(["address[]"], encodedPath);
+    const path = decoded[0] as unknown as `0x${string}`[];
     return path?.length >= 2 ? path : null;
   } catch {
     return null;

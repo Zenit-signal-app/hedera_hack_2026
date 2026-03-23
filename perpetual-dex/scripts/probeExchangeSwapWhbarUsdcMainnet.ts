@@ -510,7 +510,7 @@ async function main() {
     const htsWhbar = whbarEvmToHtsTokenId(whbar);
     const depositData = new Interface([...WHBAR_DEPOSIT_ABI]).encodeFunctionData("deposit", []);
     const depositGas = BigInt(
-      Math.min(1_000_000, Math.max(150_000, Number(process.env.PROBE_DEPOSIT_GAS_LIMIT ?? "30000") || 30_000)),
+      Math.min(30_000_000, Math.max(2_500_000, Number(process.env.PROBE_DEPOSIT_GAS_LIMIT ?? "8000000") || 8_000_000)),
     );
     console.log("  WHBAR HTS token id (associate trong HashPack nếu chưa):", htsWhbar);
     console.log("  deposit calldata:", depositData);

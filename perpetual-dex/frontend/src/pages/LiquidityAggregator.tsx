@@ -48,6 +48,11 @@ import {
   humanizeOnchainQuoteError,
   shouldSuppressOnchainQuoteErrorUi,
 } from "@/lib/aggregatorOnchainQuoteErrors";
+import {
+  transformRouteWithGasCheck,
+  needsHbarWrap,
+  type RouteTransformResult,
+} from "@/lib/aggregatorRouteTransformer";
 import { resolveOnchainAdapterBytes32 } from "@/lib/aggregatorOnchainAdapter";
 import {
   NATIVE_HBAR_EVM_PLACEHOLDER,
@@ -108,18 +113,6 @@ const AGGREGATOR_TOKEN_OPTIONS = ["HBAR", "WHBAR", "USDC", "SAUCE", "XSAUCE"] as
 
 /** Slippage presets (bps): 0.5%, 1%, 2%, 4% — giống UI tham chiếu. */
 const SLIPPAGE_PRESET_BPS = [50, 100, 200, 400] as const;
-
-function TokenGlyph({ symbol }: { symbol: string }) {
-  const s = symbol.trim().toUpperCase();
-  const hue = s.includes("HBAR") ? "from-[#3d5a5a] to-[#1e3a3a]" : s.includes("USDC") ? "from-[#2775ca] to-[#1a4d8c]" : "from-[#4b5563] to-[#1f2937]";
-  return (
-    <span
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${hue} text-[11px] font-bold text-white shadow-inner ring-1 ring-white/10`}
-    >
-      {s.slice(0, 4)}
-    </span>
-  );
-}
 
 function shortPathAddrs(path: readonly `0x${string}`[]): string {
   return path.map((a) => `${a.slice(0, 6)}…${a.slice(-4)}`).join(" → ");
@@ -239,6 +232,10 @@ export default function LiquidityAggregator() {
   const [swapTxHash, setSwapTxHash] = useState<string | null>(null);
   /** Wagmi không báo pending khi ký qua HashPack WC — tránh bấm Swap nhiều lần. */
   const [swapBusy, setSwapBusy] = useState(false);
+  /** Gas buffer warning khi swap Native HBAR */
+  const [gasWarning, setGasWarning] = useState<string | null>(null);
+  /** Route-transformer result — drives Step 3 "Wrap HBAR" button. */
+  const [routeTransform, setRouteTransform] = useState<RouteTransformResult | null>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
   const [stats, setStats] = useState<AggregatorStatsDisplay | null>(null);
@@ -432,21 +429,67 @@ export default function LiquidityAggregator() {
     walletAddress && isAddress(walletAddress) && (tokenIn === "HBAR" || tokenOut === "HBAR"),
   );
   const {
-    data: nativeHbarBalance,
+    data: wagmiNativeHbarBalance,
     isPending: isPendingNativeHbar,
     isFetching: isFetchingNativeHbar,
-    isError: isErrorNativeHbar,
-    error: errorNativeHbar,
+    isError: wagmiIsErrorNativeHbar,
+    error: wagmiErrorNativeHbar,
   } = useBalance({
     chainId: HEDERA_EVM_MAINNET_CHAIN_ID,
     address: needNativeHbarRead ? walletAddress : undefined,
     query: {
-      enabled: needNativeHbarRead,
+      enabled: needNativeHbarRead && wagmiSwapPath,
       staleTime: 15_000,
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
     },
   });
+
+  // Fallback: Fetch native HBAR balance directly via publicClient for HashPack WalletConnect
+  const [fallbackHbarBalance, setFallbackHbarBalance] = useState<{ value: bigint; decimals: number } | null>(null);
+  const [fallbackHbarError, setFallbackHbarError] = useState(false);
+
+  useEffect(() => {
+    if (!needNativeHbarRead || !wcSwapPath || !walletAddress || !publicClient) {
+      setFallbackHbarBalance(null);
+      setFallbackHbarError(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchBalance() {
+      try {
+        const balance = await publicClient!.getBalance({ address: walletAddress! });
+        if (!cancelled) {
+          setFallbackHbarBalance({ value: balance, decimals: 18 });
+          setFallbackHbarError(false);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setFallbackHbarError(true);
+          console.error("Failed to fetch HBAR balance:", e);
+        }
+      }
+    }
+
+    void fetchBalance();
+
+    // Refetch every 15 seconds
+    const interval = setInterval(() => {
+      void fetchBalance();
+    }, 15_000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [needNativeHbarRead, wcSwapPath, walletAddress, publicClient]);
+
+  // Use fallback balance for HashPack WalletConnect, wagmi balance for injected wallets
+  const effectiveNativeHbarBalance = wcSwapPath ? fallbackHbarBalance : (wagmiNativeHbarBalance ?? null);
+  const effectiveIsErrorNativeHbar = wcSwapPath ? fallbackHbarError : wagmiIsErrorNativeHbar;
+  const effectiveErrorNativeHbar = wcSwapPath ? (fallbackHbarError ? new Error("Failed to fetch balance") : null) : (wagmiErrorNativeHbar ?? null);
 
   const {
     data: balanceInWei,
@@ -515,29 +558,28 @@ export default function LiquidityAggregator() {
   /** Sell: nhãn HBAR → native; WHBAR / token khác → ERC-20 `balanceOf`. */
   const displayBalanceInHuman = useMemo(() => {
     if (tokenIn === "HBAR") {
-      if (nativeHbarBalance?.value == null) return null;
-      return formatUnits(nativeHbarBalance.value, 18);
+      if (effectiveNativeHbarBalance?.value == null) return null;
+      return formatUnits(effectiveNativeHbarBalance.value, 18);
     }
     return balanceInHuman;
-  }, [tokenIn, nativeHbarBalance, balanceInHuman]);
+  }, [tokenIn, effectiveNativeHbarBalance, balanceInHuman]);
 
   /** Buy: nhãn HBAR → native; còn lại → ERC-20. */
   const displayBalanceOutHuman = useMemo(() => {
     if (tokenOut === "HBAR") {
-      if (nativeHbarBalance?.value == null) return null;
-      return formatUnits(nativeHbarBalance.value, 18);
+      if (effectiveNativeHbarBalance?.value == null) return null;
+      return formatUnits(effectiveNativeHbarBalance.value, 18);
     }
     return balanceOutHuman;
-  }, [tokenOut, nativeHbarBalance, balanceOutHuman]);
+  }, [tokenOut, effectiveNativeHbarBalance, balanceOutHuman]);
 
   const showBalanceInLoading =
     !walletAddress
       ? false
       : tokenIn === "HBAR"
         ? needNativeHbarRead &&
-          nativeHbarBalance === undefined &&
-          (isPendingNativeHbar || isFetchingNativeHbar) &&
-          !isErrorNativeHbar
+          effectiveNativeHbarBalance === null &&
+          !effectiveIsErrorNativeHbar
         : balanceInEnabled &&
           balanceInWei === undefined &&
           (isPendingBalanceIn || isFetchingBalanceIn) &&
@@ -548,9 +590,9 @@ export default function LiquidityAggregator() {
       ? false
       : tokenOut === "HBAR"
         ? needNativeHbarRead &&
-          nativeHbarBalance === undefined &&
+          effectiveNativeHbarBalance === undefined &&
           (isPendingNativeHbar || isFetchingNativeHbar) &&
-          !isErrorNativeHbar
+          !effectiveIsErrorNativeHbar
         : balanceOutEnabled &&
           balanceOutWei === undefined &&
           (isPendingBalanceOut || isFetchingBalanceOut) &&
@@ -580,14 +622,14 @@ export default function LiquidityAggregator() {
       Boolean(whbarAddr && resolvedIn && whbarAddr.toLowerCase() === resolvedIn.toLowerCase());
     if (!sellingWhbar) return true;
     const needWeibar = whbarTinybarsToDepositWeibar(deficit);
-    if (nativeHbarBalance?.value == null) return true;
-    return nativeHbarBalance.value < needWeibar;
+    if (effectiveNativeHbarBalance?.value == null) return true;
+    return effectiveNativeHbarBalance.value < needWeibar;
   }, [
     parsedAmountInWei,
     balanceInWei,
     whbarAddr,
     resolvedIn,
-    nativeHbarBalance?.value,
+    effectiveNativeHbarBalance?.value,
   ]);
 
   const canDirectSaucerNativeIn = useMemo(
@@ -619,20 +661,20 @@ export default function LiquidityAggregator() {
     if (canDirectSaucerNativeIn && quote?.swapExecution === "v1_amm") {
       try {
         const need = parseUnits(amountIn.replace(/,/g, "") || "0", 18);
-        if (nativeHbarBalance?.value == null) return true;
-        return nativeHbarBalance.value < need;
+        if (effectiveNativeHbarBalance?.value == null) return true;
+        return effectiveNativeHbarBalance.value < need;
       } catch {
         return true;
       }
     }
     return insufficientSellErc20;
-  }, [canDirectSaucerNativeIn, quote?.swapExecution, amountIn, nativeHbarBalance?.value, insufficientSellErc20]);
+  }, [canDirectSaucerNativeIn, quote?.swapExecution, amountIn, effectiveNativeHbarBalance?.value, insufficientSellErc20]);
 
   const applySellPct = useCallback(
     (mode: "25" | "50" | "max") => {
       if (tokenIn === "HBAR") {
-        if (nativeHbarBalance?.value == null) return;
-        const wei = nativeHbarBalance.value;
+        if (effectiveNativeHbarBalance?.value == null) return;
+        const wei = effectiveNativeHbarBalance.value;
         if (mode === "max") {
           setAmountIn(formatUnits(wei, 18));
           return;
@@ -651,7 +693,7 @@ export default function LiquidityAggregator() {
       const v = (balanceInWei * p) / 100n;
       setAmountIn(formatUnits(v, d));
     },
-    [tokenIn, nativeHbarBalance, balanceInWei, decimalsInData],
+    [tokenIn, effectiveNativeHbarBalance, balanceInWei, decimalsInData],
   );
 
   /** Nhãn từng node trên path (WHBAR, SAUCE, …) — khớp `pathTokenAddresses` từ quote router. */
@@ -875,6 +917,49 @@ export default function LiquidityAggregator() {
     onGetQuote,
   ]);
 
+  /** Kiểm tra gas buffer warning khi swap Native HBAR */
+  useEffect(() => {
+    setGasWarning(null);
+    setRouteTransform(null);
+
+    // Chỉ kiểm tra khi swap từ Native HBAR
+    if (tokenIn.toUpperCase() !== "HBAR" || !hasSellAmount) {
+      return;
+    }
+
+    try {
+      const inputTiny = BigInt(
+        Math.floor(parseFloat(amountIn.replace(/,/g, "") || "0") * 1e8),
+      );
+      if (inputTiny <= 0n) return;
+
+      const result = transformRouteWithGasCheck(
+        [{ fromToken: "HBAR", toToken: resolvedOut ?? "USDC" }],
+        {
+          userAddress: walletAddress ?? "",
+          inputAmountTiny: inputTiny,
+          nativeHbarBalanceWei: effectiveNativeHbarBalance?.value ?? null,
+          erc20BalanceTiny: null,
+          isNativeHbar: true,
+        },
+        whbarAddr ?? "",
+      );
+
+      if (result.balanceCheck === "insufficient") {
+        setGasWarning(`⚠️ ${result.message}`);
+      } else if (result.balanceCheck === "low_balance") {
+        setGasWarning(`ℹ️ ${result.message}`);
+      } else if (result.message) {
+        setGasWarning(`⚠️ ${result.message}`);
+      } else {
+        setGasWarning(null);
+      }
+      setRouteTransform(result);
+    } catch {
+      // Ignore parse errors
+    }
+  }, [amountIn, tokenIn, hasSellAmount, effectiveNativeHbarBalance, resolvedOut, walletAddress, whbarAddr]);
+
   const onSwap = useCallback(async () => {
     setSwapMsg(null);
     setSwapTxHash(null);
@@ -915,6 +1000,30 @@ export default function LiquidityAggregator() {
       const routerV1 = getV2RouterAddress(AGGREGATOR_NETWORK);
       const pathV1 = decodeV1RouterAddressPath((quote?.encodedPath ?? "0x") as `0x${string}`);
 
+      // ── Step 2: Route-transformer balance check (runs for every swap path) ──
+      const isHbarSell = needsHbarWrap(tokenIn);
+      const inputAmountTiny = isHbarSell
+        ? BigInt(Math.floor(parseFloat(amountIn.replace(/,/g, "") || "0") * 1e8))
+        : (() => { try { return parseUnits(amountIn.replace(/,/g, "") || "0", effectiveDecimalsIn); } catch { return 0n; } })();
+
+      const transformResult = transformRouteWithGasCheck(
+        [{ fromToken: tokenIn, toToken: tokenOut }],
+        {
+          userAddress: walletAddress,
+          inputAmountTiny,
+          nativeHbarBalanceWei: effectiveNativeHbarBalance?.value ?? null,
+          erc20BalanceTiny: isHbarSell ? null : (balanceInWei ?? null),
+          isNativeHbar: isHbarSell,
+        },
+        whbarAddr ?? "",
+      );
+
+      if (transformResult.balanceCheck === "insufficient" || transformResult.balanceCheck === "no_balance") {
+        setSwapMsg(`❌ ${transformResult.message}`);
+        return;
+      }
+
+
       /**
        * SaucerSwap V1 — native HBAR → token: `swapExactETHForTokens*` + msg.value (docs dùng tên ETH).
        * Path[0] phải là WHBAR; `msg.value` = weibars (18 decimals).
@@ -946,12 +1055,7 @@ export default function LiquidityAggregator() {
           setSwapMsg("Amount must be positive.");
           return;
         }
-        if (nativeHbarBalance == null || nativeHbarBalance.value < valueWei) {
-          setSwapMsg(
-            "Insufficient native HBAR for this swap (leave room for network fees).",
-          );
-          return;
-        }
+        // Step 2 already validated balance via transformResult above — proceed
         setSwapMsg("Submitting SaucerSwap (native HBAR, msg.value)…");
         const fn = getSaucerSwapHbarToTokenFunctionName();
         const swapArgs = [minOut, pathV1, walletAddress, deadline] as const;
@@ -962,7 +1066,7 @@ export default function LiquidityAggregator() {
             fn,
             swapArgs,
             valueWei,
-            12_000_000,
+            3_000_000,
           );
           setSwapTxHash(txId);
         } else {
@@ -972,7 +1076,7 @@ export default function LiquidityAggregator() {
             functionName: fn,
             args: [...swapArgs],
             value: valueWei,
-            gas: 12_000_000n,
+            gas: 3_000_000n,
           });
           await waitForTransactionSuccess(publicClient!, h, "SaucerSwap swapExactETHForTokens");
           setSwapTxHash(h);
@@ -1022,7 +1126,7 @@ export default function LiquidityAggregator() {
                 [...AGGREGATOR_ERC20_ABI],
                 "approve",
                 [routerV1, amountInWeiTok],
-                4_000_000,
+                1_500_000,
               );
             } else if (publicClient) {
               const h = await writeContractAsync({
@@ -1046,7 +1150,7 @@ export default function LiquidityAggregator() {
             [...SAUCERSWAP_V1_ROUTER_NATIVE_ABI],
             fn,
             [...swapArgs],
-            8_000_000,
+            2_500_000,
           );
           setSwapTxHash(txId);
         } else {
@@ -1055,7 +1159,7 @@ export default function LiquidityAggregator() {
             abi: SAUCERSWAP_V1_ROUTER_NATIVE_ABI,
             functionName: fn,
             args: [...swapArgs],
-            gas: 8_000_000n,
+            gas: 2_500_000n,
           });
           await waitForTransactionSuccess(publicClient!, h, "SaucerSwap swapExactTokensForETH");
           setSwapTxHash(h);
@@ -1097,26 +1201,31 @@ export default function LiquidityAggregator() {
 
       if (deficitTiny > 0n) {
         if (!sellingWhbar) {
+          // Step 2: ERC-20 balance already validated by transformer above
           setSwapMsg(
             "Insufficient sell token (ERC-20) — lower the amount or add tokens to this wallet.",
           );
           return;
         }
-        const weibarCost = whbarTinybarsToDepositWeibar(deficitTiny);
-        if (nativeHbarBalance == null || nativeHbarBalance.value < weibarCost) {
+        // Step 1: auto-wrap — use transformer's wrapAmountTinybars
+        const wrapTiny = transformResult.wrapAmountTinybars > 0n
+          ? transformResult.wrapAmountTinybars
+          : deficitTiny;
+        const weibarCost = whbarTinybarsToDepositWeibar(wrapTiny);
+        if (effectiveNativeHbarBalance == null || effectiveNativeHbarBalance.value < weibarCost) {
           setSwapMsg(
             "Not enough native HBAR to auto-wrap to WHBAR for this amount (leave room for fees). Lower the amount or add HBAR.",
           );
           return;
         }
-        setSwapMsg(`Wrapping ~${formatUnits(weibarCost, 18)} HBAR → WHBAR (step 1)…`);
+        setSwapMsg(`Wrapping ~${formatUnits(weibarCost, 18)} HBAR → WHBAR (step 1 / 3)…`);
         if (wpath) {
           await hashgraphWalletConnect.executePayableContractCall(
             resolvedIn,
             [...AGGREGATOR_WHBAR_WRAP_ABI],
             "deposit",
             [],
-            deficitTiny,
+            wrapTiny,
             2_500_000,
           );
         } else {
@@ -1151,7 +1260,7 @@ export default function LiquidityAggregator() {
             [...AGGREGATOR_ERC20_ABI],
             "approve",
             [exchangeContract, amountInWei],
-            4_000_000,
+            1_500_000,
           );
           void txId1;
           await refetchAllowance();
@@ -1159,7 +1268,7 @@ export default function LiquidityAggregator() {
         }
         setSwapMsg("Submitting swap…");
         const swapGas =
-          quote?.swapExecution === "v2_clmm" ? 12_000_000 : 8_000_000;
+          quote?.swapExecution === "v2_clmm" ? 3_500_000 : 2_500_000;
         const txId2 = await hashgraphWalletConnect.executeContractCall(
           exchangeContract,
           [...AGGREGATOR_EXCHANGE_ABI],
@@ -1182,7 +1291,7 @@ export default function LiquidityAggregator() {
           abi: AGGREGATOR_ERC20_ABI,
           functionName: "approve",
           args: [exchangeContract, amountInWei],
-          gas: 4_000_000n,
+          gas: 1_500_000n,
         });
         await waitForTransactionSuccess(publicClient!, h1, "approve Exchange");
         await refetchAllowance();
@@ -1191,7 +1300,7 @@ export default function LiquidityAggregator() {
 
       setSwapMsg("Submitting swap…");
       const swapGas =
-        quote?.swapExecution === "v2_clmm" ? 12_000_000n : 8_000_000n;
+        quote?.swapExecution === "v2_clmm" ? 3_500_000n : 2_500_000n;
       const h2 = await writeContractAsync({
         address: exchangeContract,
         abi: AGGREGATOR_EXCHANGE_ABI,
@@ -1228,7 +1337,7 @@ export default function LiquidityAggregator() {
     publicClient,
     quote,
     balanceInWei,
-    nativeHbarBalance,
+    effectiveNativeHbarBalance,
     refetchAllowance,
     refetchBalanceIn,
     resolvedIn,
@@ -1523,7 +1632,7 @@ export default function LiquidityAggregator() {
                         onClick={() => applySellPct(k === "max" ? "max" : (k as "25" | "50"))}
                         disabled={
                           tokenIn === "HBAR"
-                            ? nativeHbarBalance == null
+                            ? effectiveNativeHbarBalance == null
                             : balanceInWei == null || decimalsInData === undefined
                         }
                         className="zenit-swapv2-pct disabled:cursor-not-allowed disabled:opacity-30"
@@ -1558,8 +1667,8 @@ export default function LiquidityAggregator() {
                     <span className="text-slate-600">Connect wallet to view</span>
                   ) : (!resolvedIn || !isAddress(resolvedIn)) && tokenIn !== "HBAR" ? (
                     <span className="text-amber-200/90">Missing token address (env / Advanced)</span>
-                  ) : tokenIn === "HBAR" && isErrorNativeHbar ? (
-                    <span className="text-rose-300/95" title={errorNativeHbar?.message}>
+                  ) : tokenIn === "HBAR" && effectiveIsErrorNativeHbar ? (
+                    <span className="text-rose-300/95" title={effectiveErrorNativeHbar?.message}>
                       Could not read native HBAR (RPC 295?)
                     </span>
                   ) : isErrorBalanceIn ? (
@@ -1594,6 +1703,26 @@ export default function LiquidityAggregator() {
                     on the WHBAR contract to wrap the shortfall, then approve + <code className="text-cyan-300/90">Exchange.swap</code> (WHBAR→…→
                     token out).
                   </p>
+                )}
+                {gasWarning && (
+                  <div className={`mt-2 rounded-lg border px-2.5 py-1.5 text-[10px] leading-snug ${
+                    gasWarning.startsWith("⚠️")
+                      ? "border-amber-500/30 bg-amber-950/20 text-amber-200/90"
+                      : "border-blue-500/20 bg-blue-950/20 text-blue-200/90"
+                  }`}>
+                    <p>{gasWarning}</p>
+                    {/* Step 3: Show "Wrap HBAR to WHBAR" button when wrap is needed */}
+                    {routeTransform?.needsWrap && routeTransform.balanceCheck !== "insufficient" && walletAddress && (
+                      <button
+                        type="button"
+                        className="mt-1.5 rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-200 hover:bg-amber-500/30 transition-colors"
+                        onClick={() => void onSwap()}
+                        disabled={swapBusy}
+                      >
+                        {swapBusy ? "Wrapping…" : "⚡ Wrap HBAR → WHBAR + Swap"}
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -1663,8 +1792,8 @@ export default function LiquidityAggregator() {
                     <span className="text-slate-600">Connect wallet to view</span>
                   ) : (!resolvedOut || !isAddress(resolvedOut)) && tokenOut !== "HBAR" ? (
                     <span className="text-amber-200/90">Missing token address (env / Advanced)</span>
-                  ) : tokenOut === "HBAR" && isErrorNativeHbar ? (
-                    <span className="text-rose-300/95" title={errorNativeHbar?.message}>
+                  ) : tokenOut === "HBAR" && effectiveIsErrorNativeHbar ? (
+                    <span className="text-rose-300/95" title={effectiveErrorNativeHbar?.message}>
                       Could not read native HBAR (RPC 295?)
                     </span>
                   ) : isErrorBalanceOut ? (
