@@ -23,10 +23,11 @@ NETWORK_CHOICES = ["hedera_local", "hedera_testnet", "hedera_mainnet", "custom"]
 
 RED = "\033[0;31m"
 GREEN = "\033[0;32m"
-YELLOW = "\033[1;33m"
 BLUE = "\033[0;34m"
 BOLD = "\033[1m"
 NC = "\033[0m"
+
+STATE_ENUM = {0: "Closed", 1: "Deposit", 2: "Running", 3: "Withdraw"}
 
 
 def info(msg: str) -> None:
@@ -39,10 +40,6 @@ def ok(msg: str) -> None:
 
 def error(msg: str) -> None:
     print(f"{RED}[ERROR]{NC} {msg}")
-
-
-def warn(msg: str) -> None:
-    print(f"{YELLOW}[WARN]{NC}  {msg}")
 
 
 def decode_error(selector: str, abi):
@@ -431,8 +428,6 @@ def cmd_vault_state(args: argparse.Namespace) -> None:
 
     vault = w3.eth.contract(address=to_checksum(vault_addr), abi=vault_abi)
 
-    state_enum = {0: "Closed", 1: "Deposit", 2: "Running", 3: "Withdraw"}
-
     token1 = vault.functions.token1().call()
     token2 = vault.functions.token2().call()
     max_shareholders = vault.functions.maxShareholders().call()
@@ -457,7 +452,7 @@ def cmd_vault_state(args: argparse.Namespace) -> None:
         "vault": vault_addr,
         "network": args.network,
         "chainId": int(w3.eth.chain_id),
-        "state": state_enum.get(state, str(state)),
+        "state": STATE_ENUM.get(state, str(state)),
         "stateRaw": state,
         "manager": manager,
         "depositsClosed": deposits_closed,
@@ -479,7 +474,7 @@ def cmd_vault_state(args: argparse.Namespace) -> None:
 
     print(f"\nVault: {vault_addr}")
     print(f"Network: {args.network} | Chain ID: {w3.eth.chain_id}")
-    print(f"\nState: {state_enum.get(state, str(state))} (raw: {state})")
+    print(f"\nState: {STATE_ENUM.get(state, str(state))} (raw: {state})")
     print(f"Manager: {manager}")
     print(f"Deposits Closed: {deposits_closed}")
     print(f"\nToken1: {fmt_token(token1_addr, info1)}")
@@ -553,24 +548,6 @@ def _load_vault(w3: Web3, network: str):
     return vault, vault_addr
 
 
-def _print_vault_state(w3: Web3, vault, vault_addr: str) -> None:
-    state_enum = {0: "Closed", 1: "Deposit", 2: "Running", 3: "Withdraw"}
-
-    state = vault.functions.state().call()
-    manager = vault.functions.manager().call()
-    deposits_closed = vault.functions.depositsClosed().call()
-    total_shares = vault.functions.totalShares().call()
-    shareholder_count = vault.functions.getShareholderCount().call()
-    shareholders = vault.functions.getShareholders().call()
-
-    print(f"\nVault: {vault_addr}")
-    print(f"State: {state_enum.get(state, str(state))} (raw: {state})")
-    print(f"Manager: {manager}")
-    print(f"Deposits Closed: {deposits_closed}")
-    print(f"Total Shares: {total_shares}")
-    print(f"Shareholders ({shareholder_count}): {shareholders}")
-
-
 def cmd_vault_state_transition(args: argparse.Namespace) -> None:
     rpc_url = get_rpc_url(args.network, args.rpc_url)
     w3 = get_web3(rpc_url)
@@ -578,9 +555,8 @@ def cmd_vault_state_transition(args: argparse.Namespace) -> None:
 
     vault, vault_addr = _load_vault(w3, args.network)
 
-    state_enum = {0: "Closed", 1: "Deposit", 2: "Running", 3: "Withdraw"}
     current_state = vault.functions.state().call()
-    print(f"Current state: {state_enum.get(current_state, str(current_state))}")
+    print(f"Current state: {STATE_ENUM.get(current_state, str(current_state))}")
     print(f"Target state: {args.state}")
 
     func_map = {
@@ -607,7 +583,7 @@ def cmd_vault_state_transition(args: argparse.Namespace) -> None:
             elif args.state == "close-deposits":
                 expected_state = current_state
             print(
-                f"Simulation succeeded. Expected state after transition: {state_enum.get(expected_state, str(expected_state))}"
+                f"Simulation succeeded. Expected state after transition: {STATE_ENUM.get(expected_state, str(expected_state))}"
             )
         except Exception as e:
             print(f"Simulation failed: {e}")
@@ -621,7 +597,7 @@ def cmd_vault_state_transition(args: argparse.Namespace) -> None:
     if result["status"] == 1:
         ok(f"State transition successful: {result['tx_hash']}")
         new_state = vault.functions.state().call()
-        print(f"New state: {state_enum.get(new_state, str(new_state))}")
+        print(f"New state: {STATE_ENUM.get(new_state, str(new_state))}")
     else:
         error("State transition failed")
         log_tx_error(result, vault_abi)
@@ -639,11 +615,10 @@ def cmd_vault_reset(args: argparse.Namespace) -> None:
 
     vault, vault_addr = _load_vault(w3, args.network)
 
-    state_enum = {0: "Closed", 1: "Deposit", 2: "Running", 3: "Withdraw"}
     current_state = vault.functions.state().call()
     shareholder_count = vault.functions.getShareholderCount().call()
 
-    print(f"Current state: {state_enum.get(current_state, str(current_state))}")
+    print(f"Current state: {STATE_ENUM.get(current_state, str(current_state))}")
     print(f"Current shareholders: {shareholder_count}")
     print(f"New token1: {token1}")
     print(f"New token2: {token2}")
@@ -686,7 +661,7 @@ def cmd_vault_reset(args: argparse.Namespace) -> None:
         print(f"Transaction successful: {w3.to_hex(tx_hash)}")
         new_state = vault.functions.state().call()
         new_shareholders = vault.functions.getShareholderCount().call()
-        print(f"New state: {state_enum.get(new_state, str(new_state))}")
+        print(f"New state: {STATE_ENUM.get(new_state, str(new_state))}")
         print(f"New shareholders: {new_shareholders}")
     else:
         print(f"Transaction failed: {w3.to_hex(tx_hash)}")
@@ -704,9 +679,8 @@ def cmd_vault_close(args: argparse.Namespace) -> None:
     with open(vault_abi_path) as f:
         vault_abi = json.load(f)
 
-    state_enum = {0: "Closed", 1: "Deposit", 2: "Running", 3: "Withdraw"}
     current_state = call_contract(w3, vault, "state")
-    print(f"Current state: {state_enum.get(current_state, str(current_state))}")
+    print(f"Current state: {STATE_ENUM.get(current_state, str(current_state))}")
 
     shareholders = call_contract(w3, vault, "getShareholders")
     print(f"Shareholders: {len(shareholders)}")
@@ -759,7 +733,7 @@ def cmd_vault_close(args: argparse.Namespace) -> None:
             expected_state = 0
 
         print(f"\n{BOLD}Vault closed successfully{NC}")
-        print(f"Final state: {state_enum.get(expected_state, str(expected_state))}")
+        print(f"Final state: {STATE_ENUM.get(expected_state, str(expected_state))}")
         print("Final shareholders: 0")
 
     except Exception as e:

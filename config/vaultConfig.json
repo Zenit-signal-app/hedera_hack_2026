@@ -13,7 +13,7 @@
   },
   "hedera_mainnet": {
     "token1": "0x000000000000000000000000000000000006f89a",
-    "token2": "0xb1F616b8134F602c3Bb465fB5b5e6565cCAd37Ed",
+    "token2": "0x0000000000000000000000000000000000163b5a",
     "maxShareholders": 50,
     "chainId": 295,
     "rpcUrl": "https://mainnet.hashio.io/api"

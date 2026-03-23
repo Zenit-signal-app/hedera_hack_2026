@@ -1,0 +1,31 @@
+# Vault Deployment Info
+# Generated: 2026-03-20T12:10:15.035Z
+
+network:
+  name: hedera_mainnet
+  chain_id: 295
+  chain_name: ""
+
+deployment:
+  status: success
+  exit_code: 0
+  contract_id: 0.0.10383032
+  contract_address: 0x00000000000000000000000000000000009E6eB8
+  transaction_hash: "0.0.9305962@1774008596.216857067"
+  timestamp: 2026-03-20T12:10:15.035Z
+  block_number: ""
+  raw_log_file: /home/loc/Desktop/work/code/zenit/hedera_vault/deploy/hedera_mainnet/vault.deploy.log
+
+manager:
+  address: 0xe408553c8b91943e8a84f95c9e7e796aa610ddcd
+  ss58_address: ""
+
+tokens:
+  token1: 0x000000000000000000000000000000000006f89a
+  token2: 0x0000000000000000000000000000000000163B5a
+
+configuration:
+  max_shareholders: 50
+
+rpc:
+  url: https://mainnet.hashio.io/api
