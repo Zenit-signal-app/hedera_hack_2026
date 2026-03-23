@@ -109,17 +109,17 @@ const AGGREGATOR_TOKEN_OPTIONS = ["HBAR", "WHBAR", "USDC", "SAUCE", "XSAUCE"] as
 /** Slippage presets (bps): 0.5%, 1%, 2%, 4% — giống UI tham chiếu. */
 const SLIPPAGE_PRESET_BPS = [50, 100, 200, 400] as const;
 
-function TokenGlyph({ symbol }: { symbol: string }) {
-  const s = symbol.trim().toUpperCase();
-  const hue = s.includes("HBAR") ? "from-[#3d5a5a] to-[#1e3a3a]" : s.includes("USDC") ? "from-[#2775ca] to-[#1a4d8c]" : "from-[#4b5563] to-[#1f2937]";
-  return (
-    <span
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${hue} text-[11px] font-bold text-white shadow-inner ring-1 ring-white/10`}
-    >
-      {s.slice(0, 4)}
-    </span>
-  );
-}
+// function TokenGlyph({ symbol }: { symbol: string }) {
+//   const s = symbol.trim().toUpperCase();
+//   const hue = s.includes("HBAR") ? "from-[#3d5a5a] to-[#1e3a3a]" : s.includes("USDC") ? "from-[#2775ca] to-[#1a4d8c]" : "from-[#4b5563] to-[#1f2937]";
+//   return (
+//     <span
+//       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${hue} text-[11px] font-bold text-white shadow-inner ring-1 ring-white/10`}
+//     >
+//       {s.slice(0, 4)}
+//     </span>
+//   );
+// }
 
 function shortPathAddrs(path: readonly `0x${string}`[]): string {
   return path.map((a) => `${a.slice(0, 6)}…${a.slice(-4)}`).join(" → ");
