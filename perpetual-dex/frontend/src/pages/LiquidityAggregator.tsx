@@ -1067,7 +1067,9 @@ export default function LiquidityAggregator() {
         }
         let valueWei: bigint;
         try {
-          valueWei = parseUnits(amountIn.replace(/,/g, "") || "0", 18);
+          // HBAR has 8 decimals (tinybars), convert to weibars for msg.value
+          const amountTinybars = parseUnits(amountIn.replace(/,/g, "") || "0", 8);
+          valueWei = amountTinybars * WEIBARS_PER_TINYBAR;
         } catch {
           setSwapMsg("Invalid amount.");
           return;
@@ -1078,6 +1080,15 @@ export default function LiquidityAggregator() {
         }
         // Step 2 already validated balance via transformResult above — proceed
         setSwapMsg("Submitting SaucerSwap (native HBAR, msg.value)…");
+        console.log("[Native HBAR Swap] SaucerSwap V1 Direct:", {
+          router: routerV1,
+          path: pathV1,
+          amountIn: amountIn,
+          valueWei: valueWei.toString(),
+          minOut: minOut.toString(),
+          deadline: deadline.toString(),
+          wallet: walletAddress,
+        });
         const fn = getSaucerSwapHbarToTokenFunctionName();
         const swapArgs = [minOut, pathV1, walletAddress, deadline] as const;
         if (wpath) {
@@ -1199,7 +1210,9 @@ export default function LiquidityAggregator() {
       if (isHbarSell && canNativeHbarViaExchange && quote?.swapExecution === "v2_clmm" && exchangeContract && whbarAddr) {
         let valueWei: bigint;
         try {
-          valueWei = parseUnits(amountIn.replace(/,/g, "") || "0", 18);
+          // HBAR has 8 decimals (tinybars), convert to weibars for msg.value
+          const amountTinybars = parseUnits(amountIn.replace(/,/g, "") || "0", 8);
+          valueWei = amountTinybars * WEIBARS_PER_TINYBAR;
         } catch {
           setSwapMsg("Invalid amount.");
           return;
@@ -1262,7 +1275,9 @@ export default function LiquidityAggregator() {
         }
         let valueWei: bigint;
         try {
-          valueWei = parseUnits(amountIn.replace(/,/g, "") || "0", 18);
+          // HBAR has 8 decimals (tinybars), convert to weibars for msg.value
+          const amountTinybars = parseUnits(amountIn.replace(/,/g, "") || "0", 8);
+          valueWei = amountTinybars * WEIBARS_PER_TINYBAR;
         } catch {
           setSwapMsg("Invalid amount.");
           return;
@@ -1475,11 +1490,19 @@ export default function LiquidityAggregator() {
       const raw = e instanceof Error ? e.message : String(e);
       let msg = raw.length > 320 ? raw.slice(0, 320) + "…" : raw;
       if (/CONTRACT_REVERT_EXECUTED/i.test(msg)) {
+        const isNativeHbar = tokenIn.trim().toUpperCase() === "HBAR";
         msg =
-          "Contract reverted (CONTRACT_REVERT_EXECUTED). Common causes: (1) Not enough WHBAR (ERC-20) — wrap native HBAR first when selling HBAR/WHBAR. (2) Output token not associated (SAUCE, USDC, …) in HashPack. (3) Slippage too tight or pool/gas. Details: " +
-          msg;
+          `Contract reverted (CONTRACT_REVERT_EXECUTED). Common causes:\n` +
+          (isNativeHbar
+            ? `(1) Output token not associated in HashPack (${tokenOut})\n` +
+              `(2) Insufficient native HBAR balance (need ${amountIn} + gas)\n` +
+              `(3) Slippage too tight or liquidity issue\n`
+            : `(1) Not enough ${tokenIn} balance or allowance\n` +
+              `(2) Output token not associated in HashPack (${tokenOut})\n` +
+              `(3) Slippage too tight or pool/gas\n`) +
+          `Details: ${msg}`;
       }
-      setSwapMsg(msg.length > 520 ? msg.slice(0, 520) + "…" : msg);
+      setSwapMsg(msg.length > 600 ? msg.slice(0, 600) + "…" : msg);
     }
     } finally {
       setSwapBusy(false);
