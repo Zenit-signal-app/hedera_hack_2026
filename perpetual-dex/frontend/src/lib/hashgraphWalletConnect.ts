@@ -351,6 +351,15 @@ class HashgraphWalletConnectService {
     if (valueWei <= 0n) throw new Error("Payable value must be positive");
     const tinybars = valueWei / WEIBARS_PER_TINYBAR;
     if (tinybars <= 0n) throw new Error("Payable value too small (must be ≥ 1 tinybar in weibar units)");
+
+    console.log("[HashPack] executePayableContractCallWithValueWei:", {
+      contract: contractEvmAddress,
+      function: functionName,
+      valueWei: valueWei.toString(),
+      tinybars: tinybars.toString(),
+      gas,
+    });
+
     const iface = new Interface(abi as any);
     const calldata = iface.encodeFunctionData(functionName, [...args]);
     const contractId = await this.resolveContractId(contractEvmAddress);
@@ -359,6 +368,12 @@ class HashgraphWalletConnectService {
       .setGas(gas)
       .setFunctionParameters(Buffer.from(calldata.slice(2), "hex"))
       .setPayableAmount(Hbar.fromTinybars(tinybars.toString()));
+
+    console.log("[HashPack] Transaction prepared:", {
+      contractId: contractId.toString(),
+      payableAmount: tinybars.toString() + " tinybars",
+    });
+
     let response;
     try {
       response = await this.signer.call(tx);
