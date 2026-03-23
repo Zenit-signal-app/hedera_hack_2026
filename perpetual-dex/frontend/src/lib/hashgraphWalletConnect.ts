@@ -15,7 +15,7 @@ import {
   TokenId,
   TransferTransaction,
 } from "@hiero-ledger/sdk";
-import { Hbar } from "@hashgraph/sdk";
+import { Hbar, HbarUnit } from "@hashgraph/sdk";
 import { Interface } from "ethers";
 import type { SessionTypes, SignClientTypes } from "@walletconnect/types";
 
@@ -370,11 +370,20 @@ class HashgraphWalletConnectService {
       throw new Error(`Tinybars value too large for safe integer: ${tinybars.toString()}`);
     }
 
+    // Create Hbar object - try multiple methods to ensure it works
+    const hbarAmount = Hbar.from(tinybarsNumber, HbarUnit.Tinybar);
+
+    console.log("[HashPack] Hbar amount created:", {
+      tinybars: tinybarsNumber,
+      hbarObject: hbarAmount.toString(),
+      toTinybars: hbarAmount.toTinybars().toString(),
+    });
+
     const tx = new ContractExecuteTransaction()
       .setContractId(contractId)
       .setGas(gas)
       .setFunctionParameters(Buffer.from(calldata.slice(2), "hex"))
-      .setPayableAmount(Hbar.fromTinybars(tinybarsNumber));
+      .setPayableAmount(hbarAmount);
 
     console.log("[HashPack] Transaction prepared:", {
       contractId: contractId.toString(),
