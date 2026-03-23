@@ -22,8 +22,10 @@ import {
   HEDERA_EVM_MAINNET_CHAIN_ID,
   type AggregatorNetwork,
   chainIdForAggregator,
+  encodeAdapterId,
   getAggregatorStatsUrl,
   getExchangeContractAddress,
+  getNativeHbarAdapterId,
   getQuoteContractAddress,
   getV2RouterAddress,
   resolveTokenAddressForAggregator,
@@ -40,7 +42,7 @@ import {
   AGGREGATOR_WHBAR_WRAP_ABI,
   SAUCERSWAP_V1_ROUTER_NATIVE_ABI,
 } from "@/lib/aggregatorAbi";
-import { whbarTinybarsToDepositWeibar } from "@/lib/aggregatorWhbarWrap";
+import { whbarTinybarsToDepositWeibar, WEIBARS_PER_TINYBAR } from "@/lib/aggregatorWhbarWrap";
 import { getAggregatorQuoteUnified, type AggregatorQuoteResult } from "@/lib/aggregatorQuote";
 import { pathTokenLabelsFromAddresses } from "@/lib/aggregatorPathLabels";
 import { quoteOnchainExpectedOut } from "@/lib/aggregatorOnchainQuote";
@@ -58,6 +60,7 @@ import {
   NATIVE_HBAR_EVM_PLACEHOLDER,
   canUseSaucerV1NativeHbarInSwap,
   canUseSaucerV1TokenToHbarSwap,
+  canUseNativeHbarViaExchange,
   decodeV1RouterAddressPath,
   getSaucerSwapHbarToTokenFunctionName,
 } from "@/lib/aggregatorSaucerDirect";
@@ -294,15 +297,17 @@ export default function LiquidityAggregator() {
     return resolveTokenAddressForAggregator(tokenOut, network);
   }, [tokenOut, tokenOutAddr, network]);
 
-  /** Khớp `adapterId` với `encodedPath` (V1 vs CLMM) — tránh `InvalidPath()` khi quote V1 + id `saucerswap_v2`. */
+  /** Khớp `adapterId` với `encodedPath` (V1 vs CLMM) — tránh `InvalidPath()` khi quote V1 + id `saucerswap_v2`.
+   * isNativeHbar: true khi tokenIn = HBAR → chọn hbar_native_v1/v2 thay vì saucerswap/saucerswap_v2. */
   const onchainAdapterBytes32 = useMemo(
     () =>
       resolveOnchainAdapterBytes32({
         selectedVenueId,
         customAdapterLabel,
         quote,
+        isNativeHbar: tokenIn.trim().toUpperCase() === "HBAR",
       }),
-    [selectedVenueId, customAdapterLabel, quote],
+    [selectedVenueId, customAdapterLabel, quote, tokenIn],
   );
 
   const whbarAddr = useMemo(
@@ -656,9 +661,25 @@ export default function LiquidityAggregator() {
     [tokenOut, quote, whbarAddr, resolvedOut],
   );
 
-  /** Khi swap native HBAR qua Saucer `swapExactETHForTokens*`, so sánh với số dư native (18 decimals), không WHBAR ERC-20. */
+  /**
+   * Native HBAR → token qua Exchange + NativeHbarV1Adapter.
+   * Ưu tiên sau SaucerSwap V1 direct; dùng khi `v1_amm` nhưng VITE_AGGREGATOR_USE_SAUCE_NATIVE_HBAR_SWAP=0.
+   */
+  const canNativeHbarViaExchange = useMemo(
+    () =>
+      canUseNativeHbarViaExchange({
+        tokenInSymbol: tokenIn,
+        quote,
+        exchangeContract: exchangeContract as `0x${string}` | undefined,
+        network: AGGREGATOR_NETWORK,
+      }),
+    [tokenIn, quote, exchangeContract],
+  );
+
+  /** Khi swap native HBAR (qua Saucer V1 direct, NativeHbarV1Adapter, hoặc NativeHbarV2Adapter), so sánh với số dư native (18 decimals), không WHBAR ERC-20. */
   const insufficientSellForSwap = useMemo(() => {
-    if (canDirectSaucerNativeIn && quote?.swapExecution === "v1_amm") {
+    const isHbarNative = tokenIn.trim().toUpperCase() === "HBAR";
+    if (isHbarNative && (canDirectSaucerNativeIn || canNativeHbarViaExchange)) {
       try {
         const need = parseUnits(amountIn.replace(/,/g, "") || "0", 18);
         if (effectiveNativeHbarBalance?.value == null) return true;
@@ -668,7 +689,7 @@ export default function LiquidityAggregator() {
       }
     }
     return insufficientSellErc20;
-  }, [canDirectSaucerNativeIn, quote?.swapExecution, amountIn, effectiveNativeHbarBalance?.value, insufficientSellErc20]);
+  }, [tokenIn, canDirectSaucerNativeIn, canNativeHbarViaExchange, amountIn, effectiveNativeHbarBalance?.value, insufficientSellErc20]);
 
   const applySellPct = useCallback(
     (mode: "25" | "50" | "max") => {
@@ -1170,6 +1191,141 @@ export default function LiquidityAggregator() {
         return;
       }
 
+      /**
+       * Native HBAR → token qua Exchange + NativeHbarV2Adapter (CLMM exactInput).
+       * Exchange nhận msg.value (weibars), adapter wrap → WHBAR, swap qua SaucerSwap V2.
+       * extraData = abi.encode(bytes packed_path) đã có trong quote.encodedPath.
+       */
+      if (isHbarSell && canNativeHbarViaExchange && quote?.swapExecution === "v2_clmm" && exchangeContract && whbarAddr) {
+        let valueWei: bigint;
+        try {
+          valueWei = parseUnits(amountIn.replace(/,/g, "") || "0", 18);
+        } catch {
+          setSwapMsg("Invalid amount.");
+          return;
+        }
+        if (valueWei <= 0n) {
+          setSwapMsg("Amount must be positive.");
+          return;
+        }
+        const amountInTiny = valueWei / WEIBARS_PER_TINYBAR;
+        const adapterData = (quote?.encodedPath ?? "0x") as `0x${string}`;
+        // adapterId = hbar_native_v2 (already in onchainAdapterBytes32 due to fix #2)
+        const swapParams = {
+          adapterId: onchainAdapterBytes32,
+          tokenIn: whbarAddr as `0x${string}`,
+          tokenOut: resolvedOut as `0x${string}`,
+          amountIn: amountInTiny,
+          minAmountOut: minOut,
+          recipient: walletAddress,
+          deadline,
+          adapterData,
+        };
+        setSwapMsg("Submitting swap (native HBAR via Exchange + NativeHbarV2Adapter, CLMM)…");
+        if (wpath) {
+          const txId = await hashgraphWalletConnect.executePayableContractCallWithValueWei(
+            exchangeContract,
+            [...AGGREGATOR_EXCHANGE_ABI],
+            "swap",
+            [swapParams],
+            valueWei,
+            3_500_000,
+          );
+          setSwapTxHash(txId);
+        } else {
+          const h = await writeContractAsync({
+            address: exchangeContract,
+            abi: AGGREGATOR_EXCHANGE_ABI,
+            functionName: "swap",
+            args: [swapParams],
+            value: valueWei,
+            gas: 3_500_000n,
+          });
+          await waitForTransactionSuccess(publicClient!, h, "Exchange.swap (NativeHbarV2Adapter)");
+          setSwapTxHash(h);
+        }
+        setSwapMsg(
+          "Swap confirmed (native HBAR → token via Exchange + NativeHbarV2Adapter). Đảm bảo output token đã associated trong HashPack nếu cần.",
+        );
+        return;
+      }
+
+      /**
+       * Native HBAR → token qua Exchange + NativeHbarV1Adapter.
+       * Exchange nhận msg.value (weibars), adapter tự wrap WHBAR rồi swap V1.
+       * Không cần approve ERC-20 — adapter dùng msg.value, không pull tokenIn.
+       */
+      if (isHbarSell && canNativeHbarViaExchange && exchangeContract && pathV1 && whbarAddr) {
+        if (pathV1[0]!.toLowerCase() !== whbarAddr.toLowerCase()) {
+          setSwapMsg("Route phải bắt đầu bằng WHBAR cho NativeHbarV1Adapter (kiểm tra quote path).");
+          return;
+        }
+        let valueWei: bigint;
+        try {
+          valueWei = parseUnits(amountIn.replace(/,/g, "") || "0", 18);
+        } catch {
+          setSwapMsg("Invalid amount.");
+          return;
+        }
+        if (valueWei <= 0n) {
+          setSwapMsg("Amount must be positive.");
+          return;
+        }
+        // amountIn cho Exchange.swap params = tinybars (WHBAR unit)
+        const amountInTiny = valueWei / WEIBARS_PER_TINYBAR;
+        const nativeHbarAdapterId = encodeAdapterId(getNativeHbarAdapterId());
+        const adapterData = (quote?.encodedPath ?? "0x") as `0x${string}`;
+        const swapParams = {
+          adapterId: nativeHbarAdapterId,
+          tokenIn: whbarAddr as `0x${string}`,   // adapter dùng WHBAR làm tokenIn sau wrap
+          tokenOut: resolvedOut as `0x${string}`,
+          amountIn: amountInTiny,
+          minAmountOut: minOut,
+          recipient: walletAddress,
+          deadline,
+          adapterData,
+        };
+        setSwapMsg("Submitting swap (native HBAR via Exchange + NativeHbarV1Adapter)…");
+        if (wpath) {
+          const txId = await hashgraphWalletConnect.executePayableContractCallWithValueWei(
+            exchangeContract,
+            [...AGGREGATOR_EXCHANGE_ABI],
+            "swap",
+            [swapParams],
+            valueWei,
+            3_000_000,
+          );
+          setSwapTxHash(txId);
+        } else {
+          const h = await writeContractAsync({
+            address: exchangeContract,
+            abi: AGGREGATOR_EXCHANGE_ABI,
+            functionName: "swap",
+            args: [swapParams],
+            value: valueWei,
+            gas: 3_000_000n,
+          });
+          await waitForTransactionSuccess(publicClient!, h, "Exchange.swap (NativeHbarV1Adapter)");
+          setSwapTxHash(h);
+        }
+        setSwapMsg(
+          "Swap confirmed (native HBAR → token via Exchange). Đảm bảo output token đã associated trong HashPack nếu cần.",
+        );
+        return;
+      }
+
+      /**
+       * Guard cuối: HBAR native không qua được bất kỳ path nào.
+       * Ngăn gọi Exchange.swap() thiếu msg.value → revert.
+       */
+      if (isHbarSell) {
+        setSwapMsg(
+          "❌ Không thể swap HBAR native: cần NativeHbarV1Adapter (v1_amm) hoặc NativeHbarV2Adapter (v2_clmm) đã được deploy + setAdapter trên Exchange, và quote phải là router_v2. " +
+          "Hoặc chọn WHBAR làm token bán.",
+        );
+        return;
+      }
+
       if (!exchangeContract) {
         setSwapMsg(
           "Missing VITE_AGGREGATOR_EXCHANGE_CONTRACT. Native HBAR / token→HBAR direct swaps use SaucerSwap V1 only when quote is V1 AMM; V2 (CLMM) still needs Exchange + adapter.",
@@ -1432,6 +1588,22 @@ export default function LiquidityAggregator() {
 
   return (
     <div className="zenit-ag min-h-screen bg-[#0d0f18] font-sans antialiased">
+      {/* Mainnet-only banner khi user kết nối testnet */}
+      {chainId !== HEDERA_EVM_MAINNET_CHAIN_ID && isConnected && (
+        <div className="sticky top-0 z-50 border-b border-yellow-500/30 bg-yellow-900/20 px-4 py-3 text-center backdrop-blur-sm">
+          <p className="text-sm font-semibold text-yellow-200">
+            ⚠️ Aggregator page is <strong>mainnet-only</strong> (chain ID 295). You are connected to chain {chainId}.
+          </p>
+          <button
+            type="button"
+            onClick={() => switchChain?.({ chainId: HEDERA_EVM_MAINNET_CHAIN_ID })}
+            disabled={isSwitchChainPending}
+            className="mt-2 rounded-lg border border-yellow-400/40 bg-yellow-600/30 px-4 py-1.5 text-xs font-medium text-yellow-100 transition hover:bg-yellow-600/50 disabled:opacity-50"
+          >
+            {isSwitchChainPending ? "Switching…" : "Switch to Hedera Mainnet"}
+          </button>
+        </div>
+      )}
       {/* Hero — aligned with app shell: indigo / cyan accents */}
       <section className="relative overflow-hidden border-b border-indigo-500/15">
         <div
@@ -1696,12 +1868,17 @@ export default function LiquidityAggregator() {
                   <strong className="text-slate-500">pair</strong>, or <strong className="text-slate-500">slippage</strong>{" "}
                   (~{Math.round(AUTO_QUOTE_DEBOUNCE_MS / 100) / 10}s debounce after typing).
                 </p>
-                {(tokenIn === "HBAR" || tokenIn === "WHBAR") && (
+                {tokenIn === "HBAR" && (
                   <p className="mt-2 rounded-lg border border-cyan-500/20 bg-cyan-950/20 px-2.5 py-1.5 text-[10px] leading-snug text-cyan-100/90">
-                    <strong className="text-cyan-200">On-chain swap</strong> uses <strong className="text-white">WHBAR (ERC-20)</strong>. If you only
-                    hold native HBAR: when you press <strong className="text-white">Swap</strong>, the app calls <strong className="text-white">deposit()</strong>{" "}
-                    on the WHBAR contract to wrap the shortfall, then approve + <code className="text-cyan-300/90">Exchange.swap</code> (WHBAR→…→
-                    token out).
+                    <strong className="text-cyan-200">Native HBAR swap</strong>: The app automatically routes your swap via{" "}
+                    <strong className="text-white">SaucerSwap V1 router</strong> (direct native HBAR → token) or{" "}
+                    <strong className="text-white">Exchange + NativeHbarAdapter</strong> (wraps internally). No manual wrapping needed!
+                  </p>
+                )}
+                {tokenIn === "WHBAR" && (
+                  <p className="mt-2 rounded-lg border border-cyan-500/20 bg-cyan-950/20 px-2.5 py-1.5 text-[10px] leading-snug text-cyan-100/90">
+                    <strong className="text-cyan-200">WHBAR swap</strong>: Using wrapped HBAR (ERC-20). The app will approve and swap via{" "}
+                    <code className="text-cyan-300/90">Exchange.swap</code> (WHBAR → token out).
                   </p>
                 )}
                 {gasWarning && (
@@ -2108,7 +2285,16 @@ export default function LiquidityAggregator() {
                   <span className="text-[10px] text-slate-500">Adapter id (optional)</span>
                   <input
                     value={customAdapterLabel}
-                    onChange={(e) => setCustomAdapterLabel(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value.trim();
+                      // Reject nếu user nhập địa chỉ 0x... thay vì label string
+                      if (val && isAddress(val)) {
+                        setSwapMsg("⚠️ Adapter id must be a label (e.g. saucerswap_v2), not a contract address (0x…). See Exchange.setAdapter docs.");
+                        return;
+                      }
+                      setCustomAdapterLabel(e.target.value);
+                      setSwapMsg(null);
+                    }}
                     placeholder="e.g. saucerswap_v2 — do not paste 0x… contract"
                     className="mt-1 w-full rounded-lg border border-white/10 bg-[#121318] px-2 py-2 font-mono text-[10px] text-slate-200"
                   />
