@@ -3,15 +3,31 @@ import { fallback } from "viem";
 import { defineChain } from "viem";
 import { injected } from "wagmi/connectors";
 
-const HEDERA_RPC = import.meta.env.HEDERA_TESTNET_RPC_URL || "https://testnet.hashio.io/api";
-const HEDERA_RPC_ALT = "https://testnet.hashio.io/api";
+import { hederaJsonRpcUrl } from "../lib/hederaDevProxy";
+
+/** `testnet` (default) | `mainnet` — drives wagmi chain, HashPack WC, mirror REST defaults */
+export type HederaEvmNetwork = "mainnet" | "testnet";
+
+function readEvmNetwork(): HederaEvmNetwork {
+  const v = import.meta.env.VITE_HEDERA_EVM_NETWORK?.trim().toLowerCase();
+  return v === "mainnet" ? "mainnet" : "testnet";
+}
+
+export const activeEvmNetwork: HederaEvmNetwork = readEvmNetwork();
+
+const TESTNET_RPC = hederaJsonRpcUrl("testnet");
+/** Cùng endpoint (dev: proxy); viem fallback vẫn retry khi lỗi mạng tạm. */
+const TESTNET_RPC_ALT = TESTNET_RPC;
+
+const MAINNET_RPC = hederaJsonRpcUrl("mainnet");
+const MAINNET_RPC_ALT = MAINNET_RPC;
 
 export const hederaTestnet = defineChain({
   id: 296,
   name: "Hedera Testnet",
   nativeCurrency: { name: "HBAR", symbol: "HBAR", decimals: 18 },
   rpcUrls: {
-    default: { http: [HEDERA_RPC, HEDERA_RPC_ALT] },
+    default: { http: [TESTNET_RPC, TESTNET_RPC_ALT] },
   },
   blockExplorers: {
     default: {
@@ -21,15 +37,48 @@ export const hederaTestnet = defineChain({
   },
 });
 
+export const hederaMainnet = defineChain({
+  id: 295,
+  name: "Hedera Mainnet",
+  nativeCurrency: { name: "HBAR", symbol: "HBAR", decimals: 18 },
+  rpcUrls: {
+    default: { http: [MAINNET_RPC, MAINNET_RPC_ALT] },
+  },
+  blockExplorers: {
+    default: {
+      name: "HashScan",
+      url: "https://hashscan.io/mainnet",
+    },
+  },
+});
+
+/** Active chain for this build (from `VITE_HEDERA_EVM_NETWORK`). */
+export const activeChain = activeEvmNetwork === "mainnet" ? hederaMainnet : hederaTestnet;
+
+export const hashscanBaseUrl =
+  activeEvmNetwork === "mainnet" ? "https://hashscan.io/mainnet" : "https://hashscan.io/testnet";
+
 // Backward-compatible export name used by existing tests.
 export const polkadotEVMTestnet = hederaTestnet;
 
-const hederaTransport = fallback([
-  http(HEDERA_RPC, { retryCount: 2 }),
-  http(HEDERA_RPC_ALT, { retryCount: 2 }),
+const testnetTransport = fallback([
+  http(TESTNET_RPC, { retryCount: 2 }),
+  http(TESTNET_RPC_ALT, { retryCount: 2 }),
 ]);
 
+const mainnetTransport = fallback([
+  http(MAINNET_RPC, { retryCount: 2 }),
+  http(MAINNET_RPC_ALT, { retryCount: 2 }),
+]);
+
+/** Order: env default first — used as wagmi default chain; second chain enables `switchChain` for /aggregate. */
+const orderedChains =
+  activeEvmNetwork === "mainnet"
+    ? ([hederaMainnet, hederaTestnet] as const)
+    : ([hederaTestnet, hederaMainnet] as const);
+
 function detectHashPackProvider(): any | undefined {
+  if (typeof window === "undefined") return undefined;
   const w = window as any;
   const eth = w?.ethereum;
   const lc = (v: unknown) => String(v ?? "").toLowerCase();
@@ -93,6 +142,7 @@ function detectHashPackProvider(): any | undefined {
 }
 
 export function getHashPackDetectionState(): string {
+  if (typeof window === "undefined") return "unknown";
   const w = window as any;
   const eth = w?.ethereum;
   const hasEth = Boolean(eth);
@@ -107,7 +157,7 @@ export function getHashPackDetectionState(): string {
 }
 
 export const config = createConfig({
-  chains: [hederaTestnet],
+  chains: orderedChains,
   connectors: [
     injected({
       target() {
@@ -122,6 +172,7 @@ export const config = createConfig({
     }),
   ],
   transports: {
-    [hederaTestnet.id]: hederaTransport,
+    [hederaMainnet.id]: mainnetTransport,
+    [hederaTestnet.id]: testnetTransport,
   },
 });

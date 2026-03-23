@@ -9,6 +9,8 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 
+import { getAlloriginsGetProxyPrefix } from "@/lib/alloriginsUrl";
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface NewsItem {
   id: string;
@@ -44,7 +46,7 @@ interface YTVideo {
 }
 
 // ─── CORS proxy + RSS feeds ───────────────────────────────────────────────────
-const PROXY = "https://api.allorigins.win/get?url=";
+const PROXY = getAlloriginsGetProxyPrefix();
 
 const RSS_SOURCES = [
   {

@@ -1,16 +1,26 @@
 import { describe, expect, it } from "vitest";
 
-import { polkadotEVMTestnet } from "../wagmi";
+import { hederaMainnet, hederaTestnet, polkadotEVMTestnet } from "../wagmi";
 
 describe("defineChain metadata", () => {
-  it("keeps the MetaMask-friendly metadata for Polkadot EVM Testnet", () => {
-    expect(polkadotEVMTestnet).toMatchObject({
-      id: 420420417,
-      name: "Polkadot Hub TestNet",
-      nativeCurrency: { name: "PAS", symbol: "PAS", decimals: 10 },
+  it("keeps HashPack-friendly metadata for Hedera Testnet (296)", () => {
+    expect(hederaTestnet).toMatchObject({
+      id: 296,
+      name: "Hedera Testnet",
+      nativeCurrency: { name: "HBAR", symbol: "HBAR", decimals: 18 },
     });
-    expect(polkadotEVMTestnet.rpcUrls.default.http).toContain("https://eth-rpc-testnet.polkadot.io/");
-    expect(polkadotEVMTestnet.blockExplorers?.default?.name).toBe("Blockscout");
-    expect(polkadotEVMTestnet.blockExplorers?.default?.url).toBe("https://blockscout-testnet.polkadot.io");
+    /** Dev: proxy `/hedera-rpc/testnet`; CI/prod: trực tiếp Hashio. */
+    expect(hederaTestnet.rpcUrls.default.http[0]).toMatch(/hashio\.io|\/hedera-rpc\/testnet/);
+    expect(hederaTestnet.blockExplorers?.default?.name).toBe("HashScan");
+    expect(hederaTestnet.blockExplorers?.default?.url).toBe("https://hashscan.io/testnet");
+  });
+
+  it("exposes Hedera Mainnet (295)", () => {
+    expect(hederaMainnet.id).toBe(295);
+    expect(hederaMainnet.blockExplorers?.default?.url).toBe("https://hashscan.io/mainnet");
+  });
+
+  it("backward-compat alias polkadotEVMTestnet points at hederaTestnet", () => {
+    expect(polkadotEVMTestnet).toBe(hederaTestnet);
   });
 });

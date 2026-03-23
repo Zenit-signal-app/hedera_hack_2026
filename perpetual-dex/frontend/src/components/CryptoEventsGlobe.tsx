@@ -7,6 +7,8 @@
 
 import { useState, useRef, useCallback, useEffect, lazy, Suspense } from "react";
 
+import { getAlloriginsGetProxyPrefix } from "@/lib/alloriginsUrl";
+
 const Globe = lazy(() => import("react-globe.gl"));
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -326,7 +328,7 @@ const WORLD_CITIES = [
 ];
 
 // ─── Nitter RSS fetcher (same pattern as NewsSidebar) ─────────────────────────
-const ALLORIGINS = "https://api.allorigins.win/get?url=";
+const ALLORIGINS = getAlloriginsGetProxyPrefix();
 
 function getItemLink(item: Element): string {
   // Try <link> element (text node after CDATA)

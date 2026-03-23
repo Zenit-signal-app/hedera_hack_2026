@@ -23,6 +23,7 @@
 - **Setup guide** (`SetupGuideWidget`) — Hedera Testnet: HBAR faucet, zUSDC token ID import, **faucet Step B** accepts `0.0.x` account ID or `0x…` EVM address.
 - **Faucet UI** calls `POST ${VITE_KEEPER_URL}/faucet/zusdc` — if keeper is down, the browser shows **Failed to fetch**.
 - Keeper sync: `GET /orders`, TP/SL registration `POST /orders/tp-sl`, optional history reconciliation; close reason badges (TP / SL / Liquidated / Manual).
+- **Liquidity Aggregator** — route `/aggregate`: UI Zenit (`Exchange` + `IAdapter` + mock/on-chain quote). Chi tiết: **`docs/AGGREGATOR.md`**. **Id adapter vs địa chỉ contract, biến `VITE_*`:** **`docs/AGGREGATOR_UI_ENV.md`**. Deploy: **`docs/DEPLOY_AGGREGATOR.md`** (`HEDERA_MAINNET_PRIVATE_KEY`, `npm run deploy:exchange:mainnet`).
 
 ## Keeper Service
 

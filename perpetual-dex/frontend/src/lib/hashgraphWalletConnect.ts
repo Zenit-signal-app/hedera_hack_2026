@@ -15,21 +15,38 @@ import {
   TokenId,
   TransferTransaction,
 } from "@hiero-ledger/sdk";
+import { Hbar } from "@hashgraph/sdk";
 import { Interface } from "ethers";
 import type { SessionTypes, SignClientTypes } from "@walletconnect/types";
 
+import { WEIBARS_PER_TINYBAR } from "@/lib/aggregatorWhbarWrap";
+
 const HASHPACK_EXTENSION_ID = "gjagmgiddbbciopjhllkdnddhcglnemk";
 
-const DEFAULT_MIRROR = "https://testnet.mirrornode.hedera.com";
+function isMainnetEvm(): boolean {
+  try {
+    return (
+      (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_HEDERA_EVM_NETWORK?.trim().toLowerCase() ===
+      "mainnet"
+    );
+  } catch {
+    return false;
+  }
+}
 
-function getMirrorBase(): string {
+export function getHederaMirrorRestBase(): string {
   try {
     const v = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_HEDERA_MIRROR_REST;
     if (v && typeof v === "string" && v.trim()) return v.trim().replace(/\/$/, "");
   } catch {
     /* ignore */
   }
-  return DEFAULT_MIRROR;
+  return isMainnetEvm() ? "https://mainnet.mirrornode.hedera.com" : "https://testnet.mirrornode.hedera.com";
+}
+
+/** @deprecated use getHederaMirrorRestBase — kept for call sites */
+function getMirrorBase(): string {
+  return getHederaMirrorRestBase();
 }
 
 /**
@@ -135,11 +152,8 @@ class HashgraphWalletConnectService {
     if (!projectId || projectId === "zenit-perp-dex" || projectId === "your_project_id") {
       throw new Error("Missing VITE_WALLETCONNECT_PROJECT_ID. Create one at cloud.walletconnect.com");
     }
-    const network = (import.meta.env.HEDERA_TESTNET_RPC_URL as string | undefined)?.includes("mainnet")
-      ? LedgerId.MAINNET
-      : LedgerId.TESTNET;
-    const chains =
-      network === LedgerId.MAINNET ? [HederaChainId.Mainnet] : [HederaChainId.Testnet];
+    const network = isMainnetEvm() ? LedgerId.MAINNET : LedgerId.TESTNET;
+    const chains = network === LedgerId.MAINNET ? [HederaChainId.Mainnet] : [HederaChainId.Testnet];
 
     this.connector = new DAppConnector(
       this.metadata,
@@ -274,6 +288,102 @@ class HashgraphWalletConnectService {
     return txIdStr;
   }
 
+  /**
+   * Gọi hàm **payable** (ví dụ `deposit()` trên WHBAR) — gửi HBAR native vào contract.
+   * @param payableTinybars Số **tinybars** (8 decimals) cần gửi (khớp mint WHBAR).
+   */
+  async executePayableContractCall(
+    contractEvmAddress: string,
+    abi: readonly any[],
+    functionName: string,
+    args: readonly unknown[],
+    payableTinybars: bigint,
+    gas = 2_000_000,
+  ): Promise<string> {
+    if (!this.signer || !this.accountId) throw new Error("HashPack signer is not connected");
+    if (payableTinybars <= 0n) throw new Error("Payable amount must be positive");
+    const iface = new Interface(abi as any);
+    const calldata = iface.encodeFunctionData(functionName, [...args]);
+    const contractId = await this.resolveContractId(contractEvmAddress);
+    const tx = new ContractExecuteTransaction()
+      .setContractId(contractId)
+      .setGas(gas)
+      .setFunctionParameters(Buffer.from(calldata.slice(2), "hex"))
+      .setPayableAmount(Hbar.fromTinybars(payableTinybars.toString()));
+    let response;
+    try {
+      response = await this.signer.call(tx);
+    } catch (e) {
+      if (isUserRejectedError(e)) {
+        throw new Error("Transaction was rejected in the wallet.");
+      }
+      throw e;
+    }
+    if (!response?.transactionId) {
+      throw new Error(`Contract call failed: ${functionName}`);
+    }
+    const txIdStr = response.transactionId.toString();
+    const mirrorPath = hederaTxIdToMirrorPath(txIdStr);
+    const st = await waitForContractResultMirror(getMirrorBase(), mirrorPath);
+    if (st !== "SUCCESS") {
+      const hint =
+        st === "CONTRACT_REVERT_EXECUTED"
+          ? " (contract reverted — check WHBAR wrap amount, gas, token association)"
+          : "";
+      throw new Error(`Contract call failed: ${st}${hint}`);
+    }
+    return txIdStr;
+  }
+
+  /**
+   * Payable contract call với **msg.value** (weibars 18 decimals) — dùng cho SaucerSwap `swapExactETHForTokens*`.
+   * Hedera SDK nhận **tinybars**; chuyển: `tinybars = valueWei / 10^10`.
+   */
+  async executePayableContractCallWithValueWei(
+    contractEvmAddress: string,
+    abi: readonly any[],
+    functionName: string,
+    args: readonly unknown[],
+    valueWei: bigint,
+    gas = 8_000_000,
+  ): Promise<string> {
+    if (!this.signer || !this.accountId) throw new Error("HashPack signer is not connected");
+    if (valueWei <= 0n) throw new Error("Payable value must be positive");
+    const tinybars = valueWei / WEIBARS_PER_TINYBAR;
+    if (tinybars <= 0n) throw new Error("Payable value too small (must be ≥ 1 tinybar in weibar units)");
+    const iface = new Interface(abi as any);
+    const calldata = iface.encodeFunctionData(functionName, [...args]);
+    const contractId = await this.resolveContractId(contractEvmAddress);
+    const tx = new ContractExecuteTransaction()
+      .setContractId(contractId)
+      .setGas(gas)
+      .setFunctionParameters(Buffer.from(calldata.slice(2), "hex"))
+      .setPayableAmount(Hbar.fromTinybars(tinybars.toString()));
+    let response;
+    try {
+      response = await this.signer.call(tx);
+    } catch (e) {
+      if (isUserRejectedError(e)) {
+        throw new Error("Transaction was rejected in the wallet.");
+      }
+      throw e;
+    }
+    if (!response?.transactionId) {
+      throw new Error(`Contract call failed: ${functionName}`);
+    }
+    const txIdStr = response.transactionId.toString();
+    const mirrorPath = hederaTxIdToMirrorPath(txIdStr);
+    const st = await waitForContractResultMirror(getMirrorBase(), mirrorPath);
+    if (st !== "SUCCESS") {
+      const hint =
+        st === "CONTRACT_REVERT_EXECUTED"
+          ? " (contract reverted — check path[0]==WHBAR, output token associated, slippage, native HBAR balance)"
+          : "";
+      throw new Error(`Contract call failed: ${st}${hint}`);
+    }
+    return txIdStr;
+  }
+
   async transferHtsTokenToDex(tokenId: string, dexEvmAddress: string, amountRaw: bigint): Promise<string> {
     if (!this.signer || !this.accountId) throw new Error("HashPack signer is not connected");
     if (amountRaw <= 0n) throw new Error("Transfer amount must be greater than zero");
@@ -340,8 +450,13 @@ class HashgraphWalletConnectService {
   }
 
   private async resolveEvmAddress(accountId: string): Promise<string> {
-    const resp = await fetch(`https://testnet.mirrornode.hedera.com/api/v1/accounts/${accountId}`);
-    if (!resp.ok) throw new Error("Cannot resolve account from mirror node");
+    const base = getHederaMirrorRestBase();
+    const resp = await fetch(`${base}/api/v1/accounts/${accountId}`);
+    if (!resp.ok) {
+      throw new Error(
+        `Cannot resolve account from mirror (${isMainnetEvm() ? "mainnet" : "testnet"}). Check VITE_HEDERA_EVM_NETWORK and VITE_HEDERA_MIRROR_REST.`,
+      );
+    }
     const data = (await resp.json()) as { evm_address?: string };
     const evm = data?.evm_address;
     if (!evm || !/^0x[0-9a-fA-F]{40}$/.test(evm)) throw new Error("Mirror node did not return EVM address");
@@ -357,8 +472,9 @@ class HashgraphWalletConnectService {
     const cached = this.contractIdCache.get(key);
     if (cached) return cached;
 
+    const mirrorBase = getHederaMirrorRestBase();
     try {
-      const resp = await fetch(`https://testnet.mirrornode.hedera.com/api/v1/contracts/${contractEvmAddress}`);
+      const resp = await fetch(`${mirrorBase}/api/v1/contracts/${contractEvmAddress}`);
       if (resp.ok) {
         const data = (await resp.json()) as { contract_id?: string };
         if (data.contract_id) {
@@ -381,8 +497,9 @@ class HashgraphWalletConnectService {
   }
 
   private async resolveDexAccountId(contractEvmAddress: string): Promise<AccountId> {
+    const mirrorBase = getHederaMirrorRestBase();
     try {
-      const resp = await fetch(`https://testnet.mirrornode.hedera.com/api/v1/contracts/${contractEvmAddress}`);
+      const resp = await fetch(`${mirrorBase}/api/v1/contracts/${contractEvmAddress}`);
       if (resp.ok) {
         const data = (await resp.json()) as { contract_id?: string };
         if (data.contract_id) {

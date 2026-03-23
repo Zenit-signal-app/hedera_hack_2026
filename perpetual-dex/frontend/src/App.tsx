@@ -3,6 +3,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import Trade from "./pages/Trade";
 import Rewards from "./pages/Rewards";
 import Stake from "./pages/Stake";
+import LiquidityAggregator from "./pages/LiquidityAggregator";
 import OnRamp from "./pages/OnRamp";
 import NewsSidebar from "./components/NewsSidebar";
 import SetupGuideWidget from "./components/SetupGuideWidget";
@@ -178,6 +179,55 @@ function Layout({ children }: { children: React.ReactNode }) {
             )}
           </NavLink>
 
+          {/* Liquidity aggregator (beta) */}
+          <NavLink
+            to="/aggregate"
+            className={({ isActive }) =>
+              `relative flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                isActive ? "text-white" : "text-slate-400 hover:text-slate-200"
+              }`
+            }
+            style={({ isActive }) =>
+              isActive
+                ? {
+                    background: "linear-gradient(135deg, rgba(6,182,212,0.22) 0%, rgba(20,184,166,0.12) 100%)",
+                    border: "1px solid rgba(34,211,238,0.35)",
+                    boxShadow: "0 0 14px rgba(6,182,212,0.15)",
+                  }
+                : { background: "transparent", border: "1px solid transparent" }
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={isActive ? "#22d3ee" : "currentColor"}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M16 3h5v5" />
+                  <path d="M8 3H3v5" />
+                  <path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3" />
+                  <path d="m15 9 6-6" />
+                </svg>
+                Aggregate
+                {isActive && (
+                  <span
+                    className="absolute bottom-0.5 left-1/2 h-0.5 w-6 rounded-full"
+                    style={{
+                      background: "linear-gradient(to right, #06b6d4, #14b8a6)",
+                      transform: "translateX(-50%)",
+                    }}
+                  />
+                )}
+              </>
+            )}
+          </NavLink>
+
           {/* On-ramp (Onramper) */}
           <NavLink
             to="/onramp"
@@ -252,6 +302,7 @@ export default function App() {
           <Route path="/" element={<Trade />} />
           <Route path="/rewards" element={<Rewards />} />
           <Route path="/stake" element={<Stake />} />
+          <Route path="/aggregate" element={<LiquidityAggregator />} />
           <Route path="/onramp" element={<OnRamp />} />
         </Routes>
       </Layout>

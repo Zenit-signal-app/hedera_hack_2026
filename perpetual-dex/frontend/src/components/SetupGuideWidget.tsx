@@ -1,9 +1,11 @@
 import { useState, useCallback } from "react";
 
+import { activeChain, activeEvmNetwork, hashscanBaseUrl } from "../config/wagmi";
+
 const ZUSDC_TOKEN_ID =
   (import.meta.env.VITE_ZUSDC_TOKEN_ID as string | undefined) ||
   "0.0.8271323";
-const EXPLORER = "https://hashscan.io/testnet/transaction";
+const EXPLORER = `${hashscanBaseUrl}/transaction`;
 const YOUTUBE_LINK = "https://www.youtube.com/watch?v=tJ2measnTc0&list=RDtJ2measnTc0&start_radio=1";
 const KEEPER_URL =
   (import.meta.env.VITE_KEEPER_URL as string | undefined) ||
@@ -87,19 +89,26 @@ function StepBadge({ n, active, done }: { n: Step; active: boolean; done: boolea
 // ─── Step 1: Install EVM Wallet ─────────────────────────────────────────────
 
 function Step1() {
+  const netName = activeChain.name;
+  const rpcDefault = activeChain.rpcUrls.default.http[0] ?? "";
+  const chainId = String(activeChain.id);
+  const explorer = activeChain.blockExplorers?.default?.url ?? hashscanBaseUrl;
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-400">
         Use <span className="text-blue-400 font-semibold">HashPack</span> wallet for Hedera.
-        If you connect an EVM wallet, use the Hedera Testnet settings below.
+        {activeEvmNetwork === "testnet"
+          ? " If you connect an EVM wallet, use the Hedera Testnet settings below."
+          : " Connect to Hedera Mainnet (production)."}
       </p>
 
       <div className="space-y-2">
-        <CodeRow label="Network name" value="Hedera Testnet" />
-        <CodeRow label="RPC URL" value="https://testnet.hashio.io/api" />
-        <CodeRow label="Chain ID" value="296" />
+        <CodeRow label="Network name" value={netName} />
+        <CodeRow label="RPC URL" value={rpcDefault} />
+        <CodeRow label="Chain ID" value={chainId} />
         <CodeRow label="Currency symbol" value="HBAR" />
-        <CodeRow label="Block explorer" value="https://hashscan.io/testnet" />
+        <CodeRow label="Block explorer" value={explorer} />
       </div>
 
     </div>
@@ -109,6 +118,25 @@ function Step1() {
 // ─── Step 2: Get HBAR Faucet ────────────────────────────────────────────────
 
 function Step2() {
+  if (activeEvmNetwork === "mainnet") {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-slate-400">
+          On <span className="text-amber-400 font-semibold">mainnet</span> you need real{" "}
+          <span className="text-amber-400 font-semibold">HBAR</span> for gas. There is no public test
+          faucet — fund your account from an exchange or on-ramp.
+        </p>
+        <div className="rounded-xl border border-[#363a59] bg-[#0a0c17] p-4 space-y-2 text-sm text-slate-300">
+          <p className="font-semibold text-white">Options</p>
+          <ul className="list-disc list-inside space-y-1 text-slate-400">
+            <li>Transfer HBAR from a supporting exchange to your Hedera account.</li>
+            <li>Use an on-ramp compatible with Hedera if your app integrates one.</li>
+          </ul>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-400">
@@ -201,6 +229,23 @@ function markLocalCooldown(addr: string) {
 function Step3() {
   const [walletInput, setWalletInput] = useState("");
   const [faucet, setFaucet] = useState<FaucetState>({ status: "idle" });
+
+  if (activeEvmNetwork === "mainnet") {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-slate-400">
+          The in-app <span className="text-blue-400 font-semibold">zUSDC</span> test faucet only runs against{" "}
+          <strong className="text-white">testnet</strong> (keeper + collateral setup). On mainnet, use the
+          production collateral token and liquidity configured for your deployment.
+        </p>
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-200/90">
+          Set <code className="text-xs bg-black/30 px-1 rounded">VITE_ZUSDC_TOKEN_ID</code>,{" "}
+          <code className="text-xs bg-black/30 px-1 rounded">VITE_DEX_ADDRESS</code>, and related env vars to your
+          mainnet contract/token IDs before expecting trades to work.
+        </div>
+      </div>
+    );
+  }
 
   const isValidAddr = /^0\.0\.\d+$/.test(walletInput.trim()) || /^0x[0-9a-fA-F]{40}$/.test(walletInput.trim());
 
@@ -379,11 +424,18 @@ export default function SetupGuideWidget() {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>(1);
 
-  const steps: { label: string; desc: string }[] = [
-    { label: "Install Wallet", desc: "Connect HashPack to Hedera Testnet" },
-    { label: "Get HBAR", desc: "Claim gas tokens from Hedera Faucet" },
-    { label: "Get zUSDC", desc: "Receive 1,000 zUSDC test collateral" },
-  ];
+  const steps: { label: string; desc: string }[] =
+    activeEvmNetwork === "mainnet"
+      ? [
+          { label: "Install Wallet", desc: "Connect HashPack to Hedera Mainnet" },
+          { label: "Get HBAR", desc: "Fund mainnet HBAR for gas" },
+          { label: "Collateral", desc: "Production tokens & contract env" },
+        ]
+      : [
+          { label: "Install Wallet", desc: "Connect HashPack to Hedera Testnet" },
+          { label: "Get HBAR", desc: "Claim gas tokens from Hedera Faucet" },
+          { label: "Get zUSDC", desc: "Receive 1,000 zUSDC test collateral" },
+        ];
 
   return (
     <>
