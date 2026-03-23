@@ -363,15 +363,23 @@ class HashgraphWalletConnectService {
     const iface = new Interface(abi as any);
     const calldata = iface.encodeFunctionData(functionName, [...args]);
     const contractId = await this.resolveContractId(contractEvmAddress);
+
+    // Convert to number for Hbar.fromTinybars (it expects number, not string)
+    const tinybarsNumber = Number(tinybars);
+    if (!Number.isSafeInteger(tinybarsNumber)) {
+      throw new Error(`Tinybars value too large for safe integer: ${tinybars.toString()}`);
+    }
+
     const tx = new ContractExecuteTransaction()
       .setContractId(contractId)
       .setGas(gas)
       .setFunctionParameters(Buffer.from(calldata.slice(2), "hex"))
-      .setPayableAmount(Hbar.fromTinybars(tinybars.toString()));
+      .setPayableAmount(Hbar.fromTinybars(tinybarsNumber));
 
     console.log("[HashPack] Transaction prepared:", {
       contractId: contractId.toString(),
-      payableAmount: tinybars.toString() + " tinybars",
+      payableAmount: tinybarsNumber + " tinybars",
+      payableHbar: (tinybarsNumber / 1e8).toFixed(8) + " HBAR",
     });
 
     let response;
