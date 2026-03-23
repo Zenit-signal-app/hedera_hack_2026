@@ -302,14 +302,32 @@ class HashgraphWalletConnectService {
   ): Promise<string> {
     if (!this.signer || !this.accountId) throw new Error("HashPack signer is not connected");
     if (payableTinybars <= 0n) throw new Error("Payable amount must be positive");
+
+    // Convert to number for Hbar.from()
+    const tinybarsNumber = Number(payableTinybars);
+    if (!Number.isSafeInteger(tinybarsNumber)) {
+      throw new Error(`Tinybars value too large for safe integer: ${payableTinybars.toString()}`);
+    }
+
     const iface = new Interface(abi as any);
     const calldata = iface.encodeFunctionData(functionName, [...args]);
     const contractId = await this.resolveContractId(contractEvmAddress);
+
+    // Create Hbar object properly
+    const hbarAmount = Hbar.from(tinybarsNumber, HbarUnit.Tinybar);
+
+    console.log("[HashPack] executePayableContractCall:", {
+      contract: contractEvmAddress,
+      function: functionName,
+      tinybars: tinybarsNumber,
+      hbarAmount: hbarAmount.toString(),
+    });
+
     const tx = new ContractExecuteTransaction()
       .setContractId(contractId)
       .setGas(gas)
       .setFunctionParameters(Buffer.from(calldata.slice(2), "hex"))
-      .setPayableAmount(Hbar.fromTinybars(payableTinybars.toString()));
+      .setPayableAmount(hbarAmount);
     let response;
     try {
       response = await this.signer.call(tx);
