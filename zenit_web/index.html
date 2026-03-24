@@ -1,0 +1,362 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+  <title>TradingView Chart</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0">
+  <script type="text/javascript" src="./public/static/charting_library/charting_library.standalone.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    #tv_chart_container {
+      width: 100vw;
+      height: 100vh;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="tv_chart_container"></div>
+
+  <script type="text/javascript">
+    // 1. Lấy tham số từ URL (Do React Native truyền lên)
+    const urlParams = new URLSearchParams( window.location.search );
+    const symbolParam = urlParams.get( 'symbol' ) || 'BTCUSDT';
+    const themeParam = urlParams.get( 'theme' ) || 'Dark';
+    const apiUrlParam = urlParams.get( 'apiUrl' ) || 'https://zenit-api.seerbot.io';
+    const indicatorsParam = urlParams.get( 'indicators' ) || '';
+    const timeframeParam = urlParams.get( 'timeframe' ) || '1';
+    const chainParam = urlParams.get( 'chain' ) || '';
+
+    // WebSocket connection
+    let ws = null;
+    const subscribers = {};
+    let reconnectTimeout = null;
+
+    function connectWebSocket() {
+      const wsUrl = apiUrlParam.replace( /^http/, 'ws' );
+      try {
+        ws = new WebSocket( wsUrl );
+
+        ws.onopen = () => {
+          console.log( 'WebSocket connected' );
+          // Resubscribe all active subscriptions
+          Object.keys( subscribers ).forEach( key => {
+            const [ symbol, resolution ] = key.split( '_' );
+            if ( subscribers[ key ] ) {
+              const timeframe = getTimeframe( resolution );
+              ws.send( JSON.stringify( {
+                action: 'subscribe',
+                symbol: symbol,
+                timeframe: timeframe
+              } ) );
+            }
+          } );
+        };
+
+        ws.onmessage = ( event ) => {
+          try {
+            const data = JSON.parse( event.data );
+            // Expect data format: { symbol, time, open, high, low, close, volume, timeframe }
+            if ( data.symbol && data.time ) {
+              const key = `${ data.symbol }_${ getResolutionFromTimeframe( data.timeframe ) }`;
+              const subscriberObject = subscribers[ key ];
+
+              if ( subscriberObject ) {
+                const bar = {
+                  time: data.time * 1000,
+                  open: Number( data.open ),
+                  high: Number( data.high ),
+                  low: Number( data.low ),
+                  close: Number( data.close ),
+                  volume: Number( data.volume )
+                };
+                subscriberObject.callback( bar );
+              }
+            }
+          } catch ( e ) {
+            console.error( 'WebSocket message error:', e );
+          }
+        };
+
+        ws.onerror = ( error ) => {
+          console.error( 'WebSocket error:', error );
+        };
+
+        ws.onclose = () => {
+          console.log( 'WebSocket closed, reconnecting...' );
+          // Reconnect after 5 seconds
+          reconnectTimeout = setTimeout( () => {
+            connectWebSocket();
+          }, 5000 );
+        };
+      } catch ( error ) {
+        console.error( 'WebSocket connection error:', error );
+      }
+    }
+
+    function getTimeframe( resolution ) {
+      const resMap = { '1': '1m', '5': '5m', '15': '15m', '30': '30m', '60': '1h', '240': '4h', '1D': '1d' };
+      return resMap[ resolution ] || '5m';
+    }
+
+    function getResolutionFromTimeframe( timeframe ) {
+      const tfMap = { '1m': '1', '5m': '5', '15m': '15', '30m': '30', '1h': '60', '4h': '240', '1d': '1D' };
+      return tfMap[ timeframe ] || '60';
+    }
+
+    // Initialize WebSocket connection
+    connectWebSocket();
+
+    // 2. Cấu hình Datafeed (Gọi về API Backend của bạn)
+    const Datafeed = {
+      onReady: ( cb ) => {
+        setTimeout( () => cb( {
+          supported_resolutions: [ "1", "5", "15", "30", "60", "240", "1D" ],
+          supports_time: true,
+          supports_marks: false
+        } ), 0 );
+      },
+      searchSymbols: async ( userInput, exchange, symbolType, onResultReadyCallback ) => {
+        try {
+          if ( !userInput || userInput.trim() === '' ) {
+            // Nếu không có input, lấy danh sách token mặc định
+            const url = `${ apiUrlParam }/tokens?limit=50${ chainParam ? '&chain=' + encodeURIComponent( chainParam ) : '' }`;
+            const response = await fetch( url );
+            const data = await response.json();
+
+            const symbols = data.map( token => ( {
+              symbol: token.symbol,
+              full_name: token.symbol,
+              description: `${ token.coin || token.symbol } - $${ Number( token.price || 0 ).toFixed( 6 ) }`,
+              exchange: 'Zenit',
+              type: 'crypto'
+            } ) );
+
+            onResultReadyCallback( symbols );
+          } else {
+            // Tìm kiếm token theo keyword
+            const url = `${ apiUrlParam }/tokens?key=${ encodeURIComponent( userInput ) }&limit=50${ chainParam ? '&chain=' + encodeURIComponent( chainParam ) : '' }`;
+            const response = await fetch( url );
+            const data = await response.json();
+
+            const symbols = data.map( token => ( {
+              symbol: token.symbol,
+              full_name: token.symbol,
+              description: `${ token.coin || token.symbol } - $${ Number( token.price || 0 ).toFixed( 6 ) }`,
+              exchange: 'Zenit',
+              type: 'crypto'
+            } ) );
+
+            onResultReadyCallback( symbols );
+          }
+        } catch ( error ) {
+          console.error( 'Search symbols error:', error );
+          onResultReadyCallback( [] );
+        }
+      },
+      resolveSymbol: ( symbolName, onSymbolResolvedCallback, onResolveErrorCallback ) => {
+        setTimeout( () => onSymbolResolvedCallback( {
+          name: symbolName,
+          full_name: symbolName,
+          description: symbolName,
+          type: 'crypto',
+          session: '24x7',
+          timezone: 'Etc/UTC',
+          exchange: 'Zenit',
+          minmov: 1,
+          pricescale: 10000,
+          has_intraday: true,
+          supported_resolutions: [ "1", "5", "15", "30", "60", "240", "1D" ],
+          data_status: 'streaming',
+        } ), 0 );
+      },
+      getBars: async ( symbolInfo, resolution, periodParams, onHistoryCallback, onErrorCallback ) => {
+        const { from, to, countBack } = periodParams;
+        // Map resolution sang timeframe
+        const resMap = { '1': '1m', '5': '5m', '15': '15m', '30': '30m', '60': '1h', '240': '4h', '1D': '1d' };
+        const timeframe = resMap[ resolution ] || '5m';
+
+        try {
+          // Gọi API Backend /prices/history
+          const params = new URLSearchParams();
+          params.append( 'symbol', symbolInfo.name );
+          params.append( 'timeframe', timeframe );
+          if ( from ) params.append( 'from_time', from.toString() );
+          if ( to ) params.append( 'to_time', to.toString() );
+          params.append( 'limit', '1000' );
+
+          const url = `${ apiUrlParam }/prices/history?${ params.toString() }`;
+          const response = await fetch( url );
+          const data = await response.json();
+
+          if ( !data || data.length === 0 ) {
+            onHistoryCallback( [], { noData: true } );
+            return;
+          }
+
+          const bars = data.map( bar => ( {
+            time: bar.time * 1000, // Convert unix timestamp to milliseconds
+            open: Number( bar.open ),
+            high: Number( bar.high ),
+            low: Number( bar.low ),
+            close: Number( bar.close ),
+            volume: Number( bar.volume ),
+          } ) );
+          onHistoryCallback( bars, { noData: false } );
+        } catch ( err ) {
+          console.error( err );
+          onErrorCallback( err );
+        }
+      },
+      subscribeBars: ( symbolInfo, resolution, onRealtimeCallback, subscriberUID, onResetCacheNeededCallback ) => {
+        const key = `${ symbolInfo.name }_${ resolution }`;
+        subscribers[ key ] = {
+          callback: onRealtimeCallback,
+          subscriberUID: subscriberUID
+        };
+
+        // Send subscribe message to WebSocket
+        if ( ws && ws.readyState === WebSocket.OPEN ) {
+          const timeframe = getTimeframe( resolution );
+          ws.send( JSON.stringify( {
+            action: 'subscribe',
+            symbol: symbolInfo.name,
+            timeframe: timeframe
+          } ) );
+        }
+      },
+      unsubscribeBars: ( subscriberUID ) => {
+        // Find and remove subscriber
+        Object.keys( subscribers ).forEach( key => {
+          if ( subscribers[ key ] && subscribers[ key ].subscriberUID === subscriberUID ) {
+            const [ symbol, resolution ] = key.split( '_' );
+
+            // Send unsubscribe message to WebSocket
+            if ( ws && ws.readyState === WebSocket.OPEN ) {
+              const timeframe = getTimeframe( resolution );
+              ws.send( JSON.stringify( {
+                action: 'unsubscribe',
+                symbol: symbol,
+                timeframe: timeframe
+              } ) );
+            }
+
+            delete subscribers[ key ];
+          }
+        } );
+      }
+    };
+
+    // Helper: map indicator key sang TradingView study name + params
+    function applyIndicator( activeChart, indicator ) {
+      const upper = indicator.toUpperCase();
+      const parts = upper.split( /(\d+)/ );
+      const name = parts[ 0 ];
+      const param = parts[ 1 ] ? parseInt( parts[ 1 ] ) : undefined;
+
+      try {
+        switch ( name ) {
+          case 'RSI':
+            activeChart.createStudy( 'Relative Strength Index', false, false, { length: param || 14 } );
+            break;
+          case 'MACD':
+            activeChart.createStudy( 'MACD', false, false );
+            break;
+          case 'PSAR':
+            activeChart.createStudy( 'Parabolic SAR', false, false );
+            break;
+          case 'EMA':
+            activeChart.createStudy( 'Moving Average Exponential', false, false, { length: param || 20 } );
+            break;
+          case 'ADX':
+            activeChart.createStudy( 'Average Directional Index', false, false, { length: param || 14 } );
+            break;
+          case 'BB':
+            activeChart.createStudy( 'Bollinger Bands', false, false );
+            break;
+          default:
+            // Fallback: thử dùng thẳng tên (dành cho message ADD_INDICATOR truyền tên đầy đủ)
+            activeChart.createStudy( indicator, false, false );
+        }
+      } catch ( error ) {
+        console.error( 'Failed to create indicator ' + indicator + ':', error );
+      }
+    }
+
+    // 3. Khởi tạo Widget
+    window.tvWidget = new TradingView.widget( {
+      symbol: symbolParam,
+      interval: timeframeParam,
+      container: 'tv_chart_container',
+      datafeed: Datafeed,
+      library_path: './public/static/charting_library/',
+      locale: 'vi',
+      disabled_features: [ 'use_localstorage_for_settings', 'left_toolbar', 'header_widget', 'timeframes_toolbar' ],
+      enabled_features: [ 'hide_left_toolbar_by_default', 'header_symbol_search' ],
+      fullscreen: false,
+      autosize: true,
+      theme: themeParam,
+      overrides: {
+        "paneProperties.background": themeParam === 'Dark' ? '#131722' : '#ffffff',
+        "paneProperties.vertGridProperties.color": themeParam === 'Dark' ? '#363c4e' : '#e1e3eb',
+        "paneProperties.horzGridProperties.color": themeParam === 'Dark' ? '#363c4e' : '#e1e3eb',
+      },
+    } );
+
+    // Apply indicators từ URL sau khi chart sẵn sàng
+    window.tvWidget.onChartReady( () => {
+      if ( indicatorsParam ) {
+        const activeChart = window.tvWidget.activeChart();
+        indicatorsParam.split( ',' ).forEach( indicator => {
+          const trimmed = indicator.trim();
+          if ( trimmed ) {
+            applyIndicator( activeChart, trimmed );
+          }
+        } );
+      }
+    } );
+
+    window.addEventListener( "message", ( event ) => {
+      try {
+        const data = JSON.parse( event.data );
+        if ( data.type === 'ADD_INDICATOR' && window.tvWidget ) {
+          window.tvWidget.onChartReady( () => {
+            applyIndicator( window.tvWidget.activeChart(), data.value );
+          } );
+        }
+
+        if ( data.type === 'REMOVE_ALL_STUDIES' && window.tvWidget ) {
+          window.tvWidget.onChartReady( () => {
+            window.tvWidget.activeChart().removeAllStudies();
+          } );
+        }
+
+        if ( data.type === 'SET_TIMEFRAME' && window.tvWidget ) {
+          window.tvWidget.onChartReady( () => {
+            window.tvWidget.activeChart().setResolution( data.value );
+          } );
+        }
+
+      } catch ( e ) {
+        console.error( "Lỗi xử lý message:", e );
+      }
+    } );
+
+    // Cleanup on window unload
+    window.addEventListener( 'beforeunload', () => {
+      if ( ws ) {
+        ws.close();
+      }
+      if ( reconnectTimeout ) {
+        clearTimeout( reconnectTimeout );
+      }
+    } );
+  </script>
+</body>
+
+</html>

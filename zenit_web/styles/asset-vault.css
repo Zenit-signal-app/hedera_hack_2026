@@ -1,0 +1,265 @@
+/* Common Styles for Asset Vault */
+
+/* Glass Effect Background */
+.bg-dark-glass {
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	backdrop-filter: blur(8px) saturate(120%);
+	-webkit-backdrop-filter: blur(8px) saturate(120%);
+}
+
+/* Section Styles */
+.vault-section {
+	@apply flex flex-col gap-4;
+}
+
+.vault-section-title {
+	@apply text-[20px] font-bold text-white;
+}
+
+.vault-subsection-title {
+	@apply text-[16px] font-semibold text-white;
+}
+
+/* Card Styles */
+.vault-metric-card {
+	@apply rounded-lg p-4 flex flex-col gap-1;
+}
+
+.vault-metric-label {
+	@apply flex items-center gap-1;
+}
+
+.vault-metric-label-text {
+	@apply text-[14px] font-medium;
+}
+
+.vault-metric-value {
+	@apply text-[24px] font-bold text-white;
+}
+
+/* Info Card Styles */
+.vault-info-card {
+	@apply rounded-lg py-4 flex flex-col gap-1;
+}
+
+.vault-info-label {
+	@apply text-[16px] font-medium;
+}
+
+.vault-info-value {
+	@apply text-[14px] font-medium text-white;
+}
+
+/* Description Styles */
+.vault-description-text {
+	@apply text-[14px] font-normal leading-3xl text-dark-gray-100;
+}
+
+.vault-description-list {
+	@apply list-disc list-inside space-y-2;
+}
+
+.vault-description-paragraph {
+	@apply mb-3;
+}
+
+/* Table Styles */
+.vault-table {
+	@apply w-full border-collapse;
+}
+
+.vault-table-header {
+	@apply border-b border-dark-gray-700;
+}
+
+.vault-table-header-cell {
+	@apply text-left py-2 px-3 text-[14px] font-semibold text-white;
+}
+
+.vault-table-row {
+	@apply border-b border-dark-gray-700;
+}
+
+.vault-table-cell {
+	@apply py-2 px-3 text-[14px] text-dark-gray-100;
+}
+
+/* Divider */
+.vault-divider {
+	@apply h-px bg-dark-gray-700 my-6 -mx-xl;
+}
+
+/* Grid Layouts */
+.vault-grid-2 {
+	@apply grid grid-cols-1 md:grid-cols-2 gap-2;
+}
+
+.vault-grid-3 {
+	@apply grid grid-cols-1 md:grid-cols-3 gap-2;
+}
+
+/* Positions Table Styles */
+.positions-container {
+	@apply flex flex-col justify-center items-start p-4 gap-4 bg-[#111113] border border-[#303136] rounded-3xl;
+}
+
+.positions-header {
+	@apply flex flex-row justify-between items-start gap-4 w-full;
+}
+
+.positions-title {
+	@apply text-white text-xl font-bold leading-7 tracking-[0.1px] flex-1;
+}
+
+.positions-search-wrapper {
+	@apply flex flex-col items-start gap-1.5 w-[270px] max-w-[270px];
+}
+
+.positions-search-input-container {
+	@apply flex flex-row items-center px-3 py-2 gap-2 w-full bg-[#19191B] border border-[#303136] rounded-lg;
+}
+
+.positions-search-input {
+	@apply flex-1 bg-transparent text-sm text-[#B2B3BD] placeholder-[#B2B3BD] outline-none border-none;
+}
+
+/* Table Layout */
+.positions-table {
+	@apply flex flex-col items-start w-full;
+}
+
+.positions-table-header-row {
+	@apply flex flex-row items-center rounded-lg h-10 w-full;
+}
+
+.positions-table-data-row {
+	@apply flex flex-row items-center rounded-lg h-11 w-full;
+}
+
+.positions-table-data-row-even {
+	@apply bg-primary-900;
+}
+
+/* Table Header Cells */
+.positions-header-cell {
+	@apply text-[#797B86] text-sm font-semibold;
+}
+
+.positions-header-cell-left {
+	@apply flex flex-row items-center px-2 pl-4 gap-2;
+}
+
+.positions-header-cell-center {
+	@apply flex flex-row items-center px-2;
+}
+
+.positions-header-cell-right {
+	@apply flex flex-row justify-end items-center px-2;
+}
+
+.positions-header-cell-right-end {
+	@apply flex flex-row justify-end items-center px-2 pr-4;
+}
+
+/* Table Data Cells */
+.positions-data-cell-position {
+	@apply flex flex-row items-center px-2 pl-4 gap-1;
+}
+
+.positions-position-name {
+	@apply text-white text-sm font-semibold leading-6;
+}
+
+.positions-position-type {
+	@apply text-white/40 text-sm font-medium leading-6;
+}
+
+.positions-data-cell-remarks {
+	@apply flex flex-row justify-start items-center px-2;
+}
+
+.positions-remarks-badge {
+	@apply px-2 h-3xl text-[14px] font-normal bg-yellow-900 rounded-md text-white;
+}
+
+.positions-data-cell-profitability {
+	@apply flex flex-row justify-end items-center px-2 gap-1;
+}
+
+.positions-profitability-positive {
+	@apply text-sm font-normal leading-6 text-[#32BD65];
+}
+
+.positions-profitability-negative {
+	@apply text-sm font-normal leading-6 text-[#F23645];
+}
+
+.positions-profitability-neutral {
+	@apply text-sm font-normal leading-6 text-white;
+}
+
+.positions-data-cell-value {
+	@apply flex flex-row justify-end items-center px-2;
+}
+
+.positions-value-text {
+	@apply text-white text-sm font-normal leading-6;
+}
+
+.positions-data-cell-opened {
+	@apply flex flex-row justify-end items-center px-2 pr-4 gap-3;
+}
+
+.positions-opened-text {
+	@apply text-white text-sm font-normal leading-6;
+}
+
+.positions-details-button {
+	@apply text-[#07B6FF] text-xs font-normal cursor-pointer leading-5 hover:underline;
+}
+
+/* Pagination Styles */
+.positions-pagination-divider {
+	@apply w-full h-px bg-dark-gray-700;
+}
+
+.positions-pagination-container {
+	@apply flex flex-row justify-between w-full items-center;
+}
+
+.positions-pagination-info {
+	@apply text-sm text-[#797B86];
+}
+
+.positions-pagination-controls {
+	@apply flex flex-row items-center gap-2;
+}
+
+.positions-pagination-button {
+	@apply w-10 h-10 cursor-pointer flex items-center justify-center rounded-lg bg-[#19191B] border border-[#303136] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#222325];
+}
+
+.positions-pagination-page-button {
+	@apply w-10 h-10 flex items-center justify-center cursor-pointer rounded-lg text-sm font-medium bg-[#19191B] text-white hover:bg-primary-900;
+}
+
+.positions-pagination-page-button-active {
+	@apply w-10 h-10 flex items-center justify-center cursor-pointer rounded-lg text-sm font-medium bg-[#7C3AED] text-white;
+}
+
+.positions-pagination-ellipsis {
+	@apply w-10 h-10 flex items-center justify-center text-[#797B86];
+}
+
+.positions-pagination-page-input-container {
+	@apply flex flex-row items-center gap-2 ml-4;
+}
+
+.positions-pagination-page-label {
+	@apply text-sm text-[#797B86];
+}
+
+.positions-pagination-page-input {
+	@apply w-16 h-8 px-2 bg-[#19191B] border border-[#303136] rounded-lg text-sm text-white text-center outline-none focus:border-[#7C3AED];
+}
