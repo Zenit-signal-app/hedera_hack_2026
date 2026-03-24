@@ -1,0 +1,25 @@
+version: '3.8' 
+
+services:
+  zenit-frontend:
+    build:
+      context: . 
+      dockerfile: Dockerfile 
+      args:
+        NEXT_PUBLIC_BASE_API_URL: ${NEXT_PUBLIC_BASE_API_URL}
+    
+    image: zenit-app:latest
+    
+    ports:
+      - "3001:3001"
+      
+    container_name: zenit-frontend
+    
+    restart: always
+    
+    environment:
+      - NODE_ENV=production 
+      - PORT=3001
+      - NEXT_PUBLIC_BASE_API_URL=${NEXT_PUBLIC_BASE_API_URL}
+      - NEXT_PUBLIC_NETWORK=${NEXT_PUBLIC_NETWORK}
+
