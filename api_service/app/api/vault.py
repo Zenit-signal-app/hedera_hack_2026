@@ -1,0 +1,842 @@
+from datetime import datetime
+from typing import List, Optional
+import json
+import uuid
+
+from fastapi import Depends, HTTPException, Query
+from fastapi import status as http_status
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from app.core.config import settings
+from app.core.router_decorated import APIRouter
+from app.db.session import get_db
+import app.schemas.vault as schemas
+from app.services import price_cache
+
+SCHEMA = settings.SCHEMA_1
+
+router = APIRouter()
+group_tags: List[str] = ["Vault"]
+
+
+def _get_vaults(
+    db: Session,
+    *,
+    vault_id: Optional[str] = None,
+    chain_id: Optional[int] = None,
+    status: str = "active",
+    limit: int = 20,
+    offset: int = 0,
+) -> dict:
+    """
+    Shared vault fetcher with caching.
+    Supports:
+    - vault_id: fetch single vault
+    - status + pagination: fetch list of vaults
+    Returns: {"items": [dict...], "total": int}
+    """
+    vid = vault_id.strip().lower() if vault_id else None
+    status_norm = (status or "active").lower().strip()
+    limit = max(1, min(100, int(limit)))
+    offset = max(0, int(offset))
+
+    # Build state filter SQL based on status
+    if status_norm == "all":
+        state_filter = ""
+    elif status_norm == "inactive":
+        state_filter = "where state in ('closed')"
+    else:  # default active
+        state_filter = "where state in ('open', 'trading', 'withdrawable')"
+    if chain_id is not None:
+        chain_clause = f"chain_id = {chain_id}"
+        if state_filter:
+            state_filter = f"{state_filter} AND {chain_clause}"
+        else:
+            state_filter = f"WHERE {chain_clause}"
+    id_filter = ""
+    if vid:
+        id_filter += f" AND v.id = '{vid}'"
+    if chain_id is not None:
+        id_filter += f" AND v.chain_id = {chain_id}"
+    limit_sql = "LIMIT 1" if vid else f"LIMIT {limit} OFFSET {offset}"
+
+    query_sql = text(
+        f"""
+        SELECT
+            v.id,
+            CASE
+                WHEN vs.state IS NOT NULL THEN vs.state
+                ELSE 'closed'
+            END AS state,
+            t.contract_address AS token_address,
+            t.name AS token_name,
+            v.name AS vault_name,
+            v.summary,
+            v.description,
+            v.address,
+            vs.tvl_usd,
+            vs.max_drawdown,
+            v.start_time AS start_time,
+            vs.return_percent,
+            v.logo_url AS icon_url,
+            COUNT(*) OVER() AS total_count
+        FROM (
+            SELECT vault_id, state, tvl_usd, max_drawdown, return_percent
+            FROM {SCHEMA}.vault_state
+            {state_filter}
+        ) vs
+        LEFT JOIN {SCHEMA}.vault v ON vs.vault_id = v.id
+        LEFT JOIN {SCHEMA}.tokens t ON v.token_id = t.id
+        WHERE 1=1
+            {id_filter}
+        ORDER BY v.start_time DESC
+        {limit_sql}
+        """
+    )
+    results = db.execute(query_sql).fetchall()
+    items: list[dict] = []
+    for row in results:
+        annual_return = float(row.return_percent) if row.return_percent else 0.0
+        items.append(
+            {
+                "id": str(row.id) if row.id else "",
+                "token_address": str(row.token_address) if row.token_address else "",
+                "token_name": str(row.token_name) if row.token_name else "",
+                "state": str(row.state) if row.state else "",
+                "icon_url": str(row.icon_url) if row.icon_url else None,
+                "vault_name": str(row.vault_name) if row.vault_name else "",
+                "summary": str(row.summary) if row.summary else None,
+                "description": str(row.description) if row.description else None,
+                "address": str(row.address) if row.address else "",
+                "annual_return": round(annual_return, 2),
+                "tvl_usd": float(row.tvl_usd) if row.tvl_usd else 0.0,
+                "max_drawdown": float(row.max_drawdown) if row.max_drawdown else 0.0,
+                "start_time": int(row.start_time)
+                if row.start_time
+                else int(datetime.now().timestamp()),
+            }
+        )
+
+    total = int(results[0].total_count) if results else 0
+    payload = {"items": items, "total": total}
+    return payload
+
+
+def _get_vault_stats_data(
+    db: Session,
+    vault_id: str,
+    chain_id: Optional[int] = None,
+) -> dict:
+    """
+    Get vault stats data
+    Returns a dict with stats fields.
+    """
+    vid = vault_id.strip().lower()
+
+    chain_filter = ""
+    if chain_id is not None:
+        chain_filter = f"AND vs.chain_id = {chain_id} AND v.chain_id = {chain_id}"
+
+    query_sql = text(
+        f"""
+        SELECT 
+            vs.state,
+            vs.tvl_usd,
+            vs.max_drawdown,
+            vs.trade_start_time,
+            vs.trade_end_time,
+            vs.start_amount,
+            vs.current_amount,
+            vs.return_percent,
+            vs.total_trades,
+            vs.winning_trades,
+            vs.losing_trades,
+            vs.win_rate,
+            vs.avg_profit_per_winning_trade_pct,
+            vs.avg_loss_per_losing_trade_pct,
+            vs.trade_per_month,
+            vs.total_fees_paid,
+            ts.decision_cycle,
+            v.start_time AS start_time
+        FROM {SCHEMA}.vault_state vs
+        LEFT JOIN {SCHEMA}.vault v ON vs.vault_id = v.id
+        LEFT JOIN {SCHEMA}.trade_strategies ts ON (
+            ts.id = v.strategy_id
+        )
+        WHERE vs.vault_id = '{vid}'
+            {chain_filter}
+        LIMIT 1
+        """
+    )
+
+    result = None
+    try:
+        result = db.execute(query_sql).fetchone()
+    except Exception as e:
+        print(f"Database error: {str(e)}")
+        return {}
+
+    if not result:
+        return {}
+
+    annual_return = float(result.return_percent) if result.return_percent else 0.0
+    start_time = result.start_time if result.start_time else result.trade_start_time
+    dc_map = {
+        "1h": "1 hour",
+        "4h": "4 hours",
+        "1d": "1 day",
+        "1w": "1 week",
+        "1m": "1 month",
+        "1y": "1 year",
+    }
+    decision_cycle = (
+        dc_map.get(str(result.decision_cycle), str(result.decision_cycle))
+        if str(result.decision_cycle)
+        else "1h"
+    )
+    return {
+        "state": str(result.state) if result.state else "",
+        "tvl_usd": float(result.tvl_usd) if result.tvl_usd else 0.0,
+        "max_drawdown": float(result.max_drawdown) if result.max_drawdown else 0.0,
+        "trade_start_time": int(result.trade_start_time)
+        if result.trade_start_time
+        else None,
+        "trade_end_time": int(result.trade_end_time) if result.trade_end_time else None,
+        "start_amount": float(result.start_amount) if result.start_amount else 0.0,
+        "current_amount": float(result.current_amount)
+        if result.current_amount
+        else 0.0,
+        "return_percent": float(result.return_percent)
+        if result.return_percent
+        else 0.0,
+        "annual_return": round(annual_return, 2),
+        "total_trades": int(result.total_trades) if result.total_trades else 0,
+        "winning_trades": int(result.winning_trades) if result.winning_trades else 0,
+        "losing_trades": int(result.losing_trades) if result.losing_trades else 0,
+        "win_rate": float(result.win_rate) if result.win_rate else 0.0,
+        "avg_profit_per_winning_trade_pct": float(
+            result.avg_profit_per_winning_trade_pct
+        )
+        if result.avg_profit_per_winning_trade_pct
+        else 0.0,
+        "avg_loss_per_losing_trade_pct": float(result.avg_loss_per_losing_trade_pct)
+        if result.avg_loss_per_losing_trade_pct
+        else 0.0,
+        "total_fees_paid": float(result.total_fees_paid)
+        if result.total_fees_paid
+        else 0.0,
+        "decision_cycle": decision_cycle,
+        "trade_per_month": float(result.trade_per_month)
+        if result.trade_per_month
+        else 0.0,
+        "start_time": int(start_time) if start_time else None,
+    }
+
+
+def _fetch_vault_item(db: Session, vault_id: str, chain_id: Optional[int] = None) -> Optional[dict]:
+    """Return a single vault dictionary, optionally scoped by chain_id."""
+    vault_data = _get_vaults(
+        db,
+        vault_id=vault_id,
+        status="all",
+        limit=1,
+        offset=0,
+        chain_id=chain_id,
+    )
+    if not vault_data["items"]:
+        return None
+    return vault_data["items"][0]
+
+
+@router.get(
+    "",
+    tags=group_tags,
+    response_model=schemas.VaultListResponse,
+    status_code=http_status.HTTP_200_OK,
+)
+def get_vaults_by_status(
+    status: str = Query(
+        "active",
+        description="Filter by status: active, inactive, or all (default: active)",
+    ),
+    chain_id: int = Query(2, ge=1, description="Chain ID to scope the vault data."),
+    page: int = Query(1, ge=1, description="Page number (default: 1)"),
+    limit: int = Query(
+        20, ge=1, le=100, description="Items per page (default: 20, max: 100)"
+    ),
+    offset: Optional[int] = Query(
+        None, description="Number of items to skip (alternative to page)"
+    ),
+    db: Session = Depends(get_db),
+) -> schemas.VaultListResponse:
+    """
+    Get list of vaults filtered by status.
+
+    Query Parameters:
+    - status: active, inactive, or all (default: active)
+      - active: returns vaults with state 'open', 'trading', or 'withdrawable'
+      - inactive: returns vaults with state 'closed'
+      - all: returns all vaults
+
+    Returns:
+    - page: Page number
+    - limit: Items per page
+    - offset: Number of items to skip
+    - vaults: List of vault items:
+      - id: Vault UUID
+      - state: Vault state
+      - token_address: Token contract address from token table
+      - token_name: Token name from token table
+      - icon_url: Vault icon URL (optional)
+      - vault_name: Vault name
+      - summary: Vault summary (optional)
+      - summary: Vault summary (optional)
+      - address: Vault script address
+      - annual_return: Vault annual return
+      - tvl_usd: Vault TVL in USD
+      - max_drawdown: Vault max drawdown (optional)
+      - start_time: Vault start time
+
+      *Sample vault ID:* e13d48c8-9725-4405-8746-b84be7acc5c2
+    """
+    # Validate and adjust pagination parameters
+    page = max(1, page)
+    limit = max(1, min(100, limit))
+    offset = (page - 1) * limit
+
+    data = _get_vaults(
+        db,
+        status=status,
+        limit=limit,
+        offset=offset,
+        chain_id=chain_id,
+    )
+    vaults = []
+    for item in data["items"]:
+        vaults.append(
+            schemas.VaultListItem(
+                id=item.get("id", ""),
+                token_address=item.get("token_address", ""),
+                token_name=item.get("token_name", ""),
+                state=item.get("state", ""),
+                icon_url=item.get("icon_url"),
+                vault_name=item.get("vault_name", ""),
+                summary=item.get("summary"),
+                address=item.get("address", ""),
+                annual_return=float(item.get("annual_return", 0.0) or 0.0),
+                tvl_usd=float(item.get("tvl_usd", 0.0) or 0.0),
+                max_drawdown=float(item.get("max_drawdown", 0.0) or 0.0),
+                start_time=int(
+                    item.get("start_time") or int(datetime.now().timestamp())
+                ),
+            )
+        )
+    total = int(data.get("total", 0) or 0)
+    return schemas.VaultListResponse(vaults=vaults, total=total, page=page, limit=limit)
+
+
+@router.get(
+    "/{id}/info",
+    tags=group_tags,
+    response_model=schemas.VaultInfo,
+    status_code=http_status.HTTP_200_OK,
+)
+def get_vault_info(
+    id: str,
+    chain_id: Optional[int] = Query(
+        None, ge=1, description="Chain ID that owns the requested vault (optional)."
+    ),
+    db: Session = Depends(get_db),
+) -> schemas.VaultInfo:
+    """
+    Get vault information.
+
+    Path Parameters:
+    - id: Vault UUID
+
+    Query Parameters:
+    - chain_id: Chain ID (optional, omit to search across all chains)
+
+    Returns:
+    - id: Vault UUID
+    - state: Vault state
+    - icon_url: Vault icon URL (optional)
+    - vault_name: Vault name
+    - vault_type: Vault type
+    - vault_type_logo: Vault type logo URL (optional)
+    - blockchain: Blockchain
+    - blockchain_logo: Blockchain logo URL (optional)
+    - address: Vault address
+    - summary: Vault summary (optional)
+    - description: Vault description (optional)
+    - annual_return: Vault annual return
+    - tvl_usd: Vault TVL in USD
+    - max_drawdown: Vault max drawdown
+    - start_time: Vault start time
+    - trade_per_month: Average transactions per month
+    - decision_cycle: Decision cycle from trade strategy
+
+    *Sample vault ID:* e13d48c8-9725-4405-8746-b84be7acc5c2
+    """
+    id = id.strip()
+    # check if id is a valid uuid
+    try:
+        uuid.UUID(id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid vault ID")
+
+    # Get basic vault info (single call instead of duplicate)
+    item = _fetch_vault_item(db, vault_id=id, chain_id=chain_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Vault not found")
+    # Get stats data
+    stats_data = _get_vault_stats_data(db, vault_id=id, chain_id=chain_id)
+    # Merge the data (stats_data takes precedence for overlapping fields)
+    if stats_data:
+        item.update(
+            {
+                "state": stats_data.get("state", item.get("state", "")),
+                "annual_return": stats_data.get(
+                    "annual_return", item.get("annual_return", 0.0)
+                ),
+                "tvl_usd": stats_data.get("tvl_usd", item.get("tvl_usd", 0.0)),
+                "max_drawdown": stats_data.get(
+                    "max_drawdown", item.get("max_drawdown", 0.0)
+                ),
+                "start_time": stats_data.get("start_time", item.get("start_time")),
+                "trade_per_month": stats_data.get(
+                    "trade_per_month", item.get("trade_per_month", 0.0)
+                ),
+                "decision_cycle": stats_data.get(
+                    "decision_cycle", item.get("decision_cycle", "1h")
+                ),
+            }
+        )
+
+    return schemas.VaultInfo(**item)
+
+
+@router.get(
+    "/{id}/stats",
+    tags=group_tags,
+    response_model=schemas.VaultStats,
+    status_code=http_status.HTTP_200_OK,
+)
+def get_vault_stats(
+    id: str,
+    chain_id: int = Query(
+        ...,
+        ge=1,
+        description="Chain ID that owns the requested vault.",
+    ),
+    db: Session = Depends(get_db),
+) -> schemas.VaultStats:
+    """
+    Get complete vault statistics.
+
+    Path Parameters:
+    - id: Vault UUID
+
+    Returns:
+      - state: Vault state
+      - tvl_usd: TVL in USD
+      - max_drawdown: Max drawdown
+      - trade_start_time: Trade start time
+      - trade_end_time: Trade end time
+      - start_value: Start value
+    - current_amount: Current amount
+      - return_percent: Return percentage
+      - update_time: Update time
+      - total_trades: Total trades
+      - winning_trades: Winning trades
+      - losing_trades: Losing trades
+      - win_rate: Win rate
+      - avg_profit_per_winning_trade_pct: Average profit per winning trade percentage
+      - avg_loss_per_losing_trade_pct: Average loss per losing trade percentage
+      - total_fees_paid: Total fees paid
+      - trade_per_month: Average transactions per month
+      - decision_cycle: Decision cycle from trade strategy
+      - start_time: Vault start time
+    """
+    id = id.lower().strip()
+    # check if id is a valid uuid
+    try:
+        uuid.UUID(id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid vault ID")
+
+    # Get stats data using shared function
+    stats_data = _get_vault_stats_data(db, vault_id=id, chain_id=chain_id)
+
+    if not stats_data:
+        raise HTTPException(status_code=404, detail="Vault not found")
+
+    return schemas.VaultStats(**stats_data)
+
+
+@router.get(
+    "/{id}/values",
+    tags=group_tags,
+    response_model=schemas.VaultValuesResponse,
+    status_code=http_status.HTTP_200_OK,
+)
+def get_vault_values(
+    id: str,
+    currency: Optional[str] = Query(
+        "usd", description="Currency to use for closing price (usd, ada)"
+    ),
+    resolution: Optional[str] = Query(
+        None, description="Time resolution (e.g., 1d, 1w, 1m)"
+    ),  # todo: update to time window size
+    # start_time: Optional[int] = Query(None, description="Start timestamp (Unix timestamp)"),
+    # end_time: Optional[int] = Query(None, description="End timestamp (Unix timestamp)"),
+    count_back: Optional[int] = Query(
+        None, description="Number of bars to return from end"
+    ),
+    chain_id: int = Query(
+        ...,
+        ge=1,
+        description="Chain ID that owns the requested vault.",
+    ),
+    db: Session = Depends(get_db),
+) -> schemas.VaultValuesResponse:
+    """
+    Get vault values in TradingView format.
+
+    Path Parameters:
+    - id: Vault UUID
+
+    Query Parameters:
+    - resolution: Time window size (e.g., 1d, 1w, 1m, default: 1d)
+    - currency: Currency to use for closing price (usd, ada, default: usd)
+    - start_time: Start timestamp (Unix timestamp, optional)
+    - end_time: End timestamp (Unix timestamp, optional)
+    - count_back: Number of bars to return from end (default: 20)
+
+    Returns: TradingView format with:
+    - s (status): "ok" or "no_data"
+    - t (timestamps): List of timestamps
+    - c (closing prices): List of closing prices
+
+    *Sample vault ID:* e13d48c8-9725-4405-8746-b84be7acc5c2
+    """
+    id = id.lower().strip()
+    # check if id is a valid uuid
+    try:
+        uuid.UUID(id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid vault ID")
+    resolution = resolution.lower().strip() if resolution else "1d"
+    n_row = 0
+    if resolution == "1w":
+        n_row = 7 * 3
+        resolution_seconds = 8 * 3600
+    elif resolution == "1m":
+        n_row = 30
+        resolution_seconds = 86400
+    else:  # default to 1d
+        n_row = 24
+        resolution_seconds = 3600
+    count_back = count_back if count_back else 20
+    if currency == "ada":
+        closing_price_column = "total_amount_in_native"
+    else:
+        closing_price_column = "total_amount_in_usd"
+    # Build query for vault_balance_snapshots
+    base_query = f"""
+        select vbs.timestamp, vbs.{closing_price_column} as closing_price 
+         from {SCHEMA}.vault_balance_snapshots vbs
+         where vbs.vault_id = '{id}'
+            AND vbs.chain_id = {chain_id}
+            and mod(vbs.timestamp, {resolution_seconds}) = 0
+        ORDER BY timestamp ASC
+    """
+    vault_exists = _fetch_vault_item(db, vault_id=id, chain_id=chain_id)
+    if not vault_exists:
+        raise HTTPException(status_code=404, detail="Vault not found")
+    query_sql = text(base_query)
+    results = []
+    try:
+        results = db.execute(query_sql).fetchall()
+    except Exception as e:
+        print(f"Database error: {str(e)}")
+    if not results:
+        return schemas.VaultValuesResponse(s="no_data", t=[], c=[])
+
+    timestamps = [int(row.timestamp) for row in results]
+    closing_prices = [float(row.closing_price) for row in results]
+
+    return schemas.VaultValuesResponse(s="ok", t=timestamps, c=closing_prices)
+
+
+@router.get(
+    "/{id}/positions",
+    tags=group_tags,
+    response_model=schemas.VaultPositionsResponse,
+    status_code=http_status.HTTP_200_OK,
+)
+def get_vault_positions(
+    id: str,
+    status: Optional[str] = Query(None, description="Filter by status: open or closed"),
+    chain_id: int = Query(
+        ...,
+        ge=1,
+        description="Chain ID that owns the requested vault.",
+    ),
+    page: int = Query(1, ge=1, description="Page number (default: 1)"),
+    limit: int = Query(
+        20, ge=1, le=100, description="Items per page (default: 20, max: 100)"
+    ),
+    offset: Optional[int] = Query(
+        None, description="Number of items to skip (alternative to page)"
+    ),
+    db: Session = Depends(get_db),
+) -> schemas.VaultPositionsResponse:
+    """
+    Get vault trade positions.
+
+    Path Parameters:
+    - id: Vault UUID
+
+    Query Parameters:
+    - status: Filter by status (open or closed, optional)
+    - page: Page number (default: 1)
+    - limit: Items per page (default: 20, max: 100)
+    - offset: Number of items to skip (alternative to page, optional)
+
+    Returns:
+    - total: Total number of positions
+    - page: Page number
+    - limit: Items per page
+    - positions: List of positions with:
+      - pair: Pair string (e.g., "ADA/USDM")
+      - spend: Spend amount
+      - value: Current value (value if closed, estimated from current prices if open)
+      - profit: Profit percentage: (value - spend) / spend * 100
+      - open_time: Position start_time
+      - close_time: Position close_time
+      - status: Position status ("open" or "closed")
+
+    *Sample vault ID:* e13d48c8-9725-4405-8746-b84be7acc5c2
+    """
+    id = id.lower().strip()
+    # check if id is a valid uuid
+    try:
+        uuid.UUID(id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid vault ID")
+    # Calculate offset from page if not provided
+    if offset is None:
+        offset = (page - 1) * limit
+
+    vault_exists = _fetch_vault_item(db, vault_id=id, chain_id=chain_id)
+    if not vault_exists:
+        raise HTTPException(status_code=404, detail="Vault not found")
+
+    # Build status filter based on return_amount
+    status_filter = ""
+    if status:
+        status = status.lower().strip()
+        if status == "open":
+            status_filter = "AND vtp.return_amount IS NULL"
+        elif status == "closed":
+            status_filter = "AND vtp.return_amount IS NOT NULL"
+        else:
+            raise HTTPException(
+                status_code=400, detail="Status must be 'open' or 'closed'"
+            )
+
+    # Query positions with current_asset and quote_token_id, join tokens to get quote_token symbol
+    positions_query = text(
+        f"""
+        SELECT 
+            vtp.id,
+            vtp.start_time,
+            vtp.update_time,
+            vtp.pair,
+            vtp.spend,
+            vtp.return_amount,
+            vtp.quote_token_id,
+            vtp.current_asset,
+            quote_token.symbol as quote_token_symbol,
+            COUNT(*) OVER() AS total_count
+        FROM {SCHEMA}.vault_positions vtp
+        LEFT JOIN {SCHEMA}.tokens quote_token ON vtp.quote_token_id = quote_token.id
+        WHERE vtp.vault_id = '{id}' AND vtp.chain_id = {chain_id} {status_filter}
+        ORDER BY vtp.start_time DESC
+        LIMIT {limit} OFFSET {offset}
+        """
+    )
+
+    results = []
+    try:
+        results = db.execute(positions_query).fetchall()
+    except Exception as e:
+        print(f"Error executing get_vault_positions: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    total = int(results[0].total_count) if results else 0
+
+    positions = []
+    for row in results:
+        # Get pair (use pair field from position)
+        pair = str(row.pair) if row.pair else ""
+
+        # Get spend and return amounts
+        spend = float(row.spend) if row.spend else 0.0
+
+        # Calculate value
+        value = spend
+        if row.return_amount is not None:
+            # Closed position: use return_amount directly, no calculation needed
+            value = row.return_amount
+            position_status = "closed"
+        else:
+            position_status = "open"
+            # Open position only: calculate value from current_asset using prices
+            # Get quote token symbol from SQL join result
+            quote_token_symbol = None
+            if row.quote_token_symbol:
+                quote_token_symbol = str(row.quote_token_symbol)
+                # Parse current_asset JSON
+                current_assets = (
+                    json.loads(str(row.current_asset)) if row.current_asset else "{}"
+                )
+
+            if quote_token_symbol and isinstance(current_assets, dict):
+                # Calculate total value in quote asset terms
+                total_value_in_quote = 0.0
+                for asset_token, asset_amount in current_assets.items():
+                    price = price_cache.get_pair_price(
+                        f"{asset_token}/{quote_token_symbol}"
+                    )
+                    if price is None:
+                        continue
+                    asset_value = float(asset_amount) * price
+                    total_value_in_quote += asset_value
+                value = total_value_in_quote
+                # print(f"Total value in quote: {value}")
+
+        profit = 0.0
+        if spend > 0:
+            profit = ((value - spend) / spend) * 100
+        positions.append(
+            schemas.VaultPosition(
+                pair=pair,
+                spend=spend,
+                value=value,
+                profit=profit,
+                open_time=int(row.start_time) if row.start_time else 0,
+                close_time=int(row.update_time)
+                if position_status == "closed"
+                else None,
+                status=position_status,
+            )
+        )
+
+    return schemas.VaultPositionsResponse(
+        total=total,
+        page=page,
+        limit=limit,
+        positions=positions,
+    )
+
+
+@router.get(
+    "/{id}/contribute",
+    tags=group_tags,
+    response_model=schemas.VaultContributeResponse,
+    status_code=http_status.HTTP_200_OK,
+)
+def get_vault_contribute(
+    id: str,
+    wallet_address: str = Query(
+        ..., description="Wallet address of the user (required)"
+    ),
+    is_redeemed: Optional[bool] = Query(
+        None,
+        description="Whether the user has redeemed their position (one-time withdrawal)",
+    ),
+    db: Session = Depends(get_db),
+) -> schemas.VaultContributeResponse:
+    """
+    Get user's contribute info for a specific vault.
+
+    Path Parameters:
+    - id: Vault UUID
+
+    Query Parameters:
+    - wallet_address: Wallet address of the user (required)
+    - is_redeemed: Whether the user has redeemed their position (one-time withdrawal)
+    Returns:
+    - total_deposit: Total amount deposited by the user
+    - profit_rate: Profit rate of the user
+    - is_redeemed: Whether the user has redeemed their position (one-time withdrawal)
+
+    *Sample vault ID:* e13d48c8-9725-4405-8746-b84be7acc5c2
+    *Sample wallet address:* addr1vyrq3xwa5gs593ftfpy2lzjjwzksdt0fkjjwge4ww6p53dqy4w5wm
+    """
+    id = id.strip().lower()
+    # check if id is a valid uuid
+    try:
+        uuid.UUID(id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid vault ID")
+
+    wallet_address = wallet_address.strip().lower()
+
+    # Query user earning for this specific vault
+    is_redeemed_filter = ""
+    if is_redeemed:
+        is_redeemed_filter = "AND ue.is_redeemed = true"
+    else:
+        is_redeemed_filter = "AND ue.is_redeemed = false"
+
+    data_sql = text(
+        f"""
+        SELECT 
+            ue.total_deposit,
+            ue.total_withdrawal,
+            ue.current_amount,
+            ue.current_amount / ue.total_deposit - 1 as profit_rate,
+            ue.is_redeemed
+        FROM {SCHEMA}.user_earnings ue
+        WHERE ue.vault_id = '{id}' AND ue.wallet_address = '{wallet_address}'
+        {is_redeemed_filter}
+        LIMIT 1
+        """
+    )
+    result = db.execute(data_sql).fetchone()
+
+    if not result:
+        # Return default values if no record found
+        return schemas.VaultContributeResponse(
+            total_deposit=0,
+            total_withdrawal=0,
+            current_amount=0,
+            min_deposit=1,
+            min_withdrawal=0,
+            max_withdrawal=0,
+            profit_rate=0,
+            is_redeemed=False,
+        )
+
+    return schemas.VaultContributeResponse(
+        total_deposit=round(float(result.total_deposit), 6)
+        if result.total_deposit
+        else 0.0,
+        total_withdrawal=round(float(result.total_withdrawal), 6)
+        if result.total_withdrawal
+        else 0.0,
+        current_amount=round(float(result.current_amount), 6)
+        if result.current_amount
+        else 0.0,
+        min_deposit=1.0,
+        min_withdrawal=0.5,
+        max_withdrawal=round(float(result.current_amount - result.total_withdrawal), 6),
+        profit_rate=round(float(result.profit_rate), 6) if result.profit_rate else 0.0,
+        is_redeemed=bool(result.is_redeemed)
+        if result.is_redeemed is not None
+        else False,
+    )
