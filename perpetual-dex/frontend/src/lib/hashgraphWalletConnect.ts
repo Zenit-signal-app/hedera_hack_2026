@@ -10,12 +10,14 @@ import {
   AccountId,
   ContractExecuteTransaction,
   ContractId,
+  ContractFunctionParameters,
+  Hbar,
+  HbarUnit,
   LedgerId,
   TokenAssociateTransaction,
   TokenId,
   TransferTransaction,
 } from "@hiero-ledger/sdk";
-import { Hbar, HbarUnit } from "@hashgraph/sdk";
 import { Interface } from "ethers";
 import type { SessionTypes, SignClientTypes } from "@walletconnect/types";
 
@@ -285,6 +287,154 @@ class HashgraphWalletConnectService {
           : "";
       throw new Error(`Contract call failed: ${st}${hint}`);
     }
+    return txIdStr;
+  }
+
+  /**
+   * Wrap native HBAR → HTS WHBAR bằng Hedera SDK (không dùng EVM deposit).
+   * Gọi hàm `deposit` trên WHBAR contract với setPayableAmount.
+   *
+   * @param whbarContractId - WHBAR contract ID (e.g., "0.0.1456992" for mainnet)
+   * @param amountTinybars - Số tinybars (8 decimals) muốn wrap
+   * @param gas - Gas limit (default 200,000)
+   * @returns Transaction ID
+   */
+  async wrapHbarToWhbar(
+    whbarContractId: string,
+    amountTinybars: bigint,
+    gas = 200_000,
+  ): Promise<string> {
+    if (!this.signer || !this.accountId) throw new Error("HashPack signer is not connected");
+    if (amountTinybars <= 0n) throw new Error("Wrap amount must be positive");
+
+    const tinybarsNumber = Number(amountTinybars);
+    if (!Number.isSafeInteger(tinybarsNumber)) {
+      throw new Error(`Tinybars value too large: ${amountTinybars.toString()}`);
+    }
+
+    console.log("[HashPack] Wrapping HBAR to WHBAR:", {
+      contractId: whbarContractId,
+      tinybars: tinybarsNumber,
+      hbar: (tinybarsNumber / 1e8).toFixed(8) + " HBAR",
+      gas,
+    });
+
+    // Create Hbar amount from tinybars
+    const hbarAmount = Hbar.from(tinybarsNumber, HbarUnit.Tinybar);
+
+    // Call deposit() function with payable amount
+    const tx = new ContractExecuteTransaction()
+      .setContractId(ContractId.fromString(whbarContractId))
+      .setGas(gas)
+      .setFunction("deposit") // WHBAR deposit function
+      .setPayableAmount(hbarAmount);
+
+    console.log("[HashPack] Wrap transaction prepared:", {
+      contractId: whbarContractId,
+      payableAmount: tinybarsNumber + " tinybars",
+      function: "deposit",
+    });
+
+    let response;
+    try {
+      response = await this.signer.call(tx);
+    } catch (e) {
+      if (isUserRejectedError(e)) {
+        throw new Error("Wrap transaction was rejected in the wallet.");
+      }
+      throw e;
+    }
+
+    if (!response?.transactionId) {
+      throw new Error("WHBAR wrap failed: no transaction ID");
+    }
+
+    const txIdStr = response.transactionId.toString();
+    const mirrorPath = hederaTxIdToMirrorPath(txIdStr);
+    const st = await waitForContractResultMirror(getMirrorBase(), mirrorPath);
+
+    if (st !== "SUCCESS") {
+      const hint =
+        st === "CONTRACT_REVERT_EXECUTED"
+          ? " (contract reverted — check WHBAR contract ID and balance)"
+          : "";
+      throw new Error(`WHBAR wrap failed: ${st}${hint}`);
+    }
+
+    console.log("[HashPack] ✅ HBAR wrapped to WHBAR successfully");
+    return txIdStr;
+  }
+
+  /**
+   * Unwrap HTS WHBAR → native HBAR bằng Hedera SDK.
+   * Gọi hàm `withdraw(uint256)` trên WHBAR contract.
+   *
+   * @param whbarContractId - WHBAR contract ID (e.g., "0.0.1456992" for mainnet)
+   * @param amountTinybars - Số tinybars (8 decimals) muốn unwrap
+   * @param gas - Gas limit (default 200,000)
+   * @returns Transaction ID
+   */
+  async unwrapWhbarToHbar(
+    whbarContractId: string,
+    amountTinybars: bigint,
+    gas = 200_000,
+  ): Promise<string> {
+    if (!this.signer || !this.accountId) throw new Error("HashPack signer is not connected");
+    if (amountTinybars <= 0n) throw new Error("Unwrap amount must be positive");
+
+    const tinybarsNumber = Number(amountTinybars);
+    if (!Number.isSafeInteger(tinybarsNumber)) {
+      throw new Error(`Tinybars value too large: ${amountTinybars.toString()}`);
+    }
+
+    console.log("[HashPack] Unwrapping WHBAR to HBAR:", {
+      contractId: whbarContractId,
+      tinybars: tinybarsNumber,
+      hbar: (tinybarsNumber / 1e8).toFixed(8) + " HBAR",
+      gas,
+    });
+
+    // Call withdraw(uint256) function with amount parameter
+    const params = new ContractFunctionParameters().addUint256(tinybarsNumber);
+
+    const tx = new ContractExecuteTransaction()
+      .setContractId(ContractId.fromString(whbarContractId))
+      .setGas(gas)
+      .setFunction("withdraw", params);
+
+    console.log("[HashPack] Unwrap transaction prepared:", {
+      contractId: whbarContractId,
+      amount: tinybarsNumber + " tinybars",
+      function: "withdraw",
+    });
+
+    let response;
+    try {
+      response = await this.signer.call(tx);
+    } catch (e) {
+      if (isUserRejectedError(e)) {
+        throw new Error("Unwrap transaction was rejected in the wallet.");
+      }
+      throw e;
+    }
+
+    if (!response?.transactionId) {
+      throw new Error("WHBAR unwrap failed: no transaction ID");
+    }
+
+    const txIdStr = response.transactionId.toString();
+    const mirrorPath = hederaTxIdToMirrorPath(txIdStr);
+    const st = await waitForContractResultMirror(getMirrorBase(), mirrorPath);
+
+    if (st !== "SUCCESS") {
+      const hint =
+        st === "CONTRACT_REVERT_EXECUTED"
+          ? " (contract reverted — check WHBAR balance and contract ID)"
+          : "";
+      throw new Error(`WHBAR unwrap failed: ${st}${hint}`);
+    }
+
+    console.log("[HashPack] ✅ WHBAR unwrapped to HBAR successfully");
     return txIdStr;
   }
 

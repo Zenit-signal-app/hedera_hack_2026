@@ -67,6 +67,7 @@ import {
 import { waitForTransactionSuccess } from "@/lib/aggregatorTx";
 import { fetchAggregatorStats, type AggregatorStatsDisplay } from "@/lib/aggregatorStats";
 import { hashgraphWalletConnect } from "@/lib/hashgraphWalletConnect";
+import { getWhbarContractId, isNativeHbarSell } from "@/lib/wrapAndSwap";
 import { activeEvmNetwork } from "@/config/wagmi";
 import {
   HTS_ROUTING_PANEL_BULLETS,
@@ -1044,22 +1045,132 @@ export default function LiquidityAggregator() {
         return;
       }
 
+      // Check if can use SaucerSwap direct (needed for wrap & swap logic)
+      const canUseSaucerDirect = canUseSaucerV1NativeHbarInSwap({
+        tokenInSymbol: tokenIn,
+        quote,
+        network: AGGREGATOR_NETWORK,
+        whbarAddr,
+        resolvedIn: resolvedIn as `0x${string}` | undefined,
+      });
+
+      /**
+       * ═══════════════════════════════════════════════════════════════════════
+       * WRAP & SWAP FLOW: Native HBAR → Wrap to HTS WHBAR → Swap to token
+       * ═══════════════════════════════════════════════════════════════════════
+       *
+       * Khi user muốn swap native HBAR → token khác (không phải direct SaucerSwap),
+       * ta cần wrap HBAR thành HTS WHBAR trước, rồi mới swap WHBAR → token.
+       *
+       * Flow:
+       * 1. Wrap native HBAR → HTS WHBAR (via Hedera SDK deposit)
+       * 2. Approve HTS WHBAR cho SaucerSwap router
+       * 3. Swap HTS WHBAR → token (via SaucerSwap V1 router)
+       */
+      if (
+        isNativeHbarSell(tokenIn) &&
+        !canUseSaucerDirect &&
+        routerV1 &&
+        pathV1 &&
+        whbarAddr &&
+        wpath // Only for HashPack (Hedera SDK required)
+      ) {
+        console.log("[Wrap & Swap] Native HBAR detected, will wrap then swap");
+
+        // Step 1: Wrap HBAR → WHBAR
+        const amountTinybars = parseUnits(amountIn.replace(/,/g, "") || "0", 8);
+        if (amountTinybars <= 0n) {
+          setSwapMsg("Amount must be positive.");
+          return;
+        }
+
+        try {
+          setSwapMsg("Step 1/3: Wrapping HBAR to WHBAR...");
+          const whbarContractId = getWhbarContractId();
+
+          console.log("[Wrap & Swap] Wrapping:", {
+            contractId: whbarContractId,
+            amountTinybars: amountTinybars.toString(),
+            amountHbar: formatUnits(amountTinybars, 8),
+          });
+
+          const wrapTxId = await hashgraphWalletConnect.wrapHbarToWhbar(
+            whbarContractId,
+            amountTinybars,
+            300_000
+          );
+
+          console.log("[Wrap & Swap] ✅ Wrapped successfully:", wrapTxId);
+          setSwapMsg("Step 2/3: Approving WHBAR for swap...");
+
+          // Wait a bit for balance to update
+          await new Promise((r) => setTimeout(r, 1500));
+
+          // Step 2: Approve WHBAR for router
+          const needApprove = true; // Always approve for simplicity
+          if (needApprove) {
+            const approveTxId = await hashgraphWalletConnect.executeContractCall(
+              whbarAddr,
+              [...AGGREGATOR_ERC20_ABI],
+              "approve",
+              [routerV1, amountTinybars],
+              1_500_000
+            );
+            console.log("[Wrap & Swap] ✅ Approved:", approveTxId);
+            await new Promise((r) => setTimeout(r, 1000));
+          }
+
+          // Step 3: Swap WHBAR → token via SaucerSwap V1
+          setSwapMsg("Step 3/3: Swapping WHBAR to token...");
+
+          const swapArgs = [
+            amountTinybars,
+            minOut,
+            pathV1,
+            walletAddress,
+            deadline,
+          ] as const;
+
+          const swapTxId = await hashgraphWalletConnect.executeContractCall(
+            routerV1,
+            [...SAUCERSWAP_V1_ROUTER_NATIVE_ABI],
+            "swapExactTokensForTokensSupportingFeeOnTransferTokens",
+            [...swapArgs],
+            2_500_000
+          );
+
+          setSwapTxHash(swapTxId);
+          setSwapMsg(
+            "✅ Swap confirmed! Native HBAR was wrapped to WHBAR then swapped to token. Check HashScan for details."
+          );
+          console.log("[Wrap & Swap] ✅ Complete:", swapTxId);
+          return;
+
+        } catch (error: any) {
+          console.error("[Wrap & Swap] Error:", error);
+          setSwapMsg(`❌ Wrap & Swap failed: ${error.message || "Unknown error"}`);
+          return;
+        }
+      }
 
       /**
        * SaucerSwap V1 — native HBAR → token: `swapExactETHForTokens*` + msg.value (docs dùng tên ETH).
        * Path[0] phải là WHBAR; `msg.value` = weibars (18 decimals).
        */
+      console.log("[Swap Debug] Native HBAR routing check:", {
+        tokenIn,
+        routerV1,
+        pathV1,
+        whbarAddr,
+        canUseSaucerDirect,
+        quoteSwapExecution: quote?.swapExecution,
+        quoteSource: quote?.quoteSource,
+      });
       if (
         routerV1 &&
         pathV1 &&
         whbarAddr &&
-        canUseSaucerV1NativeHbarInSwap({
-          tokenInSymbol: tokenIn,
-          quote,
-          network: AGGREGATOR_NETWORK,
-          whbarAddr,
-          resolvedIn: resolvedIn as `0x${string}` | undefined,
-        })
+        canUseSaucerDirect
       ) {
         if (pathV1[0]!.toLowerCase() !== whbarAddr.toLowerCase()) {
           setSwapMsg("Route must start with WHBAR for native HBAR → token (check quote path).");
