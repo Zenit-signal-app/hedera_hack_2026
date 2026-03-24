@@ -1,0 +1,21 @@
+{
+  "network": {
+    "name": "hedera_testnet",
+    "rpcUrl": "https://testnet.hashio.io/api"
+  },
+  "token": {
+    "tokenId": "0.0.8271323",
+    "name": "Test USD Coin",
+    "symbol": "tUSDC",
+    "decimals": 8,
+    "initialSupply": 100000000000,
+    "maxSupply": 0,
+    "type": "FUNGIBLE_COMMON",
+    "enableMinting": true,
+    "enableBurning": false
+  },
+  "keys": {
+    "adminKey": "[REDACTED]",
+    "supplyKey": "[REDACTED]"
+  }
+}
