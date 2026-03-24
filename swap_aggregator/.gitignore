@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment & secrets (allow documented examples only)
+.env
+.env.*
+!.env.example
+!**/.env.example
+!**/.env.roles.example
+
+# Local / sensitive — do not commit (per project policy)
+wallet.md
+wallets.json
+create-wallets.js
+perpetual-dex/command.md
+
+# Build & tooling
+**/dist/
+perpetual-dex/cache/
+perpetual-dex/artifacts/
+perpetual-dex/typechain/
+perpetual-dex/typechain-types/
+perpetual-dex/coverage/
+*.log
+.DS_Store
+
+# Keeper local DB (optional; uncomment if you never want DB in repo)
+# perpetual-dex/keeper/prisma/*.db
+# perpetual-dex/keeper/data/

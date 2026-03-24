@@ -1,0 +1,66 @@
+{
+  "network": "hedera_testnet",
+  "description": "Role assignment for generated wallets to avoid nonce conflicts across deploy/keeper/oracle/faucet flows.",
+  "wallets": [
+    {
+      "index": 1,
+      "role": "deployer_owner",
+      "aliasAccountId": "0.0.302d300706052b8104000a032200036fc7744bb7d0b5dac4eb64b2ed0773c815ea27a823b67d4ffc585b5aa3200ce0",
+      "evmAddress": "0x5311d1b6aae32c62ced3b7d7a37c2a405655465e",
+      "notes": [
+        "Deploy contracts",
+        "Run setKeeper.ts and setOracleUpdater.ts",
+        "Keep as owner/admin key"
+      ]
+    },
+    {
+      "index": 2,
+      "role": "keeper_close_engine",
+      "aliasAccountId": "0.0.302d300706052b8104000a03220003844dbea9fdc096eede0dcb2dc7f0b3d3579b37a467f241025bb903861664eb42",
+      "evmAddress": "0xe742a1cf5961eb6352ec46fdac6bb7eb9b367ca3",
+      "notes": [
+        "KEEPER_PRIVATE_KEY",
+        "Close TP/SL/Liquidation transactions"
+      ]
+    },
+    {
+      "index": 3,
+      "role": "oracle_updater",
+      "aliasAccountId": "0.0.302d300706052b8104000a0322000294f309f1ff5cf0b3a85dc77883d23b7dc107f0762ba3475d69336c3a4d316d65",
+      "evmAddress": "0xb073d924731aa8253a4c719a323dc417cac3e021",
+      "notes": [
+        "ORACLE_PRIVATE_KEY",
+        "Publish HBARUSD and other prices to ZenitOracle"
+      ]
+    },
+    {
+      "index": 4,
+      "role": "faucet_sender",
+      "aliasAccountId": "0.0.302d300706052b8104000a03220003bcb7fff433f5ae7c6a3db76469747e156618e1ab675b6b169d6097899ff86b1e",
+      "evmAddress": "0x15ea4b1988d724465a490ee63c6ce9817977a219",
+      "notes": [
+        "FAUCET_PRIVATE_KEY",
+        "Send faucet token to users",
+        "Keep separate from keeper key to avoid nonce contention"
+      ]
+    },
+    {
+      "index": 5,
+      "role": "ops_backup",
+      "aliasAccountId": "0.0.302d300706052b8104000a0322000226593acb6c633bd674246bc5a139a8f294475689f3962e918d2cf1669cf4da6c",
+      "evmAddress": "0x5d343354d1ff7ed8e5b691475d2bad158bad9422",
+      "notes": [
+        "Reserve wallet for emergency operations",
+        "Can be promoted to keeper/oracle/faucet replacement"
+      ]
+    }
+  ],
+  "security": {
+    "privateKeysStoredInThisFile": false,
+    "recommendations": [
+      "Fund each alias on Hedera testnet faucet before use",
+      "Never commit private keys to git",
+      "Use one role per key to reduce nonce collisions"
+    ]
+  }
+}

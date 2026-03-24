@@ -1,0 +1,21 @@
+{
+  "dependencies": {
+    "@hashgraph/sdk": "^2.81.0",
+    "dotenv": "^17.3.1"
+  },
+  "name": "perp-dex---hedera",
+  "version": "1.0.0",
+  "description": "",
+  "main": "create-wallets.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy:exchange:mainnet": "npm run deploy:exchange:mainnet --prefix perpetual-dex",
+    "deploy:exchange:testnet": "npm run deploy:exchange:testnet --prefix perpetual-dex",
+    "diagnose:aggregator:mainnet": "npm run diagnose:aggregator:mainnet --prefix perpetual-dex",
+    "register:adapter:mainnet": "npm run register:adapter:mainnet --prefix perpetual-dex"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

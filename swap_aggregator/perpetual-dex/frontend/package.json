@@ -1,0 +1,41 @@
+{
+  "name": "perp-dex-interface",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx vite",
+    "build": "tsc && npx vite build",
+    "preview": "npx vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@hashgraph/hedera-wallet-connect": "^2.0.7",
+    "@hashgraph/sdk": "^2.81.0",
+    "@rainbow-me/rainbowkit": "^2.2.9",
+    "@tanstack/react-query": "^5.25.0",
+    "@types/d3": "^7.4.3",
+    "@walletconnect/types": "^2.23.8",
+    "d3": "^7.9.0",
+    "decimal.js": "^10.6.0",
+    "ethers": "^6.10.0",
+    "lightweight-charts": "^4.2.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-globe.gl": "^2.37.0",
+    "react-router-dom": "^6.22.0",
+    "viem": "^2.39.0",
+    "wagmi": "^2.19.3"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.64",
+    "@types/react-dom": "^18.2.21",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.41",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.4.2",
+    "vite": "^5.4.18",
+    "vitest": "^4.0.18"
+  }
+}
