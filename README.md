@@ -55,18 +55,33 @@ Zenit is a full-stack trading platform providing real-time market signals, vault
 
 ## Architecture Overview
 
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  zenit_web  │────▶│  API Service │────▶│  PostgreSQL │
-│ (Frontend)  │     │   (FastAPI) │     │   + Redis   │
-└─────────────┘     └──────┬──────┘     └─────────────┘
-                          │
-         ┌────────────────┼────────────────┐
-         ▼                ▼                ▼
-┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-│  zenit_TMA  │  │ Swap Agg.  │  │ Vault Contr.│
-│  (Charts)   │  │ (Keeper)   │  │ (Solidity)  │
-└─────────────┘  └─────────────┘  └─────────────┘
+```mermaid
+graph LR
+    subgraph Frontend
+        A[zenit_web<br/>Next.js Frontend]
+        B[zenit_TMA<br/>Trading Charts]
+    end
+    
+    subgraph Backend
+        C[API Service<br/>FastAPI]
+        D[(PostgreSQL)]
+        E[(Redis)]
+    end
+    
+    subgraph External Services
+        F[Swap Aggregator<br/>Standalone Keeper]
+    end
+    
+    subgraph Blockchain
+        G[Vault Contracts<br/>Solidity]
+    end
+    
+    A --> C
+    B --> C
+    C --> D
+    C --> E
+    A --> G
+    A --> F
 ```
 
 ---
