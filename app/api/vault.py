@@ -24,7 +24,7 @@ def _get_vaults(
     db: Session,
     *,
     vault_id: Optional[str] = None,
-    chain_id: int = 2,
+    chain_id: Optional[int] = None,
     status: str = "active",
     limit: int = 20,
     offset: int = 0,
@@ -48,15 +48,17 @@ def _get_vaults(
         state_filter = "where state in ('closed')"
     else:  # default active
         state_filter = "where state in ('open', 'trading', 'withdrawable')"
-    chain_clause = f"chain_id = {chain_id}"
-    if state_filter:
-        state_filter = f"{state_filter} AND {chain_clause}"
-    else:
-        state_filter = f"WHERE {chain_clause}"
+    if chain_id is not None:
+        chain_clause = f"chain_id = {chain_id}"
+        if state_filter:
+            state_filter = f"{state_filter} AND {chain_clause}"
+        else:
+            state_filter = f"WHERE {chain_clause}"
     id_filter = ""
     if vid:
         id_filter += f" AND v.id = '{vid}'"
-    id_filter += f" AND v.chain_id = {chain_id}"
+    if chain_id is not None:
+        id_filter += f" AND v.chain_id = {chain_id}"
     limit_sql = "LIMIT 1" if vid else f"LIMIT {limit} OFFSET {offset}"
 
     query_sql = text(
@@ -124,13 +126,17 @@ def _get_vaults(
 def _get_vault_stats_data(
     db: Session,
     vault_id: str,
-    chain_id: int,
+    chain_id: Optional[int] = None,
 ) -> dict:
     """
     Get vault stats data
     Returns a dict with stats fields.
     """
     vid = vault_id.strip().lower()
+
+    chain_filter = ""
+    if chain_id is not None:
+        chain_filter = f"AND vs.chain_id = {chain_id} AND v.chain_id = {chain_id}"
 
     query_sql = text(
         f"""
@@ -159,8 +165,7 @@ def _get_vault_stats_data(
             ts.id = v.strategy_id
         )
         WHERE vs.vault_id = '{vid}'
-            AND vs.chain_id = {chain_id}
-            AND v.chain_id = {chain_id}
+            {chain_filter}
         LIMIT 1
         """
     )
@@ -229,8 +234,8 @@ def _get_vault_stats_data(
     }
 
 
-def _fetch_vault_item(db: Session, vault_id: str, chain_id: int) -> Optional[dict]:
-    """Return a single vault dictionary for the requested chain_id, or None if missing."""
+def _fetch_vault_item(db: Session, vault_id: str, chain_id: Optional[int] = None) -> Optional[dict]:
+    """Return a single vault dictionary, optionally scoped by chain_id."""
     vault_data = _get_vaults(
         db,
         vault_id=vault_id,
@@ -339,8 +344,8 @@ def get_vaults_by_status(
 )
 def get_vault_info(
     id: str,
-    chain_id: int = Query(
-        2, ge=1, description="Chain ID that owns the requested vault."
+    chain_id: Optional[int] = Query(
+        None, ge=1, description="Chain ID that owns the requested vault (optional)."
     ),
     db: Session = Depends(get_db),
 ) -> schemas.VaultInfo:
@@ -349,6 +354,9 @@ def get_vault_info(
 
     Path Parameters:
     - id: Vault UUID
+
+    Query Parameters:
+    - chain_id: Chain ID (optional, omit to search across all chains)
 
     Returns:
     - id: Vault UUID
@@ -378,36 +386,33 @@ def get_vault_info(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid vault ID")
 
-    vault_exists = _fetch_vault_item(db, vault_id=id, chain_id=chain_id)
-    if not vault_exists:
-        raise HTTPException(status_code=404, detail="Vault not found")
-
-    # Get basic vault info
+    # Get basic vault info (single call instead of duplicate)
     item = _fetch_vault_item(db, vault_id=id, chain_id=chain_id)
     if not item:
         raise HTTPException(status_code=404, detail="Vault not found")
     # Get stats data
     stats_data = _get_vault_stats_data(db, vault_id=id, chain_id=chain_id)
     # Merge the data (stats_data takes precedence for overlapping fields)
-    item.update(
-        {
-            "state": stats_data.get("state", item.get("state", "")),
-            "annual_return": stats_data.get(
-                "annual_return", item.get("annual_return", 0.0)
-            ),
-            "tvl_usd": stats_data.get("tvl_usd", item.get("tvl_usd", 0.0)),
-            "max_drawdown": stats_data.get(
-                "max_drawdown", item.get("max_drawdown", 0.0)
-            ),
-            "start_time": stats_data.get("start_time", item.get("start_time")),
-            "trade_per_month": stats_data.get(
-                "trade_per_month", item.get("trade_per_month", 0.0)
-            ),
-            "decision_cycle": stats_data.get(
-                "decision_cycle", item.get("decision_cycle", "1h")
-            ),
-        }
-    )
+    if stats_data:
+        item.update(
+            {
+                "state": stats_data.get("state", item.get("state", "")),
+                "annual_return": stats_data.get(
+                    "annual_return", item.get("annual_return", 0.0)
+                ),
+                "tvl_usd": stats_data.get("tvl_usd", item.get("tvl_usd", 0.0)),
+                "max_drawdown": stats_data.get(
+                    "max_drawdown", item.get("max_drawdown", 0.0)
+                ),
+                "start_time": stats_data.get("start_time", item.get("start_time")),
+                "trade_per_month": stats_data.get(
+                    "trade_per_month", item.get("trade_per_month", 0.0)
+                ),
+                "decision_cycle": stats_data.get(
+                    "decision_cycle", item.get("decision_cycle", "1h")
+                ),
+            }
+        )
 
     return schemas.VaultInfo(**item)
 
